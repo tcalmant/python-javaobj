@@ -23,6 +23,7 @@ class JavaObjectMarshaller:
     STREAM_MAGIC = 0xaced
     STREAM_VERSION = 0x05
 
+    TC_NULL = 0x70
     TC_REFERENCE = 0x71
     TC_CLASSDESC = 0x72
     TC_OBJECT = 0x73
@@ -41,16 +42,18 @@ class JavaObjectMarshaller:
 
     def __init__(self, stream):
         self.opmap = {
-           self.TC_CLASSDESC: self.do_classdesc,
-           self.TC_OBJECT: self.do_object,
-           self.TC_STRING: self.do_string,
-           self.TC_CLASS: self.do_class,
-           self.TC_BLOCKDATA: self.do_blockdata,
-           self.TC_REFERENCE: self.do_reference
+            self.TC_NULL: self.do_null,
+            self.TC_CLASSDESC: self.do_classdesc,
+            self.TC_OBJECT: self.do_object,
+            self.TC_STRING: self.do_string,
+            self.TC_CLASS: self.do_class,
+            self.TC_BLOCKDATA: self.do_blockdata,
+            self.TC_REFERENCE: self.do_reference
         }
         self.object_stream = stream
         self._readStreamHeader()
         self.finalValue = True
+        self.current_object = None
 
     def _readStreamHeader(self):
         (magic, version) = self._readStruct(">HH", 4)
@@ -60,8 +63,13 @@ class JavaObjectMarshaller:
     def readObject(self):
         (opid, ) = self._readStruct(">B", 1)
         print "OpCode: 0x%X" % opid
-        self.opmap.get(opid, self.do_default_stuff)()
-        return self.finalValue
+        res = self.opmap.get(opid, self.do_default_stuff)()
+        return res
+
+    def read_and_exec_opcode(self):
+        (opid, ) = self._readStruct(">B", 1)
+        print "OpCode: 0x%X" % opid
+        return self.opmap.get(opid, self.do_default_stuff)()
 
     def _readStruct(self, unpack, length):
         ba = self.object_stream.read(length)
@@ -80,7 +88,7 @@ class JavaObjectMarshaller:
         #   (byte)                  // Defined in Terminal Symbols and Constants
         # fields:
         #   (short)<count>  fieldDesc[count]
-        
+
         # fieldDesc:
         #   primitiveDesc
         #   objectDesc
@@ -88,16 +96,31 @@ class JavaObjectMarshaller:
         #   prim_typecode fieldName
         # objectDesc:
         #   obj_typecode fieldName className1
+        class JavaClass(object):
+            def __init__(self):
+                self.name = None
+                self.serialVersionUID = None
+                self.flags = None
+                self.fields_names = []
+                self.fields_types = []
+
+            def __str__(self):
+                return "[%s:0x%X]" % (self.name, self.serialVersionUID)
+
+        clazz = JavaClass()
         print "[classdesc]"
         ba = self._readString()
+        clazz.name = ba
         print "Class name:", ba
         (serialVersionUID, newHandle, classDescFlags) = self._readStruct(">LLB", 4+4+1)
+        clazz.serialVersionUID = serialVersionUID
+        clazz.flags = classDescFlags
         print "Serial: 0x%X newHanle: 0x%X. classDescFlags: 0x%X" % (serialVersionUID, newHandle, classDescFlags)
         (length, ) = self._readStruct(">H", 2)
         print "Fields num: 0x%X" % length
 
-        fields_vals = []
-        fields_type = []
+        fields_names = []
+        fields_types = []
         for fieldId in range(length):
             (type, ) = self._readStruct(">B", 1)
             ba = self._readString()
@@ -105,33 +128,55 @@ class JavaObjectMarshaller:
             (opid, ) = self._readStruct(">B", 1)
             print "OpCode: 0x%X" % opid
             res = self.opmap.get(opid, self.do_default_stuff)()
-            fields_vals.append(res)
-            fields_type.append(type)
+            fields_names.append(ba)
+            fields_types.append(res)
         if parent:
-            parent.__setattr__("__fields", fields_vals)
-            parent.__setattr__("__types", fields_types)
+            parent.__fields = fields_names
+            parent.__types = fields_types
+        # classAnnotation
+        (opid, ) = self._readStruct(">B", 1)
+        if opid != self.TC_ENDBLOCKDATA:
+            raise NotImplementedError("classAnnotation isn't implemented yet")
+        print "OpCode: 0x%X" % opid
+        # superClassDesc
+        (opid, ) = self._readStruct(">B", 1)
+        print "OpCode: 0x%X" % opid
+        self.opmap.get(opid, self.do_default_stuff)()
+
+        return clazz
 
     def do_blockdata(self, parent=None):
         # TC_BLOCKDATA (unsigned byte)<size> (byte)[size]
         print "[blockdata]"
         (length, ) = self._readStruct(">B", 1)
         ba = self.object_stream.read(length)
-        self.finalValue = ba
+        return ba
 
     def do_class(self, parent=None):
         # TC_CLASS classDesc newHandle
         print "[class]"
+        clazz = self.read_and_exec_opcode()
+        print "Class:", clazz
+        return clazz
 
     def do_object(self, parent=None):
+        # TC_OBJECT classDesc newHandle classdata[]  // data for each class
         class JavaObject(object):
             pass
-        object = JavaObject()
-        # TC_OBJECT classDesc newHandle classdata[]  // data for each class
+        self.current_object = JavaObject()
         print "[object]"
         (opid, ) = self._readStruct(">B", 1)
         print "OpCode: 0x%X" % opid
-        res = self.opmap.get(opid, self.do_default_stuff)(object)
+        res = self.opmap.get(opid, self.do_default_stuff)(self.current_object)
         self.finalValue = res
+        # classdata[]
+
+        for field_name in self.current_object.__fields:
+            (opid, ) = self._readStruct(">B", 1)
+            print "OpCode: 0x%X" % opid
+            res = self.opmap.get(opid, self.do_default_stuff)(self.current_object)
+            self.current_object.__setattr__(field_name, res)
+        return self.current_object
 
     def do_string(self, parent=None):
         print "[string]"
@@ -141,7 +186,9 @@ class JavaObjectMarshaller:
 
     def do_reference(self, parent=None):
         (handle, reference) = self._readStruct(">HH", 4)
-        pass
+
+    def do_null(self, parent=None):
+        return None
 
     def do_default_stuff(self, parent=None):
         raise RuntimeError("Unknown opcode")

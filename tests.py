@@ -45,13 +45,15 @@ class TestSequenceFunctions(unittest.TestCase):
         jobj = self.read_file("obj5.ser")
         pobj = javaobj.loads(jobj)
         print pobj
-        self.assertEqual(pobj, 'HelloWorld')
 
-#    def test_6(self):
-#        jobj = self.read_file("obj6.ser")
-#        pobj = javaobj.loads(jobj)
-#        print pobj
-#        self.assertEqual(pobj, 'HelloWorld')
+        self.assertEqual(pobj.aField1, 'Gabba')
+        self.assertEqual(pobj.aField2, None)
+
+    def test_6(self):
+        jobj = self.read_file("obj6.ser")
+        pobj = javaobj.loads(jobj)
+        print pobj
+        self.assertEqual(pobj.name, 'java.lang.String')
 
 #    def test_choice(self):
 #        element = random.choice(self.seq)
