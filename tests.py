@@ -14,21 +14,48 @@ class TestSequenceFunctions(unittest.TestCase):
     def test_0(self):
         jobj = self.read_file("obj0.ser")
         pobj = javaobj.loads(jobj)
-
         print pobj
+        self.assertEqual(pobj, '\x00C')
 
-        # make sure the shuffled sequence does not lose any elements
-        random.shuffle(self.seq)
-        self.seq.sort()
-        self.assertEqual(self.seq, range(10))
+    def test_1(self):
+        jobj = self.read_file("obj1.ser")
+        pobj = javaobj.loads(jobj)
+        print pobj
+        self.assertEqual(pobj, '\x7f\xef\xff\xff\xff\xff\xff\xff')
 
-        # should raise an exception for an immutable sequence
-        self.assertRaises(TypeError, random.shuffle, (1,2,3))
+    def test_2(self):
+        jobj = self.read_file("obj2.ser")
+        pobj = javaobj.loads(jobj)
+        print pobj
+        self.assertEqual(pobj, 'HelloWorld')
 
-    def test_choice(self):
-        element = random.choice(self.seq)
-        self.assertTrue(element in self.seq)
+    def test_3(self):
+        jobj = self.read_file("obj3.ser")
+        pobj = javaobj.loads(jobj)
+        print pobj
+        self.assertEqual(pobj, chr(0))
 
+    def test_4(self):
+        jobj = self.read_file("obj4.ser")
+        pobj = javaobj.loads(jobj)
+        print pobj
+        self.assertEqual(pobj, 'HelloWorld')
+
+    def test_5(self):
+        jobj = self.read_file("obj5.ser")
+        pobj = javaobj.loads(jobj)
+        print pobj
+        self.assertEqual(pobj, 'HelloWorld')
+
+#    def test_6(self):
+#        jobj = self.read_file("obj6.ser")
+#        pobj = javaobj.loads(jobj)
+#        print pobj
+#        self.assertEqual(pobj, 'HelloWorld')
+
+#    def test_choice(self):
+#        element = random.choice(self.seq)
+#        self.assertTrue(element in self.seq)
 
 if __name__ == '__main__':
     unittest.main()
