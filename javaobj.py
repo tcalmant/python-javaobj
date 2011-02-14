@@ -72,7 +72,7 @@ class JavaObjectMarshaller:
         ba = self.object_stream.read(length)
         return ba
 
-    def do_classdesc(self):
+    def do_classdesc(self, parent=None):
         # TC_CLASSDESC className serialVersionUID newHandle classDescInfo
         # classDescInfo:
         #   classDescFlags fields classAnnotation superClassDesc
@@ -88,7 +88,7 @@ class JavaObjectMarshaller:
         #   prim_typecode fieldName
         # objectDesc:
         #   obj_typecode fieldName className1
-        print "do_classdesc"
+        print "[classdesc]"
         ba = self._readString()
         print "Class name:", ba
         (serialVersionUID, newHandle, classDescFlags) = self._readStruct(">LLB", 4+4+1)
@@ -96,6 +96,8 @@ class JavaObjectMarshaller:
         (length, ) = self._readStruct(">H", 2)
         print "Fields num: 0x%X" % length
 
+        fields_vals = []
+        fields_type = []
         for fieldId in range(length):
             (type, ) = self._readStruct(">B", 1)
             ba = self._readString()
@@ -103,35 +105,43 @@ class JavaObjectMarshaller:
             (opid, ) = self._readStruct(">B", 1)
             print "OpCode: 0x%X" % opid
             res = self.opmap.get(opid, self.do_default_stuff)()
+            fields_vals.append(res)
+            fields_type.append(type)
+        if parent:
+            parent.__setattr__("__fields", fields_vals)
+            parent.__setattr__("__types", fields_types)
 
-    def do_blockdata(self):
+    def do_blockdata(self, parent=None):
         # TC_BLOCKDATA (unsigned byte)<size> (byte)[size]
         print "[blockdata]"
         (length, ) = self._readStruct(">B", 1)
         ba = self.object_stream.read(length)
         self.finalValue = ba
 
-    def do_class(self):
+    def do_class(self, parent=None):
         # TC_CLASS classDesc newHandle
         print "[class]"
 
-    def do_object(self):
+    def do_object(self, parent=None):
+        class JavaObject(object):
+            pass
+        object = JavaObject()
         # TC_OBJECT classDesc newHandle classdata[]  // data for each class
         print "[object]"
         (opid, ) = self._readStruct(">B", 1)
         print "OpCode: 0x%X" % opid
-        res = self.opmap.get(opid, self.do_default_stuff)()
+        res = self.opmap.get(opid, self.do_default_stuff)(object)
         self.finalValue = res
 
-    def do_string(self):
+    def do_string(self, parent=None):
         print "[string]"
         ba = self._readString()
 #        (handle, ) = self._readStruct(">B", 1)
         return str(ba)
 
-    def do_reference(self):
+    def do_reference(self, parent=None):
         (handle, reference) = self._readStruct(">HH", 4)
         pass
 
-    def do_default_stuff(self):
+    def do_default_stuff(self, parent=None):
         raise RuntimeError("Unknown opcode")
