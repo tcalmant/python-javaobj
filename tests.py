@@ -55,6 +55,12 @@ class TestSequenceFunctions(unittest.TestCase):
         print pobj
         self.assertEqual(pobj.name, 'java.lang.String')
 
+    def test_7(self):
+        jobj = self.read_file("obj7.ser")
+        pobj = javaobj.loads(jobj)
+        print pobj
+        self.assertEqual(pobj.name, 'java.lang.String')
+
 #    def test_choice(self):
 #        element = random.choice(self.seq)
 #        self.assertTrue(element in self.seq)

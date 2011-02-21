@@ -1,3 +1,5 @@
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.ByteArrayOutputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -120,6 +122,20 @@ public class OneTest {
 	@Test
     public void testClass() throws Exception {
         oos.writeObject(String.class);
+        oos.flush();
+    }
+	
+	@Test
+    public void testSwingObject() throws Exception {
+		JFrameTest frame = new JFrameTest();
+		frame.addWindowListener(new WindowAdapter() {
+			public void windowClosing(WindowEvent e) {
+				System.exit(0);
+			}
+		});
+		frame.setSize(300, 200);
+		frame.setVisible(true);
+        oos.writeObject(frame);
         oos.flush();
     }
 	
