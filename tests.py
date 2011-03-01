@@ -47,7 +47,8 @@ class TestSequenceFunctions(unittest.TestCase):
         jobj = self.read_file("obj4.ser")
         pobj = javaobj.loads(jobj)
         print pobj
-        self.assertEqual(pobj, 'HelloWorld')
+        self.assertEqual(pobj, 127)
+
         jobj_ = javaobj.dumps(pobj)
         self.assertEqual(jobj, jobj_)
 
@@ -91,9 +92,19 @@ class TestSequenceFunctions(unittest.TestCase):
         print classdesc.fields_names
         print classdesc.fields_types
 
-#    def test_choice(self):
-#        element = random.choice(self.seq)
-#        self.assertTrue(element in self.seq)
+    def test_super(self):
+        jobj = self.read_file("objSuper.ser")
+        pobj = javaobj.loads(jobj)
+        print pobj
+
+        classdesc = pobj.get_class()
+        print classdesc
+        print classdesc.fields_names
+        print classdesc.fields_types
+
+        print pobj.childString
+        print pobj.bool
+        print pobj.integer
 
 if __name__ == '__main__':
     unittest.main()

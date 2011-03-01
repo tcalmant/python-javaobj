@@ -12,6 +12,24 @@ import java.util.Vector;
 import org.junit.Before;
 import org.junit.Test;
 
+class SuperAaaa implements Serializable {
+
+    public String superString = "Super!!";
+    public int integer = -1;
+    public boolean bool = true;
+    
+}   
+
+class TestConcrete extends SuperAaaa implements Serializable {
+
+    public String childString = "Child!!";
+
+    TestConcrete() {
+        super();
+    }
+
+}   
+
 public class OneTest {
 
 	ObjectOutputStream oos;
@@ -64,7 +82,7 @@ public class OneTest {
 			aField2 = s;
 		}
 	}
-
+	
 	public static class A1 implements Serializable {
 		private static final long serialVersionUID = 5942584913446079661L;
 		B1 b1 = new B1();
@@ -136,6 +154,16 @@ public class OneTest {
 		frame.setSize(300, 200);
 		frame.setVisible(true);
         oos.writeObject(frame);
+        oos.flush();
+    }
+
+    @Test
+    public void testSuper() throws Exception {
+        oos = new ObjectOutputStream(fos = new FileOutputStream("objSuper.ser"));
+        TestConcrete ts = new TestConcrete();
+        
+//        ts.setChild("and Child!!!!");
+        oos.writeObject(ts);
         oos.flush();
     }
 	

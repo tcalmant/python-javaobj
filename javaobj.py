@@ -34,6 +34,7 @@ class JavaClass(object):
         self.flags = None
         self.fields_names = []
         self.fields_types = []
+        self.superclass = None
 
     def __str__(self):
         return "[%s:0x%X]" % (self.name, self.serialVersionUID)
@@ -102,7 +103,10 @@ class JavaObjectMarshaller:
 
         the_rest = self.object_stream.read()
         if len(the_rest):
-            print "Warning!!!!: Stream still has %s bytes left." % str(the_rest)
+            print "Warning!!!!: Stream still has %s bytes left." % len(the_rest)
+            print self.hexdump(the_rest)
+        else:
+            print "Ok!!!!"
 
         return res
 
@@ -166,9 +170,14 @@ class JavaObjectMarshaller:
                 field_type = "boolean"
             elif type == 0x5B: # '[': Array
                 field_type = self.read_and_exec_opcode(ident=ident+1, expect=[self.TC_STRING, self.TC_REFERENCE])
-                field_type = "array of " + field_type
+                if field_type is not None:
+                    field_type = "array of " + field_type
+                else:
+                    field_type = "array of None"
             elif type == 0x42: # 'B': Byte
                 field_type = "byte"
+            elif type == 0x46: # 'F': Float
+                field_type = "float"
             elif type == 0x4C: # 'L': Object
                 field_type = self.read_and_exec_opcode(ident=ident+1, expect=[self.TC_STRING, self.TC_REFERENCE])
             else:
@@ -186,7 +195,8 @@ class JavaObjectMarshaller:
         self.print_ident("OpCode: 0x%X" % opid, ident)
         # superClassDesc
         superclassdesc = self.read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_NULL])
-        print superclassdesc
+        self.print_ident(str(superclassdesc), ident)
+        clazz.superclass = superclassdesc
 
         return clazz
 
@@ -225,28 +235,79 @@ class JavaObjectMarshaller:
             pass
         else:
             raise NotImplementedError("only nowrclass is implemented.")
-        for field_name in classdesc.fields_names:
-            res = self.read_and_exec_opcode(ident=ident+1)
+        # create megalist
+        tempclass = classdesc
+        megalist = []
+        megatypes = []
+        while tempclass:
+            print ">>>", tempclass.fields_names, tempclass
+            fieldscopy = tempclass.fields_names[:]
+            fieldscopy.extend(megalist)
+            megalist = fieldscopy
+
+            fieldscopy = tempclass.fields_types[:]
+            fieldscopy.extend(megatypes)
+            megatypes = fieldscopy
+
+            tempclass = tempclass.superclass
+
+        print "Prepared list of values:", megalist
+        print "Prepared list of types:", megatypes
+
+        for field_name, field_type in zip(megalist, megatypes):
+            if field_type == "boolean":
+                (val, ) = self._readStruct(">B", 1)
+                res = bool(val)
+            elif field_type == "byte":
+                (res, ) = self._readStruct(">b", 1)
+            elif field_type == "integer":
+                (res, ) = self._readStruct(">i", 4)
+            elif field_type == "long":
+                (res, ) = self._readStruct(">q", 8)
+            elif field_type == "float":
+                (res, ) = self._readStruct(">f", 4)
+            elif field_type == "double":
+                (res, ) = self._readStruct(">d", 8)
+            else:
+                res = self.read_and_exec_opcode(ident=ident+1)
             java_object.__setattr__(field_name, res)
         return java_object
+
+#        field_type = "double"
+#        field_type = "long"
+#        field_type = "array of " + field_type
+
 
     def do_string(self, parent=None, ident=0):
         self.print_ident("[string]", ident)
         ba = self._readString()
-#        (handle, ) = self._readStruct(">B", 1)
         return str(ba)
 
     def do_reference(self, parent=None, ident=0):
+        # TODO: Reference isn't supported yed
         (handle, reference) = self._readStruct(">HH", 4)
+        print "## Reference:", handle, reference
+#        raise NotImplementedError("Reference isn't supported yed.")
 
     def do_null(self, parent=None, ident=0):
         return None
 
     def do_default_stuff(self, parent=None, ident=0):
-        raise RuntimeError("Unknown opcode")
+        raise RuntimeError("Unknown OpCode")
 
     def print_ident(self, message, ident):
         print " " * ident + str(message)
+
+    def hexdump(self, src, length=16):
+        FILTER=''.join([(len(repr(chr(x)))==3) and chr(x) or '.' for x in range(256)])
+        result = []
+        for i in xrange(0, len(src), length):
+            s = src[i:i+length]
+            hexa = ' '.join(["%02X"%ord(x) for x in s])
+            printable = s.translate(FILTER)
+            result.append("%04X   %-*s  %s\n" % (i, length*3, hexa, printable))
+        return ''.join(result)
+
     # =====================================================================================
 
     def dump(self, obj):
