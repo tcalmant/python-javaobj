@@ -94,7 +94,7 @@ class JavaObjectMarshaller:
         return self.readObject()
 
     def _readStreamHeader(self):
-        (magic, version) = self._readStruct(">HH", 4)
+        (magic, version) = self._readStruct(">HH")
         if magic != self.STREAM_MAGIC or version != self.STREAM_VERSION:
             raise IOError("The stream is not java serialized object. Invalid stream header: %04X%04X" % (magic, version))
 
@@ -111,18 +111,19 @@ class JavaObjectMarshaller:
         return res
 
     def read_and_exec_opcode(self, ident=0, expect=None):
-        (opid, ) = self._readStruct(">B", 1)
+        (opid, ) = self._readStruct(">B")
         self.print_ident("OpCode: 0x%X" % opid, ident)
         if expect and opid not in expect:
             raise IOError("Unexpected opcode 0x%X" % opid)
         return self.opmap.get(opid, self.do_default_stuff)(ident=ident)
 
-    def _readStruct(self, unpack, length):
+    def _readStruct(self, unpack):
+        length = struct.calcsize(unpack)
         ba = self.object_stream.read(length)
         return struct.unpack(unpack, ba)
 
     def _readString(self):
-        (length, ) = self._readStruct(">H", 2)
+        (length, ) = self._readStruct(">H")
         ba = self.object_stream.read(length)
         return ba
 
@@ -147,17 +148,17 @@ class JavaObjectMarshaller:
         ba = self._readString()
         clazz.name = ba
         self.print_ident("Class name: %s" % ba, ident)
-        (serialVersionUID, newHandle, classDescFlags) = self._readStruct(">LLB", 4+4+1)
+        (serialVersionUID, newHandle, classDescFlags) = self._readStruct(">LLB")
         clazz.serialVersionUID = serialVersionUID
         clazz.flags = classDescFlags
         self.print_ident("Serial: 0x%X newHanle: 0x%X. classDescFlags: 0x%X" % (serialVersionUID, newHandle, classDescFlags), ident)
-        (length, ) = self._readStruct(">H", 2)
+        (length, ) = self._readStruct(">H")
         self.print_ident("Fields num: 0x%X" % length, ident)
 
         clazz.fields_names = []
         clazz.fields_types = []
         for fieldId in range(length):
-            (type, ) = self._readStruct(">B", 1)
+            (type, ) = self._readStruct(">B")
             field_name = self._readString()
             field_type = None
             if type == 0x44: # 'D': Double
@@ -166,6 +167,8 @@ class JavaObjectMarshaller:
                 field_type = "integer"
             elif type == 0x4A: # 'J': Long
                 field_type = "long"
+            elif type == 0x53: # 'S': Short
+                field_type = "short"
             elif type == 0x5A: # 'Z': Boolean
                 field_type = "boolean"
             elif type == 0x5B: # '[': Array
@@ -189,7 +192,7 @@ class JavaObjectMarshaller:
             parent.__fields = clazz.fields_names
             parent.__types = clazz.fields_types
         # classAnnotation
-        (opid, ) = self._readStruct(">B", 1)
+        (opid, ) = self._readStruct(">B")
         if opid != self.TC_ENDBLOCKDATA:
             raise NotImplementedError("classAnnotation isn't implemented yet")
         self.print_ident("OpCode: 0x%X" % opid, ident)
@@ -203,7 +206,7 @@ class JavaObjectMarshaller:
     def do_blockdata(self, parent=None, ident=0):
         # TC_BLOCKDATA (unsigned byte)<size> (byte)[size]
         self.print_ident("[blockdata]", ident)
-        (length, ) = self._readStruct(">B", 1)
+        (length, ) = self._readStruct(">B")
         ba = self.object_stream.read(length)
         return ba
 
@@ -256,18 +259,20 @@ class JavaObjectMarshaller:
 
         for field_name, field_type in zip(megalist, megatypes):
             if field_type == "boolean":
-                (val, ) = self._readStruct(">B", 1)
+                (val, ) = self._readStruct(">B")
                 res = bool(val)
             elif field_type == "byte":
-                (res, ) = self._readStruct(">b", 1)
+                (res, ) = self._readStruct(">b")
+            elif field_type == "short":
+                (res, ) = self._readStruct(">h")
             elif field_type == "integer":
-                (res, ) = self._readStruct(">i", 4)
+                (res, ) = self._readStruct(">i")
             elif field_type == "long":
-                (res, ) = self._readStruct(">q", 8)
+                (res, ) = self._readStruct(">q")
             elif field_type == "float":
-                (res, ) = self._readStruct(">f", 4)
+                (res, ) = self._readStruct(">f")
             elif field_type == "double":
-                (res, ) = self._readStruct(">d", 8)
+                (res, ) = self._readStruct(">d")
             else:
                 res = self.read_and_exec_opcode(ident=ident+1)
             java_object.__setattr__(field_name, res)
@@ -285,7 +290,7 @@ class JavaObjectMarshaller:
 
     def do_reference(self, parent=None, ident=0):
         # TODO: Reference isn't supported yed
-        (handle, reference) = self._readStruct(">HH", 4)
+        (handle, reference) = self._readStruct(">HH")
         print "## Reference:", handle, reference
 #        raise NotImplementedError("Reference isn't supported yed.")
 
@@ -329,7 +334,7 @@ class JavaObjectMarshaller:
         elif type(obj) is str:
             print "This is string."
             self.write_blockdata(obj)
-#        (opid, ) = self._readStruct(">B", 1)
+#        (opid, ) = self._readStruct(">B")
 #        print "OpCode: 0x%X" % opid
 #        res = self.opmap.get(opid, self.do_default_stuff)()
 #        return res
@@ -367,7 +372,7 @@ class JavaObjectMarshaller:
 #        self.current_object.classdesc = classdesc
 #
 #        for field_name in self.current_object.__fields:
-#            (opid, ) = self._readStruct(">B", 1)
+#            (opid, ) = self._readStruct(">B")
 #            print "OpCode: 0x%X" % opid
 #            res = self.opmap.get(opid, self.do_default_stuff)(self.current_object)
 #            self.current_object.__setattr__(field_name, res)
