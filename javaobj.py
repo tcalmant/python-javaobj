@@ -82,6 +82,7 @@ class JavaObjectMarshaller:
             self.TC_CLASSDESC: self.do_classdesc,
             self.TC_OBJECT: self.do_object,
             self.TC_STRING: self.do_string,
+            self.TC_ARRAY: self.do_array,
             self.TC_CLASS: self.do_class,
             self.TC_BLOCKDATA: self.do_blockdata,
             self.TC_REFERENCE: self.do_reference
@@ -287,6 +288,18 @@ class JavaObjectMarshaller:
         self.print_ident("[string]", ident)
         ba = self._readString()
         return str(ba)
+
+    def do_array(self, parent=None, ident=0):
+        # TC_ARRAY classDesc newHandle (int)<size> values[size]
+        self.print_ident("[array]", ident)
+        classdesc = self.read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_PROXYCLASSDESC, self.TC_NULL])
+        (size, ) = self._readStruct(">i")
+        self.print_ident("size: " + str(size), ident)
+        for i in range(size):
+            res = self.read_and_exec_opcode(ident=ident+1)
+            print res
+
+        return None
 
     def do_reference(self, parent=None, ident=0):
         # TODO: Reference isn't supported yed

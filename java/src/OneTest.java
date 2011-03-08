@@ -12,6 +12,15 @@ import java.util.Vector;
 import org.junit.Before;
 import org.junit.Test;
 
+class ArrayClass implements Serializable {
+
+    public String[] stringArr = {"1", "2", "3"};
+    public int[] integerArr = {1,2,3};
+    public boolean[] boolArr = {true, false, true};
+    public TestConcrete[] concreteArr = {new TestConcrete(), new TestConcrete()};
+    
+}   
+
 class SuperAaaa implements Serializable {
 
     public String superString = "Super!!";
@@ -166,6 +175,15 @@ public class OneTest {
         oos.writeObject(ts);
         oos.flush();
     }
+    
+    @Test
+    public void testArrays() throws Exception {
+        oos = new ObjectOutputStream(fos = new FileOutputStream("objArrays.ser"));
+        oos.writeObject(new ArrayClass());
+        oos.flush();
+    }
+    
+    
 	
 //    public void test_readObject() throws Exception {
 //        String s = "HelloWorld";

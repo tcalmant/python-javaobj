@@ -16,6 +16,10 @@ class TestEip(unittest.TestCase):
         print peiping.endpoint(self.simple_generator()).to("")
         peiping.run()
 
+    def test_parsing(self):
+        print peiping.from_ascii("[http:/serv]->(mymethod)->[file:~/serv]")
+        peiping.run()
+
 
 if __name__ == '__main__':
     unittest.main()

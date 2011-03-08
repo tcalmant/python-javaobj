@@ -106,5 +106,19 @@ class TestSequenceFunctions(unittest.TestCase):
         print pobj.bool
         print pobj.integer
 
+    def test_arrays(self):
+        jobj = self.read_file("objArrays.ser")
+        pobj = javaobj.loads(jobj)
+        print pobj
+
+        classdesc = pobj.get_class()
+        print classdesc
+        print classdesc.fields_names
+        print classdesc.fields_types
+
+        print pobj.childString
+        print pobj.bool
+        print pobj.integer
+
 if __name__ == '__main__':
     unittest.main()
