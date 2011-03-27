@@ -5,6 +5,7 @@ def loads(object):
     """
     Deserializes Java primitive data and objects serialized by ObjectOutputStream
     from a string.
+    See: http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.html
     """
     f = StringIO.StringIO(object)
     marshaller = JavaObjectMarshaller()
@@ -162,30 +163,17 @@ class JavaObjectMarshaller:
             (type, ) = self._readStruct(">B")
             field_name = self._readString()
             field_type = None
-            if type == 0x44: # 'D': Double
-                field_type = "double"
-            elif type == 0x49: # 'I': Integer
-                field_type = "integer"
-            elif type == 0x4A: # 'J': Long
-                field_type = "long"
-            elif type == 0x53: # 'S': Short
-                field_type = "short"
-            elif type == 0x5A: # 'Z': Boolean
-                field_type = "boolean"
-            elif type == 0x5B: # '[': Array
+            field_type = self.convert_char_to_type(type)
+
+            if field_type == "array":
                 field_type = self.read_and_exec_opcode(ident=ident+1, expect=[self.TC_STRING, self.TC_REFERENCE])
                 if field_type is not None:
                     field_type = "array of " + field_type
                 else:
                     field_type = "array of None"
-            elif type == 0x42: # 'B': Byte
-                field_type = "byte"
-            elif type == 0x46: # 'F': Float
-                field_type = "float"
-            elif type == 0x4C: # 'L': Object
+            elif field_type == "object":
                 field_type = self.read_and_exec_opcode(ident=ident+1, expect=[self.TC_STRING, self.TC_REFERENCE])
-            else:
-                raise NotImplementedError("type 0x%X isn't implemented yet" % type)
+
             self.print_ident("FieldName: 0x%X" % type + " " + str(field_name) + " " + str(field_type), ident)
             clazz.fields_names.append(field_name)
             clazz.fields_types.append(field_type)
@@ -259,30 +247,9 @@ class JavaObjectMarshaller:
         print "Prepared list of types:", megatypes
 
         for field_name, field_type in zip(megalist, megatypes):
-            if field_type == "boolean":
-                (val, ) = self._readStruct(">B")
-                res = bool(val)
-            elif field_type == "byte":
-                (res, ) = self._readStruct(">b")
-            elif field_type == "short":
-                (res, ) = self._readStruct(">h")
-            elif field_type == "integer":
-                (res, ) = self._readStruct(">i")
-            elif field_type == "long":
-                (res, ) = self._readStruct(">q")
-            elif field_type == "float":
-                (res, ) = self._readStruct(">f")
-            elif field_type == "double":
-                (res, ) = self._readStruct(">d")
-            else:
-                res = self.read_and_exec_opcode(ident=ident+1)
+            res = self.read_native(field_type, ident)
             java_object.__setattr__(field_name, res)
         return java_object
-
-#        field_type = "double"
-#        field_type = "long"
-#        field_type = "array of " + field_type
-
 
     def do_string(self, parent=None, ident=0):
         self.print_ident("[string]", ident)
@@ -295,9 +262,25 @@ class JavaObjectMarshaller:
         classdesc = self.read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_PROXYCLASSDESC, self.TC_NULL])
         (size, ) = self._readStruct(">i")
         self.print_ident("size: " + str(size), ident)
-        for i in range(size):
-            res = self.read_and_exec_opcode(ident=ident+1)
-            print res
+
+        array = []
+
+#        for char in classdesc.name:
+        typestr = self.convert_char_to_type(classdesc.name[0])
+        assert typestr == "array"
+        typestr = self.convert_char_to_type(classdesc.name[1])
+
+        if typestr == "object" or typestr == "array":
+            for i in range(size):
+                res = self.read_and_exec_opcode(ident=ident+1)
+                print res
+                array.append(res)
+        else:
+            for i in range(size):
+                res = self.read_native(typestr, ident)
+                print "Native value:", res
+                array.append(res)
+#            raise RuntimeError("Native types aren't supported in arrays")
 
         return None
 
@@ -325,6 +308,51 @@ class JavaObjectMarshaller:
             printable = s.translate(FILTER)
             result.append("%04X   %-*s  %s\n" % (i, length*3, hexa, printable))
         return ''.join(result)
+
+    def read_native(self, field_type, ident):
+        if field_type == "boolean":
+            (val, ) = self._readStruct(">B")
+            res = bool(val)
+        elif field_type == "byte":
+            (res, ) = self._readStruct(">b")
+        elif field_type == "short":
+            (res, ) = self._readStruct(">h")
+        elif field_type == "integer":
+            (res, ) = self._readStruct(">i")
+        elif field_type == "long":
+            (res, ) = self._readStruct(">q")
+        elif field_type == "float":
+            (res, ) = self._readStruct(">f")
+        elif field_type == "double":
+            (res, ) = self._readStruct(">d")
+        else:
+            res = self.read_and_exec_opcode(ident=ident+1)
+        return res
+
+    def convert_char_to_type(self, type_char):
+        if type(type_char) is str:
+            type_char = ord(type_char)
+            
+        if type_char == 0x44: # 'D': Double
+            return "double"
+        elif type_char == 0x49: # 'I': Integer
+            return "integer"
+        elif type_char == 0x4A: # 'J': Long
+            return "long"
+        elif type_char == 0x53: # 'S': Short
+            return "short"
+        elif type_char == 0x5A: # 'Z': Boolean
+            return "boolean"
+        elif type_char == 0x5B: # '[': Array
+            return "array"
+        elif type_char == 0x42: # 'B': Byte
+            return "byte"
+        elif type_char == 0x46: # 'F': Float
+            return "float"
+        elif type_char == 0x4C: # 'L': Object
+            return "object"
+        else:
+            raise NotImplementedError("type 0x%X (%s) isn't implemented yet" % (0, type_char))
 
     # =====================================================================================
 
