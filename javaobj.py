@@ -1,15 +1,35 @@
+"""Provides functions for reading and writing (writing is WIP currently) Java objects
+serialized or will be deserialized by ObjectOutputStream. This form of object
+representation is a standard data interchange format in Java world.
+
+javaobj module exposes an API familiar to users of the standard library marshal, pickle and json modules.
+
+See: http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.html
+"""
+
 import StringIO
 import struct
 
-def loads(object):
+__version__ = "$Revision: 20 $"
+
+def load(file_object):
     """
     Deserializes Java primitive data and objects serialized by ObjectOutputStream
-    from a string.
-    See: http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.html
+    from a file-like object.
     """
-    f = StringIO.StringIO(object)
+    marshaller = JavaObjectUnmarshaller(file_object)
+    return marshaller.readObject()
+
+
+def loads(string):
+    """
+    Deserializes Java objects and primitive data serialized by ObjectOutputStream
+    from a string.
+    """
+    f = StringIO.StringIO(string)
     marshaller = JavaObjectUnmarshaller(f)
     return marshaller.readObject()
+
 
 def dumps(object):
     """
@@ -40,6 +60,7 @@ class JavaObject(object):
 
     def get_class(self):
         return self.classdesc
+
 
 class JavaObjectConstants:
 
@@ -408,7 +429,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             print "Warning!!!!: Stream still has %s bytes left." % len(the_rest)
             print self._create_hexdump(the_rest)
         print "=" * 30
-    # =====================================================================================
+
 
 class JavaObjectMarshaller(JavaObjectConstants):
 
