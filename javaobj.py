@@ -10,15 +10,6 @@ def loads(object):
     f = StringIO.StringIO(object)
     marshaller = JavaObjectMarshaller()
     return marshaller.load_stream(f)
-#    ba = f.read(4)
-#    (magic, version) = struct.unpack(">HH", ba)
-#    print magic
-#    if magic != 0xaced:
-#        raise RuntimeError("The stream is not java serialized object. Magic number failed.")
-#
-#    print version
-#
-#    print type(object), Magic
 
 def dumps(object):
     """
@@ -130,7 +121,7 @@ class JavaObjectMarshaller:
             self._readStreamHeader()
             return self.readObject()
         except Exception, e:
-            self.dump_state()
+            self._oops_dump_state()
             raise
 
     def _readStreamHeader(self):
@@ -139,23 +130,23 @@ class JavaObjectMarshaller:
             raise IOError("The stream is not java serialized object. Invalid stream header: %04X%04X" % (magic, version))
 
     def readObject(self):
-        res = self.read_and_exec_opcode(ident=0)    # TODO: add expects
+        res = self._read_and_exec_opcode(ident=0)    # TODO: add expects
 
         the_rest = self.object_stream.read()
         if len(the_rest):
             print "Warning!!!!: Stream still has %s bytes left." % len(the_rest)
-            print self.hexdump(the_rest)
+            print self._create_hexdump(the_rest)
         else:
             print "Ok!!!!"
 
         return res
 
-    def read_and_exec_opcode(self, ident=0, expect=None):
+    def _read_and_exec_opcode(self, ident=0, expect=None):
         (opid, ) = self._readStruct(">B")
-        self.print_ident("OpCode: 0x%X" % opid, ident)
+        self._log_ident("OpCode: 0x%X" % opid, ident)
         if expect and opid not in expect:
             raise IOError("Unexpected opcode 0x%X" % opid)
-        return self.opmap.get(opid, self.do_default_stuff)(ident=ident)
+        return self.opmap.get(opid, self.do_unknown)(ident=ident)
 
     def _readStruct(self, unpack):
         length = struct.calcsize(unpack)
@@ -184,19 +175,19 @@ class JavaObjectMarshaller:
         # objectDesc:
         #   obj_typecode fieldName className1
         clazz = JavaClass()
-        self.print_ident("[classdesc]", ident)
+        self._log_ident("[classdesc]", ident)
         ba = self._readString()
         clazz.name = ba
-        self.print_ident("Class name: %s" % ba, ident)
+        self._log_ident("Class name: %s" % ba, ident)
         (serialVersionUID, newHandle, classDescFlags) = self._readStruct(">LLB")
         clazz.serialVersionUID = serialVersionUID
         clazz.flags = classDescFlags
 
-        self.add_reference(clazz)
+        self._add_reference(clazz)
 
-        self.print_ident("Serial: 0x%X newHandle: 0x%X. classDescFlags: 0x%X" % (serialVersionUID, newHandle, classDescFlags), ident)
+        self._log_ident("Serial: 0x%X newHandle: 0x%X. classDescFlags: 0x%X" % (serialVersionUID, newHandle, classDescFlags), ident)
         (length, ) = self._readStruct(">H")
-        self.print_ident("Fields num: 0x%X" % length, ident)
+        self._log_ident("Fields num: 0x%X" % length, ident)
 
         clazz.fields_names = []
         clazz.fields_types = []
@@ -204,18 +195,18 @@ class JavaObjectMarshaller:
             (type, ) = self._readStruct(">B")
             field_name = self._readString()
             field_type = None
-            field_type = self.convert_char_to_type(type)
+            field_type = self._convert_char_to_type(type)
 
             if field_type == self.TYPE_ARRAY:
-                field_type = self.read_and_exec_opcode(ident=ident+1, expect=[self.TC_STRING, self.TC_REFERENCE])
+                field_type = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_STRING, self.TC_REFERENCE])
 #                if field_type is not None:
 #                    field_type = "array of " + field_type
 #                else:
 #                    field_type = "array of None"
             elif field_type == self.TYPE_OBJECT:
-                field_type = self.read_and_exec_opcode(ident=ident+1, expect=[self.TC_STRING, self.TC_REFERENCE])
+                field_type = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_STRING, self.TC_REFERENCE])
 
-            self.print_ident("FieldName: 0x%X" % type + " " + str(field_name) + " " + str(field_type), ident)
+            self._log_ident("FieldName: 0x%X" % type + " " + str(field_name) + " " + str(field_type), ident)
             assert field_name is not None
             assert field_type is not None
 
@@ -228,41 +219,41 @@ class JavaObjectMarshaller:
         (opid, ) = self._readStruct(">B")
         if opid != self.TC_ENDBLOCKDATA:
             raise NotImplementedError("classAnnotation isn't implemented yet")
-        self.print_ident("OpCode: 0x%X" % opid, ident)
+        self._log_ident("OpCode: 0x%X" % opid, ident)
         # superClassDesc
-        superclassdesc = self.read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_NULL])
-        self.print_ident(str(superclassdesc), ident)
+        superclassdesc = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_NULL, self.TC_REFERENCE])
+        self._log_ident(str(superclassdesc), ident)
         clazz.superclass = superclassdesc
 
         return clazz
 
     def do_blockdata(self, parent=None, ident=0):
         # TC_BLOCKDATA (unsigned byte)<size> (byte)[size]
-        self.print_ident("[blockdata]", ident)
+        self._log_ident("[blockdata]", ident)
         (length, ) = self._readStruct(">B")
         ba = self.object_stream.read(length)
         return ba
 
     def do_class(self, parent=None, ident=0):
         # TC_CLASS classDesc newHandle
-        self.print_ident("[class]", ident)
+        self._log_ident("[class]", ident)
 
         # TODO: what to do with "(ClassDesc)prevObject". (see 3rd line for classDesc:)
-        classdesc = self.read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_PROXYCLASSDESC, self.TC_NULL])
-        self.print_ident("Classdesc: %s" % classdesc, ident)
-        self.add_reference(classdesc)
+        classdesc = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_PROXYCLASSDESC, self.TC_NULL, self.TC_REFERENCE])
+        self._log_ident("Classdesc: %s" % classdesc, ident)
+        self._add_reference(classdesc)
         return classdesc
 
     def do_object(self, parent=None, ident=0):
         # TC_OBJECT classDesc newHandle classdata[]  // data for each class
         java_object = JavaObject()
-        self.print_ident("[object]", ident)
+        self._log_ident("[object]", ident)
 
         # TODO: what to do with "(ClassDesc)prevObject". (see 3rd line for classDesc:)
-        classdesc = self.read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_PROXYCLASSDESC, self.TC_NULL, self.TC_REFERENCE])
+        classdesc = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_PROXYCLASSDESC, self.TC_NULL, self.TC_REFERENCE])
         # self.TC_REFERENCE hasn't shown in spec, but actually is here
 
-        self.add_reference(java_object)
+        self._add_reference(java_object)
 
         # classdata[]
 
@@ -278,7 +269,7 @@ class JavaObjectMarshaller:
             megalist = []
             megatypes = []
             while tempclass:
-                print ">>>", tempclass.fields_names, tempclass
+                self._log_ident(">>> " + str(tempclass.fields_names) + " " + str(tempclass), ident)
                 fieldscopy = tempclass.fields_names[:]
                 fieldscopy.extend(megalist)
                 megalist = fieldscopy
@@ -289,11 +280,12 @@ class JavaObjectMarshaller:
 
                 tempclass = tempclass.superclass
 
-            print "Prepared list of values:", megalist
-            print "Prepared list of types:", megatypes
+            self._log_ident("Values count: %s" % str(len(megalist)), ident)
+            self._log_ident("Prepared list of values: %s" % str(megalist), ident)
+            self._log_ident("Prepared list of types: %s" % str(megatypes), ident)
 
             for field_name, field_type in zip(megalist, megatypes):
-                res = self.read_native(field_type, ident)
+                res = self._read_value(field_type, ident, name=field_name)
                 java_object.__setattr__(field_name, res)
 
         if classdesc.flags & self.SC_SERIALIZABLE and classdesc.flags & self.SC_WRITE_METHOD or classdesc.flags & self.SC_EXTERNALIZABLE and classdesc.flags & self.SC_BLOCK_DATA:
@@ -301,29 +293,29 @@ class JavaObjectMarshaller:
             (opid, ) = self._readStruct(">B")
             if opid != self.TC_ENDBLOCKDATA: # 0x78:
                 self.object_stream.seek(-1, mode=1)
-                print self.hexdump(self.object_stream.read())
+                print self._create_hexdump(self.object_stream.read())
                 raise NotImplementedError("objectAnnotation isn't fully implemented yet") # TODO:
 
 
         return java_object
 
     def do_string(self, parent=None, ident=0):
-        self.print_ident("[string]", ident)
+        self._log_ident("[string]", ident)
         ba = self._readString()
-        self.add_reference(str(ba))
+        self._add_reference(str(ba))
         return str(ba)
 
     def do_array(self, parent=None, ident=0):
         # TC_ARRAY classDesc newHandle (int)<size> values[size]
-        self.print_ident("[array]", ident)
-        classdesc = self.read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_PROXYCLASSDESC, self.TC_NULL])
+        self._log_ident("[array]", ident)
+        classdesc = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_PROXYCLASSDESC, self.TC_NULL, self.TC_REFERENCE])
 
         array = []
 
-        self.add_reference(array)
+        self._add_reference(array)
 
         (size, ) = self._readStruct(">i")
-        self.print_ident("size: " + str(size), ident)
+        self._log_ident("size: " + str(size), ident)
 
         type_char = classdesc.name[0]
         assert type_char == self.TYPE_ARRAY
@@ -331,32 +323,32 @@ class JavaObjectMarshaller:
 
         if type_char == self.TYPE_OBJECT or type_char == self.TYPE_ARRAY:
             for i in range(size):
-                res = self.read_and_exec_opcode(ident=ident+1)
-                print res
+                res = self._read_and_exec_opcode(ident=ident+1)
+                self._log_ident("Object value: %s" % str(res), ident)
                 array.append(res)
         else:
             for i in range(size):
-                res = self.read_native(type_char, ident)
-                print "Native value:", res
+                res = self._read_value(type_char, ident)
+                self._log_ident("Native value: %s" % str(res), ident)
                 array.append(res)
 
         return array
 
     def do_reference(self, parent=None, ident=0):
         (handle, ) = self._readStruct(">L")
-        print "## Reference handle: 0x%x" % (handle)
+        self._log_ident("## Reference handle: 0x%x" % (handle), ident)
         return self.references[handle - self.BASE_REFERENCE_IDX]
 
     def do_null(self, parent=None, ident=0):
         return None
 
-    def do_default_stuff(self, parent=None, ident=0):
+    def do_unknown(self, parent=None, ident=0):
         raise RuntimeError("Unknown OpCode")
 
-    def print_ident(self, message, ident):
-        print " " * ident + str(message)
+    def _log_ident(self, message, ident):
+        print " " * (ident * 2) + str(message)
 
-    def hexdump(self, src, length=16):
+    def _create_hexdump(self, src, length=16):
         FILTER=''.join([(len(repr(chr(x)))==3) and chr(x) or '.' for x in range(256)])
         result = []
         for i in xrange(0, len(src), length):
@@ -366,7 +358,7 @@ class JavaObjectMarshaller:
             result.append("%04X   %-*s  %s\n" % (i, length*3, hexa, printable))
         return ''.join(result)
 
-    def read_native(self, field_type, ident):
+    def _read_value(self, field_type, ident, name = ""):
         if len(field_type) > 1:
             field_type = field_type[0]  # We don't need details for arrays and objects
 
@@ -386,12 +378,13 @@ class JavaObjectMarshaller:
         elif field_type == self.TYPE_DOUBLE:
             (res, ) = self._readStruct(">d")
         elif field_type == self.TYPE_OBJECT or field_type == self.TYPE_ARRAY:
-            res = self.read_and_exec_opcode(ident=ident+1)
+            res = self._read_and_exec_opcode(ident=ident+1)
         else:
             raise RuntimeError("Unknown typecode: %s" % field_type)
+        self._log_ident("* %s %s: " % (field_type, name) + str(res), ident)
         return res
 
-    def convert_char_to_type(self, type_char):
+    def _convert_char_to_type(self, type_char):
         typecode = type_char
         if type(type_char) is int:
             typecode = chr(type_char)
@@ -401,12 +394,18 @@ class JavaObjectMarshaller:
         else:
             raise RuntimeError("Typecode %s (%s) isn't supported." % (type_char, typecode))
 
-    def add_reference(self, obj):
+    def _add_reference(self, obj):
         self.references.append(obj)
 
-    def dump_state(self):
+    def _oops_dump_state(self):
         print "==Oops state dump" + "=" * (30 - 17)
-        print "Referenes:", self.references
+        print "References:", self.references
+        print "Stream seeking back at -16 byte (2nd line is an actual position!):"
+        self.object_stream.seek(-16, mode=1)
+        the_rest = self.object_stream.read()
+        if len(the_rest):
+            print "Warning!!!!: Stream still has %s bytes left." % len(the_rest)
+            print self._create_hexdump(the_rest)
         print "=" * 30
     # =====================================================================================
 
