@@ -8,8 +8,8 @@ def loads(object):
     See: http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.html
     """
     f = StringIO.StringIO(object)
-    marshaller = JavaObjectMarshaller()
-    return marshaller.load_stream(f)
+    marshaller = JavaObjectUnmarshaller(f)
+    return marshaller.readObject()
 
 def dumps(object):
     """
@@ -41,8 +41,7 @@ class JavaObject(object):
     def get_class(self):
         return self.classdesc
 
-
-class JavaObjectMarshaller:
+class JavaObjectConstants:
 
     STREAM_MAGIC = 0xaced
     STREAM_VERSION = 0x05
@@ -100,7 +99,10 @@ class JavaObjectMarshaller:
 
     BASE_REFERENCE_IDX = 0x7E0000
 
-    def __init__(self):
+
+class JavaObjectUnmarshaller(JavaObjectConstants):
+
+    def __init__(self, stream=None):
         self.opmap = {
             self.TC_NULL: self.do_null,
             self.TC_CLASSDESC: self.do_classdesc,
@@ -114,12 +116,23 @@ class JavaObjectMarshaller:
         self.current_object = None
         self.reference_counter = 0
         self.references = []
+        self.object_stream = stream
+        self._readStreamHeader()
 
-    def load_stream(self, stream):
+    def readObject(self):
         try:
-            self.object_stream = stream
-            self._readStreamHeader()
-            return self.readObject()
+            res = self._read_and_exec_opcode(ident=0)    # TODO: add expects
+
+            position_bak = self.object_stream.tell()
+            the_rest = self.object_stream.read()
+            if len(the_rest):
+                print "Warning!!!!: Stream still has %s bytes left." % len(the_rest)
+                print self._create_hexdump(the_rest)
+            else:
+                print "Ok!!!!"
+            self.object_stream.seek(position_bak)
+
+            return res
         except Exception, e:
             self._oops_dump_state()
             raise
@@ -128,18 +141,6 @@ class JavaObjectMarshaller:
         (magic, version) = self._readStruct(">HH")
         if magic != self.STREAM_MAGIC or version != self.STREAM_VERSION:
             raise IOError("The stream is not java serialized object. Invalid stream header: %04X%04X" % (magic, version))
-
-    def readObject(self):
-        res = self._read_and_exec_opcode(ident=0)    # TODO: add expects
-
-        the_rest = self.object_stream.read()
-        if len(the_rest):
-            print "Warning!!!!: Stream still has %s bytes left." % len(the_rest)
-            print self._create_hexdump(the_rest)
-        else:
-            print "Ok!!!!"
-
-        return res
 
     def _read_and_exec_opcode(self, ident=0, expect=None):
         (opid, ) = self._readStruct(">B")
@@ -409,6 +410,11 @@ class JavaObjectMarshaller:
         print "=" * 30
     # =====================================================================================
 
+class JavaObjectMarshaller(JavaObjectConstants):
+
+    def __init__(self, stream=None):
+        self.object_stream = stream
+
     def dump(self, obj):
         self.object_obj = obj
         self.object_stream = StringIO.StringIO()
@@ -428,10 +434,6 @@ class JavaObjectMarshaller:
         elif type(obj) is str:
             print "This is string."
             self.write_blockdata(obj)
-#        (opid, ) = self._readStruct(">B")
-#        print "OpCode: 0x%X" % opid
-#        res = self.opmap.get(opid, self.do_default_stuff)()
-#        return res
 
     def _writeStruct(self, unpack, length, args):
         ba = struct.pack(unpack, *args)
@@ -443,31 +445,13 @@ class JavaObjectMarshaller:
         self.object_stream.write(string)
 
     def write_blockdata(self, obj, parent=None):
-        self._writeStruct(">B", 1, (self.TC_BLOCKDATA, ))
         # TC_BLOCKDATA (unsigned byte)<size> (byte)[size]
+        self._writeStruct(">B", 1, (self.TC_BLOCKDATA, ))
         if type(obj) is str:
             print "This is string."
             self._writeStruct(">B", 1, (len(obj), ))
             self.object_stream.write(obj)
 
     def write_object(self, obj, parent=None):
-        # TC_OBJECT classDesc newHandle classdata[]  // data for each class
-#        self.current_object = JavaObject()
-#        print "[object]"
         self._writeStruct(">B", 1, (self.TC_OBJECT, ))
         self._writeStruct(">B", 1, (self.TC_CLASSDESC, ))
-
-#        print "OpCode: 0x%X" % opid
-#        classdesc = self.opmap.get(opid, self.do_default_stuff)(self.current_object)
-#        self.finalValue = classdesc
-#        # classdata[]
-#
-#        # Store classdesc of this object
-#        self.current_object.classdesc = classdesc
-#
-#        for field_name in self.current_object.__fields:
-#            (opid, ) = self._readStruct(">B")
-#            print "OpCode: 0x%X" % opid
-#            res = self.opmap.get(opid, self.do_default_stuff)(self.current_object)
-#            self.current_object.__setattr__(field_name, res)
-#        return self.current_object

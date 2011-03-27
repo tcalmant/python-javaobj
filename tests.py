@@ -126,5 +126,17 @@ class TestSequenceFunctions(unittest.TestCase):
         print pobj.boolArr
         print pobj.concreteArr
 
+    def test_sun_example(self):
+        marshaller = javaobj.JavaObjectUnmarshaller(open("sunExample.ser"))
+        pobj = marshaller.readObject()
+
+        self.assertEqual(pobj.value, 17)
+        self.assertTrue(pobj.next)
+
+        pobj = marshaller.readObject()
+
+        self.assertEqual(pobj.value, 19)
+        self.assertFalse(pobj.next)
+
 if __name__ == '__main__':
     unittest.main()
