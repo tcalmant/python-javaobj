@@ -337,11 +337,9 @@ class JavaObjectMarshaller:
         return None
 
     def do_reference(self, parent=None, ident=0):
-        # TODO: Reference isn't supported yet
         (handle, ) = self._readStruct(">L")
         print "## Reference handle: 0x%x" % (handle)
         return self.references[handle - self.BASE_REFERENCE_IDX]
-#        raise NotImplementedError("Reference isn't supported yed.")
 
     def do_null(self, parent=None, ident=0):
         return None
@@ -389,7 +387,6 @@ class JavaObjectMarshaller:
 
     def convert_char_to_type(self, type_char):
         typecode = type_char
-        print ">>>> type:", type(type_char)
         if type(type_char) is int:
             typecode = chr(type_char)
 
