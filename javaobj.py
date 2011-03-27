@@ -208,10 +208,10 @@ class JavaObjectMarshaller:
 
             if field_type == self.TYPE_ARRAY:
                 field_type = self.read_and_exec_opcode(ident=ident+1, expect=[self.TC_STRING, self.TC_REFERENCE])
-                if field_type is not None:
-                    field_type = "array of " + field_type
-                else:
-                    field_type = "array of None"
+#                if field_type is not None:
+#                    field_type = "array of " + field_type
+#                else:
+#                    field_type = "array of None"
             elif field_type == self.TYPE_OBJECT:
                 field_type = self.read_and_exec_opcode(ident=ident+1, expect=[self.TC_STRING, self.TC_REFERENCE])
 
@@ -317,7 +317,6 @@ class JavaObjectMarshaller:
         (size, ) = self._readStruct(">i")
         self.print_ident("size: " + str(size), ident)
 
-#        for char in classdesc.name:
         type_char = classdesc.name[0]
         assert type_char == self.TYPE_ARRAY
         type_char = classdesc.name[1]
@@ -329,12 +328,11 @@ class JavaObjectMarshaller:
                 array.append(res)
         else:
             for i in range(size):
-                res = self.read_native(typestr, ident)
+                res = self.read_native(type_char, ident)
                 print "Native value:", res
                 array.append(res)
-#            raise RuntimeError("Native types aren't supported in arrays")
 
-        return None
+        return array
 
     def do_reference(self, parent=None, ident=0):
         (handle, ) = self._readStruct(">L")

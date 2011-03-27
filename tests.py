@@ -116,9 +116,15 @@ class TestSequenceFunctions(unittest.TestCase):
         print classdesc.fields_names
         print classdesc.fields_types
 
-        print pobj.childString
-        print pobj.bool
-        print pobj.integer
+#        public String[] stringArr = {"1", "2", "3"};
+#        public int[] integerArr = {1,2,3};
+#        public boolean[] boolArr = {true, false, true};
+#        public TestConcrete[] concreteArr = {new TestConcrete(), new TestConcrete()};
+
+        print pobj.stringArr
+        print pobj.integerArr
+        print pobj.boolArr
+        print pobj.concreteArr
 
 if __name__ == '__main__':
     unittest.main()
