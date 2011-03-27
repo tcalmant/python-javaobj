@@ -38,6 +38,9 @@ class JavaClass(object):
         self.superclass = None
 
     def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
         return "[%s:0x%X]" % (self.name, self.serialVersionUID)
 
 
@@ -77,6 +80,35 @@ class JavaObjectMarshaller:
     SC_EXTERNALIZABLE = 0x04
     SC_ENUM = 0x10
 
+    # type definition chars (typecode)
+    TYPE_BYTE = 'B'     # 0x42
+    TYPE_CHAR = 'C'
+    TYPE_DOUBLE = 'D'   # 0x44
+    TYPE_FLOAT = 'F'    # 0x46
+    TYPE_INTEGER = 'I'  # 0x49
+    TYPE_LONG = 'J'     # 0x4A
+    TYPE_SHORT = 'S'    # 0x53
+    TYPE_BOOLEAN = 'Z'  # 0x5A
+    TYPE_OBJECT = 'L'   # 0x4C
+    TYPE_ARRAY = '['    # 0x5B
+
+    # list of supported typecodes listed above
+    TYPECODES_LIST = [
+            # primitive types
+            TYPE_BYTE,
+            TYPE_CHAR,
+            TYPE_DOUBLE,
+            TYPE_FLOAT,
+            TYPE_INTEGER,
+            TYPE_LONG,
+            TYPE_SHORT,
+            TYPE_BOOLEAN,
+            # object types
+            TYPE_OBJECT,
+            TYPE_ARRAY ]
+
+    BASE_REFERENCE_IDX = 0x7E0000
+
     def __init__(self):
         self.opmap = {
             self.TC_NULL: self.do_null,
@@ -89,11 +121,17 @@ class JavaObjectMarshaller:
             self.TC_REFERENCE: self.do_reference
         }
         self.current_object = None
+        self.reference_counter = 0
+        self.references = []
 
     def load_stream(self, stream):
-        self.object_stream = stream
-        self._readStreamHeader()
-        return self.readObject()
+        try:
+            self.object_stream = stream
+            self._readStreamHeader()
+            return self.readObject()
+        except Exception, e:
+            self.dump_state()
+            raise
 
     def _readStreamHeader(self):
         (magic, version) = self._readStruct(">HH")
@@ -153,7 +191,10 @@ class JavaObjectMarshaller:
         (serialVersionUID, newHandle, classDescFlags) = self._readStruct(">LLB")
         clazz.serialVersionUID = serialVersionUID
         clazz.flags = classDescFlags
-        self.print_ident("Serial: 0x%X newHanle: 0x%X. classDescFlags: 0x%X" % (serialVersionUID, newHandle, classDescFlags), ident)
+
+        self.add_reference(clazz)
+
+        self.print_ident("Serial: 0x%X newHandle: 0x%X. classDescFlags: 0x%X" % (serialVersionUID, newHandle, classDescFlags), ident)
         (length, ) = self._readStruct(">H")
         self.print_ident("Fields num: 0x%X" % length, ident)
 
@@ -165,16 +206,19 @@ class JavaObjectMarshaller:
             field_type = None
             field_type = self.convert_char_to_type(type)
 
-            if field_type == "array":
+            if field_type == self.TYPE_ARRAY:
                 field_type = self.read_and_exec_opcode(ident=ident+1, expect=[self.TC_STRING, self.TC_REFERENCE])
                 if field_type is not None:
                     field_type = "array of " + field_type
                 else:
                     field_type = "array of None"
-            elif field_type == "object":
+            elif field_type == self.TYPE_OBJECT:
                 field_type = self.read_and_exec_opcode(ident=ident+1, expect=[self.TC_STRING, self.TC_REFERENCE])
 
             self.print_ident("FieldName: 0x%X" % type + " " + str(field_name) + " " + str(field_type), ident)
+            assert field_name is not None
+            assert field_type is not None
+
             clazz.fields_names.append(field_name)
             clazz.fields_types.append(field_type)
         if parent:
@@ -206,6 +250,7 @@ class JavaObjectMarshaller:
         # TODO: what to do with "(ClassDesc)prevObject". (see 3rd line for classDesc:)
         classdesc = self.read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_PROXYCLASSDESC, self.TC_NULL])
         self.print_ident("Classdesc: %s" % classdesc, ident)
+        self.add_reference(classdesc)
         return classdesc
 
     def do_object(self, parent=None, ident=0):
@@ -214,7 +259,10 @@ class JavaObjectMarshaller:
         self.print_ident("[object]", ident)
 
         # TODO: what to do with "(ClassDesc)prevObject". (see 3rd line for classDesc:)
-        classdesc = self.read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_PROXYCLASSDESC, self.TC_NULL])
+        classdesc = self.read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_PROXYCLASSDESC, self.TC_NULL, self.TC_REFERENCE])
+        # self.TC_REFERENCE hasn't shown in spec, but actually is here
+
+        self.add_reference(java_object)
 
         # classdata[]
 
@@ -254,23 +302,27 @@ class JavaObjectMarshaller:
     def do_string(self, parent=None, ident=0):
         self.print_ident("[string]", ident)
         ba = self._readString()
+        self.add_reference(str(ba))
         return str(ba)
 
     def do_array(self, parent=None, ident=0):
         # TC_ARRAY classDesc newHandle (int)<size> values[size]
         self.print_ident("[array]", ident)
         classdesc = self.read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_PROXYCLASSDESC, self.TC_NULL])
-        (size, ) = self._readStruct(">i")
-        self.print_ident("size: " + str(size), ident)
 
         array = []
 
-#        for char in classdesc.name:
-        typestr = self.convert_char_to_type(classdesc.name[0])
-        assert typestr == "array"
-        typestr = self.convert_char_to_type(classdesc.name[1])
+        self.add_reference(array)
 
-        if typestr == "object" or typestr == "array":
+        (size, ) = self._readStruct(">i")
+        self.print_ident("size: " + str(size), ident)
+
+#        for char in classdesc.name:
+        type_char = classdesc.name[0]
+        assert type_char == self.TYPE_ARRAY
+        type_char = classdesc.name[1]
+
+        if type_char == self.TYPE_OBJECT or type_char == self.TYPE_ARRAY:
             for i in range(size):
                 res = self.read_and_exec_opcode(ident=ident+1)
                 print res
@@ -285,9 +337,10 @@ class JavaObjectMarshaller:
         return None
 
     def do_reference(self, parent=None, ident=0):
-        # TODO: Reference isn't supported yed
-        (handle, reference) = self._readStruct(">HH")
-        print "## Reference:", handle, reference
+        # TODO: Reference isn't supported yet
+        (handle, ) = self._readStruct(">L")
+        print "## Reference handle: 0x%x" % (handle)
+        return self.references[handle - self.BASE_REFERENCE_IDX]
 #        raise NotImplementedError("Reference isn't supported yed.")
 
     def do_null(self, parent=None, ident=0):
@@ -310,50 +363,48 @@ class JavaObjectMarshaller:
         return ''.join(result)
 
     def read_native(self, field_type, ident):
-        if field_type == "boolean":
+        if len(field_type) > 1:
+            field_type = field_type[0]  # We don't need details for arrays and objects
+
+        if field_type == self.TYPE_BOOLEAN:
             (val, ) = self._readStruct(">B")
             res = bool(val)
-        elif field_type == "byte":
+        elif field_type == self.TYPE_BYTE:
             (res, ) = self._readStruct(">b")
-        elif field_type == "short":
+        elif field_type == self.TYPE_SHORT:
             (res, ) = self._readStruct(">h")
-        elif field_type == "integer":
+        elif field_type == self.TYPE_INTEGER:
             (res, ) = self._readStruct(">i")
-        elif field_type == "long":
+        elif field_type == self.TYPE_LONG:
             (res, ) = self._readStruct(">q")
-        elif field_type == "float":
+        elif field_type == self.TYPE_FLOAT:
             (res, ) = self._readStruct(">f")
-        elif field_type == "double":
+        elif field_type == self.TYPE_DOUBLE:
             (res, ) = self._readStruct(">d")
-        else:
+        elif field_type == self.TYPE_OBJECT or field_type == self.TYPE_ARRAY:
             res = self.read_and_exec_opcode(ident=ident+1)
+        else:
+            raise RuntimeError("Unknown typecode: %s" % field_type)
         return res
 
     def convert_char_to_type(self, type_char):
-        if type(type_char) is str:
-            type_char = ord(type_char)
-            
-        if type_char == 0x44: # 'D': Double
-            return "double"
-        elif type_char == 0x49: # 'I': Integer
-            return "integer"
-        elif type_char == 0x4A: # 'J': Long
-            return "long"
-        elif type_char == 0x53: # 'S': Short
-            return "short"
-        elif type_char == 0x5A: # 'Z': Boolean
-            return "boolean"
-        elif type_char == 0x5B: # '[': Array
-            return "array"
-        elif type_char == 0x42: # 'B': Byte
-            return "byte"
-        elif type_char == 0x46: # 'F': Float
-            return "float"
-        elif type_char == 0x4C: # 'L': Object
-            return "object"
-        else:
-            raise NotImplementedError("type 0x%X (%s) isn't implemented yet" % (0, type_char))
+        typecode = type_char
+        print ">>>> type:", type(type_char)
+        if type(type_char) is int:
+            typecode = chr(type_char)
 
+        if typecode in self.TYPECODES_LIST:
+            return typecode
+        else:
+            raise RuntimeError("Typecode %s (%s) isn't supported." % (type_char, typecode))
+
+    def add_reference(self, obj):
+        self.references.append(obj)
+
+    def dump_state(self):
+        print "==Oops state dump" + "=" * (30 - 17)
+        print "Referenes:", self.references
+        print "=" * 30
     # =====================================================================================
 
     def dump(self, obj):
