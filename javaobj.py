@@ -269,34 +269,42 @@ class JavaObjectMarshaller:
         # Store classdesc of this object
         java_object.classdesc = classdesc
 
-        # classdata[]
-        # TODO: nowrclass, wrclass, externalContents, objectAnnotation
-        if classdesc.flags & self.SC_SERIALIZABLE and not (classdesc.flags & self.SC_WRITE_METHOD):
-            pass
-        else:
-            raise NotImplementedError("only nowrclass is implemented.")
-        # create megalist
-        tempclass = classdesc
-        megalist = []
-        megatypes = []
-        while tempclass:
-            print ">>>", tempclass.fields_names, tempclass
-            fieldscopy = tempclass.fields_names[:]
-            fieldscopy.extend(megalist)
-            megalist = fieldscopy
+        if classdesc.flags & self.SC_EXTERNALIZABLE and not classdesc.flags & self.SC_BLOCK_DATA:
+            raise NotImplementedError("externalContents isn't implemented yet") # TODO:
 
-            fieldscopy = tempclass.fields_types[:]
-            fieldscopy.extend(megatypes)
-            megatypes = fieldscopy
+        if classdesc.flags & self.SC_SERIALIZABLE:
+            # create megalist
+            tempclass = classdesc
+            megalist = []
+            megatypes = []
+            while tempclass:
+                print ">>>", tempclass.fields_names, tempclass
+                fieldscopy = tempclass.fields_names[:]
+                fieldscopy.extend(megalist)
+                megalist = fieldscopy
 
-            tempclass = tempclass.superclass
+                fieldscopy = tempclass.fields_types[:]
+                fieldscopy.extend(megatypes)
+                megatypes = fieldscopy
 
-        print "Prepared list of values:", megalist
-        print "Prepared list of types:", megatypes
+                tempclass = tempclass.superclass
 
-        for field_name, field_type in zip(megalist, megatypes):
-            res = self.read_native(field_type, ident)
-            java_object.__setattr__(field_name, res)
+            print "Prepared list of values:", megalist
+            print "Prepared list of types:", megatypes
+
+            for field_name, field_type in zip(megalist, megatypes):
+                res = self.read_native(field_type, ident)
+                java_object.__setattr__(field_name, res)
+
+        if classdesc.flags & self.SC_SERIALIZABLE and classdesc.flags & self.SC_WRITE_METHOD or classdesc.flags & self.SC_EXTERNALIZABLE and classdesc.flags & self.SC_BLOCK_DATA:
+            # objectAnnotation
+            (opid, ) = self._readStruct(">B")
+            if opid != self.TC_ENDBLOCKDATA: # 0x78:
+                self.object_stream.seek(-1, mode=1)
+                print self.hexdump(self.object_stream.read())
+                raise NotImplementedError("objectAnnotation isn't fully implemented yet") # TODO:
+
+
         return java_object
 
     def do_string(self, parent=None, ident=0):
