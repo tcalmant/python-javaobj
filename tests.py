@@ -5,7 +5,8 @@ import logging
 class TestJavaobj(unittest.TestCase):
 
     def setUp(self):
-        logging.basicConfig(level=logging.DEBUG)
+        import sys
+        logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
 
     def read_file(self, filename):
         file = open(filename, 'rb')

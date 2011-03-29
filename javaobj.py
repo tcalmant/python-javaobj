@@ -146,7 +146,8 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             self.TC_ARRAY: self.do_array,
             self.TC_CLASS: self.do_class,
             self.TC_BLOCKDATA: self.do_blockdata,
-            self.TC_REFERENCE: self.do_reference
+            self.TC_REFERENCE: self.do_reference,
+            self.TC_ENUM: self.do_enum
         }
         self.current_object = None
         self.reference_counter = 0
@@ -182,7 +183,10 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         log_debug("OpCode: 0x%X" % opid, ident)
         if expect and opid not in expect:
             raise IOError("Unexpected opcode 0x%X" % opid)
-        return self.opmap.get(opid, self.do_unknown)(ident=ident)
+        handler = self.opmap.get(opid)
+        if not handler:
+            raise RuntimeError("Unknown OpCode in the stream: 0x%x" % opid)
+        return handler(ident=ident)
 
     def _readStruct(self, unpack):
         length = struct.calcsize(unpack)
@@ -378,8 +382,13 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
     def do_null(self, parent=None, ident=0):
         return None
 
-    def do_unknown(self, parent=None, ident=0):
-        raise RuntimeError("Unknown OpCode")
+    def do_enum(self, parent=None, ident=0):
+        # TC_ENUM classDesc newHandle enumConstantName
+        enum = JavaObject()
+        classdesc = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_PROXYCLASSDESC, self.TC_NULL, self.TC_REFERENCE])
+        self._add_reference(enum)
+        enumConstantName = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_STRING, self.TC_REFERENCE])
+        return enumConstantName
 
     def _create_hexdump(self, src, length=16):
         FILTER=''.join([(len(repr(chr(x)))==3) and chr(x) or '.' for x in range(256)])
