@@ -11,6 +11,8 @@ setup(
     license="APL2",
     keywords="python java marshalling serialization",
 #    packages=['javaobj'],
+    py_modules = ['javaobj'],
+    test_suite = "tests",
     long_description="Provides functions for reading and writing (writing is WIP currently) " \
                      "Java objects serialized or will be deserialized by ObjectOutputStream. " \
                      "This form of object representation is a standard data interchange format " \
