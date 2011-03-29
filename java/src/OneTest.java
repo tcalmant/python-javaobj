@@ -12,6 +12,27 @@ import java.util.Vector;
 import org.junit.Before;
 import org.junit.Test;
 
+class MyExceptionWhenDumping implements java.io.Serializable {
+    private static class MyException extends java.io.IOException {
+    };
+
+    public boolean anInstanceVar = false;
+
+    public MyExceptionWhenDumping() {
+        super();
+    }
+
+    private void readObject(java.io.ObjectInputStream in)
+            throws java.io.IOException, ClassNotFoundException {
+        in.defaultReadObject();
+    }
+
+    private void writeObject(java.io.ObjectOutputStream out)
+            throws java.io.IOException, ClassNotFoundException {
+        throw new MyException();
+    }
+}
+
 enum Color
 {
     RED("RED"), GREEN("GREEN"), BLUE("BLUE"), UNKNOWN("UNKNOWN");
@@ -197,6 +218,15 @@ public class OneTest {
         oos.flush();
     }
 	
+    @Test
+    public void testException() throws Exception {
+        oos = new ObjectOutputStream(fos = new FileOutputStream("objException.ser"));
+        MyExceptionWhenDumping ts = new MyExceptionWhenDumping();
+
+        oos.writeObject(ts);
+        oos.flush();
+    }
+
 //    public void test_readObject() throws Exception {
 //        String s = "HelloWorld";
 //        oos.writeObject(s);

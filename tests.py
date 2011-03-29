@@ -137,6 +137,16 @@ class TestJavaobj(unittest.TestCase):
         print classdesc.fields_names
         print classdesc.fields_types
 
+    def test_exception(self):
+        jobj = self.read_file("objException.ser")
+        pobj = javaobj.loads(jobj)
+        print pobj
+
+        classdesc = pobj.get_class()
+        print classdesc
+        print classdesc.fields_names
+        print classdesc.fields_types
+
     def test_sun_example(self):
         marshaller = javaobj.JavaObjectUnmarshaller(open("sunExample.ser"))
         pobj = marshaller.readObject()

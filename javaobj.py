@@ -75,6 +75,14 @@ class JavaObject(object):
     def get_class(self):
         return self.classdesc
 
+    def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
+        name = "UNKNOWN"
+        if self.classdesc:
+            name = self.classdesc.name
+        return "<javaobj:%s>" % name
 
 class JavaObjectConstants:
 
@@ -232,21 +240,23 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         clazz.fields_names = []
         clazz.fields_types = []
         for fieldId in range(length):
-            (type, ) = self._readStruct(">B")
+            (typecode, ) = self._readStruct(">B")
             field_name = self._readString()
             field_type = None
-            field_type = self._convert_char_to_type(type)
+            field_type = self._convert_char_to_type(typecode)
 
             if field_type == self.TYPE_ARRAY:
                 field_type = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_STRING, self.TC_REFERENCE])
+                assert type(field_type) is str
 #                if field_type is not None:
 #                    field_type = "array of " + field_type
 #                else:
 #                    field_type = "array of None"
             elif field_type == self.TYPE_OBJECT:
                 field_type = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_STRING, self.TC_REFERENCE])
+                assert type(field_type) is str
 
-            log_debug("FieldName: 0x%X" % type + " " + str(field_name) + " " + str(field_type), ident)
+            log_debug("FieldName: 0x%X" % typecode + " " + str(field_name) + " " + str(field_type), ident)
             assert field_name is not None
             assert field_type is not None
 
@@ -257,9 +267,9 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             parent.__types = clazz.fields_types
         # classAnnotation
         (opid, ) = self._readStruct(">B")
+        log_debug("OpCode: 0x%X" % opid, ident)
         if opid != self.TC_ENDBLOCKDATA:
             raise NotImplementedError("classAnnotation isn't implemented yet")
-        log_debug("OpCode: 0x%X" % opid, ident)
         # superClassDesc
         superclassdesc = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_NULL, self.TC_REFERENCE])
         log_debug(str(superclassdesc), ident)
@@ -310,6 +320,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             megatypes = []
             while tempclass:
                 log_debug(">>> " + str(tempclass.fields_names) + " " + str(tempclass), ident)
+                log_debug(">>> " + str(tempclass.fields_types), ident)
                 fieldscopy = tempclass.fields_names[:]
                 fieldscopy.extend(megalist)
                 megalist = fieldscopy
@@ -331,11 +342,16 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         if classdesc.flags & self.SC_SERIALIZABLE and classdesc.flags & self.SC_WRITE_METHOD or classdesc.flags & self.SC_EXTERNALIZABLE and classdesc.flags & self.SC_BLOCK_DATA:
             # objectAnnotation
             (opid, ) = self._readStruct(">B")
-            if opid != self.TC_ENDBLOCKDATA: # 0x78:
+            log_debug("OpCode: 0x%X" % opid, ident)
+            if opid == self.TC_ENDBLOCKDATA: # 0x78:
+                log_debug("TC_ENDBLOCKDATA: no object annotation")
+            elif opid == self.TC_OBJECT:
                 self.object_stream.seek(-1, mode=1)
-#                print self._create_hexdump(self.object_stream.read())
+                obj = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_OBJECT, self.TC_NULL, self.TC_REFERENCE])
+                log_debug("objectAnnotation: " + str(obj))
+            else:
+                self.object_stream.seek(-1, mode=1)
                 raise NotImplementedError("objectAnnotation isn't fully implemented yet") # TODO:
-
 
         return java_object
 
