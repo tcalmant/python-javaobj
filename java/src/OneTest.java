@@ -12,13 +12,25 @@ import java.util.Vector;
 import org.junit.Before;
 import org.junit.Test;
 
-class ArrayClass implements Serializable {
+enum Color
+{
+    RED("RED"), GREEN("GREEN"), BLUE("BLUE"), UNKNOWN("UNKNOWN");
+    private final String value;
 
-    public String[] stringArr = {"1", "2", "3"};
-    public int[] integerArr = {1,2,3};
-    public boolean[] boolArr = {true, false, true};
-    public TestConcrete[] concreteArr = {new TestConcrete(), new TestConcrete()};
-    
+    Color(String value)
+    {
+        this.value = value;
+    }
+
+    public String getValue()
+    {
+        return value;
+    }
+}
+
+class ClassWithEnum implements Serializable {
+    public Color color = Color.GREEN;
+    public Color[] colors = {Color.GREEN, Color.BLUE, Color.RED};
 }   
 
 class SuperAaaa implements Serializable {
@@ -177,13 +189,13 @@ public class OneTest {
     }
     
     @Test
-    public void testArrays() throws Exception {
-        oos = new ObjectOutputStream(fos = new FileOutputStream("objArrays.ser"));
-        oos.writeObject(new ArrayClass());
+    public void testEnums() throws Exception {
+        oos = new ObjectOutputStream(fos = new FileOutputStream("objEnums.ser"));
+        ClassWithEnum ts = new ClassWithEnum();
+        
+        oos.writeObject(ts);
         oos.flush();
     }
-    
-    
 	
 //    public void test_readObject() throws Exception {
 //        String s = "HelloWorld";

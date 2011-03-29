@@ -126,6 +126,16 @@ class TestJavaobj(unittest.TestCase):
         print pobj.boolArr
         print pobj.concreteArr
 
+    def test_enums(self):
+        jobj = self.read_file("objEnums.ser")
+        pobj = javaobj.loads(jobj)
+        print pobj
+
+        classdesc = pobj.get_class()
+        print classdesc
+        print classdesc.fields_names
+        print classdesc.fields_types
+
     def test_sun_example(self):
         marshaller = javaobj.JavaObjectUnmarshaller(open("sunExample.ser"))
         pobj = marshaller.readObject()
