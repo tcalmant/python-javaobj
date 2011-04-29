@@ -155,7 +155,8 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             self.TC_CLASS: self.do_class,
             self.TC_BLOCKDATA: self.do_blockdata,
             self.TC_REFERENCE: self.do_reference,
-            self.TC_ENUM: self.do_enum
+            self.TC_ENUM: self.do_enum,
+            self.TC_ENDBLOCKDATA: self.do_null, # note that we are reusing of do_null
         }
         self.current_object = None
         self.reference_counter = 0
@@ -165,7 +166,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
     def readObject(self):
         try:
-            res = self._read_and_exec_opcode(ident=0)    # TODO: add expects
+            opcode, res = self._read_and_exec_opcode(ident=0)    # TODO: add expects
 
             position_bak = self.object_stream.tell()
             the_rest = self.object_stream.read()
@@ -194,7 +195,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         handler = self.opmap.get(opid)
         if not handler:
             raise RuntimeError("Unknown OpCode in the stream: 0x%x" % opid)
-        return handler(ident=ident)
+        return (opid, handler(ident=ident))
 
     def _readStruct(self, unpack):
         length = struct.calcsize(unpack)
@@ -246,14 +247,14 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             field_type = self._convert_char_to_type(typecode)
 
             if field_type == self.TYPE_ARRAY:
-                field_type = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_STRING, self.TC_REFERENCE])
+                opcode, field_type = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_STRING, self.TC_REFERENCE])
                 assert type(field_type) is str
 #                if field_type is not None:
 #                    field_type = "array of " + field_type
 #                else:
 #                    field_type = "array of None"
             elif field_type == self.TYPE_OBJECT:
-                field_type = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_STRING, self.TC_REFERENCE])
+                opcode, field_type = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_STRING, self.TC_REFERENCE])
                 assert type(field_type) is str
 
             log_debug("FieldName: 0x%X" % typecode + " " + str(field_name) + " " + str(field_type), ident)
@@ -271,7 +272,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         if opid != self.TC_ENDBLOCKDATA:
             raise NotImplementedError("classAnnotation isn't implemented yet")
         # superClassDesc
-        superclassdesc = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_NULL, self.TC_REFERENCE])
+        opcode, superclassdesc = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_NULL, self.TC_REFERENCE])
         log_debug(str(superclassdesc), ident)
         clazz.superclass = superclassdesc
 
@@ -289,7 +290,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         log_debug("[class]", ident)
 
         # TODO: what to do with "(ClassDesc)prevObject". (see 3rd line for classDesc:)
-        classdesc = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_PROXYCLASSDESC, self.TC_NULL, self.TC_REFERENCE])
+        opcode, classdesc = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_PROXYCLASSDESC, self.TC_NULL, self.TC_REFERENCE])
         log_debug("Classdesc: %s" % classdesc, ident)
         self._add_reference(classdesc)
         return classdesc
@@ -300,7 +301,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         log_debug("[object]", ident)
 
         # TODO: what to do with "(ClassDesc)prevObject". (see 3rd line for classDesc:)
-        classdesc = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_PROXYCLASSDESC, self.TC_NULL, self.TC_REFERENCE])
+        opcode, classdesc = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_PROXYCLASSDESC, self.TC_NULL, self.TC_REFERENCE])
         # self.TC_REFERENCE hasn't shown in spec, but actually is here
 
         self._add_reference(java_object)
@@ -341,17 +342,9 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
         if classdesc.flags & self.SC_SERIALIZABLE and classdesc.flags & self.SC_WRITE_METHOD or classdesc.flags & self.SC_EXTERNALIZABLE and classdesc.flags & self.SC_BLOCK_DATA:
             # objectAnnotation
-            (opid, ) = self._readStruct(">B")
-            log_debug("OpCode: 0x%X" % opid, ident)
-            if opid == self.TC_ENDBLOCKDATA: # 0x78:
-                log_debug("TC_ENDBLOCKDATA: no object annotation")
-            elif opid == self.TC_OBJECT:
-                self.object_stream.seek(-1, mode=1)
-                obj = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_OBJECT, self.TC_NULL, self.TC_REFERENCE])
-                log_debug("objectAnnotation: " + str(obj))
-            else:
-                self.object_stream.seek(-1, mode=1)
-                raise NotImplementedError("objectAnnotation isn't fully implemented yet") # TODO:
+            while opcode != self.TC_ENDBLOCKDATA:
+                opcode, obj = self._read_and_exec_opcode(ident=ident+1) # , expect=[self.TC_ENDBLOCKDATA, self.TC_BLOCKDATA, self.TC_OBJECT, self.TC_NULL, self.TC_REFERENCE])
+                log_debug("objectAnnotation value: " + str(obj))
 
         return java_object
 
@@ -364,7 +357,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
     def do_array(self, parent=None, ident=0):
         # TC_ARRAY classDesc newHandle (int)<size> values[size]
         log_debug("[array]", ident)
-        classdesc = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_PROXYCLASSDESC, self.TC_NULL, self.TC_REFERENCE])
+        opcode, classdesc = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_PROXYCLASSDESC, self.TC_NULL, self.TC_REFERENCE])
 
         array = []
 
@@ -379,7 +372,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
         if type_char == self.TYPE_OBJECT or type_char == self.TYPE_ARRAY:
             for i in range(size):
-                res = self._read_and_exec_opcode(ident=ident+1)
+                opcode, res = self._read_and_exec_opcode(ident=ident+1)
                 log_debug("Object value: %s" % str(res), ident)
                 array.append(res)
         else:
@@ -401,9 +394,9 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
     def do_enum(self, parent=None, ident=0):
         # TC_ENUM classDesc newHandle enumConstantName
         enum = JavaObject()
-        classdesc = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_PROXYCLASSDESC, self.TC_NULL, self.TC_REFERENCE])
+        opcode, classdesc = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_PROXYCLASSDESC, self.TC_NULL, self.TC_REFERENCE])
         self._add_reference(enum)
-        enumConstantName = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_STRING, self.TC_REFERENCE])
+        opcode, enumConstantName = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_STRING, self.TC_REFERENCE])
         return enumConstantName
 
     def _create_hexdump(self, src, length=16):
@@ -436,7 +429,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         elif field_type == self.TYPE_DOUBLE:
             (res, ) = self._readStruct(">d")
         elif field_type == self.TYPE_OBJECT or field_type == self.TYPE_ARRAY:
-            res = self._read_and_exec_opcode(ident=ident+1)
+            opcode, res = self._read_and_exec_opcode(ident=ident+1)
         else:
             raise RuntimeError("Unknown typecode: %s" % field_type)
         log_debug("* %s %s: " % (field_type, name) + str(res), ident)

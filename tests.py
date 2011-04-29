@@ -159,5 +159,16 @@ class TestJavaobj(unittest.TestCase):
         self.assertEqual(pobj.value, 19)
         self.assertFalse(pobj.next)
 
+    def test_collections(self):
+        jobj = self.read_file("objCollections.ser")
+        pobj = javaobj.loads(jobj)
+        print pobj
+
+        classdesc = pobj.get_class()
+        print classdesc
+        print classdesc.fields_names
+        print classdesc.fields_types
+
+
 if __name__ == '__main__':
     unittest.main()
