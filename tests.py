@@ -165,10 +165,13 @@ class TestJavaobj(unittest.TestCase):
         print pobj
 
         classdesc = pobj.get_class()
-        print classdesc
-        print classdesc.fields_names
-        print classdesc.fields_types
+#        print classdesc
+#        print classdesc.fields_names
+#        print classdesc.fields_types
 
+        print "arrayList:", pobj.arrayList
+        print "linkedList:", pobj.linkedList
+        print "hashMap:", pobj.hashMap
 
 if __name__ == '__main__':
     unittest.main()

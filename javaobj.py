@@ -32,6 +32,7 @@ def load(file_object):
     from a file-like object.
     """
     marshaller = JavaObjectUnmarshaller(file_object)
+    marshaller.add_transformer(DefaultObjectTransformer())
     return marshaller.readObject()
 
 
@@ -42,6 +43,7 @@ def loads(string):
     """
     f = StringIO.StringIO(string)
     marshaller = JavaObjectUnmarshaller(f)
+    marshaller.add_transformer(DefaultObjectTransformer())
     return marshaller.readObject()
 
 
@@ -71,6 +73,7 @@ class JavaClass(object):
 
 class JavaObject(object):
     classdesc = None
+    annotations = []
 
     def get_class(self):
         return self.classdesc
@@ -83,6 +86,12 @@ class JavaObject(object):
         if self.classdesc:
             name = self.classdesc.name
         return "<javaobj:%s>" % name
+
+    def copy(self, new_object):
+        new_object.classdesc = self.classdesc
+
+        for name in self.classdesc.fields_names:
+            new_object.__setattr__(name, getattr(self, name))
 
 class JavaObjectConstants:
 
@@ -163,6 +172,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         self.references = []
         self.object_stream = stream
         self._readStreamHeader()
+        self.object_transformers = []
 
     def readObject(self):
         try:
@@ -182,6 +192,9 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             self._oops_dump_state()
             raise
 
+    def add_transformer(self, transformer):
+        self.object_transformers.append(transformer)
+
     def _readStreamHeader(self):
         (magic, version) = self._readStruct(">HH")
         if magic != self.STREAM_MAGIC or version != self.STREAM_VERSION:
@@ -200,6 +213,8 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
     def _readStruct(self, unpack):
         length = struct.calcsize(unpack)
         ba = self.object_stream.read(length)
+        if len(ba) != length:
+            raise RuntimeError("Stream has been ended unexpectedly while unmarshaling.")
         return struct.unpack(unpack, ba)
 
     def _readString(self):
@@ -344,7 +359,16 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             # objectAnnotation
             while opcode != self.TC_ENDBLOCKDATA:
                 opcode, obj = self._read_and_exec_opcode(ident=ident+1) # , expect=[self.TC_ENDBLOCKDATA, self.TC_BLOCKDATA, self.TC_OBJECT, self.TC_NULL, self.TC_REFERENCE])
-                log_debug("objectAnnotation value: " + str(obj))
+                if opcode != self.TC_ENDBLOCKDATA:
+                    java_object.annotations.append(obj)
+                log_debug("objectAnnotation value: " + str(obj), ident)
+
+        # Transform object
+        for transformer in self.object_transformers:
+            tmp_object = transformer.transform(java_object)
+            if tmp_object != java_object:
+                java_object = tmp_object
+                break
 
         return java_object
 
@@ -466,6 +490,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
         self.object_stream = stream
 
     def dump(self, obj):
+
         self.object_obj = obj
         self.object_stream = StringIO.StringIO()
         self._writeStreamHeader()
@@ -503,3 +528,31 @@ class JavaObjectMarshaller(JavaObjectConstants):
     def write_object(self, obj, parent=None):
         self._writeStruct(">B", 1, (self.TC_OBJECT, ))
         self._writeStruct(">B", 1, (self.TC_CLASSDESC, ))
+
+class DefaultObjectTransformer(object):
+
+    class JavaList(list, JavaObject):
+        pass
+
+    def transform(self, object):
+#        if object.get_class().name == "java.util.ArrayList":
+#            print "---"
+#            print "java.util.ArrayList"
+#            print object.annotations
+#            print "---"
+#            new_object = self.JavaList()
+#            object.copy(new_object)
+#            new_object.extend(object.annotations)
+#            return new_object
+        if object.get_class().name == "java.util.LinkedList":
+            print "---"
+            print
+            print "java.util.LinkedList"
+            print object.annotations
+            print "---"
+            new_object = self.JavaList()
+            object.copy(new_object)
+            new_object.extend(object.annotations)
+            return new_object
+
+        return object
