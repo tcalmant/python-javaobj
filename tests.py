@@ -164,14 +164,12 @@ class TestJavaobj(unittest.TestCase):
         pobj = javaobj.loads(jobj)
         print pobj
 
-        classdesc = pobj.get_class()
-#        print classdesc
-#        print classdesc.fields_names
-#        print classdesc.fields_types
-
         print "arrayList:", pobj.arrayList
-        print "linkedList:", pobj.linkedList
+        self.assertTrue(isinstance(pobj.arrayList, list))
         print "hashMap:", pobj.hashMap
+        self.assertTrue(isinstance(pobj.hashMap, dict))
+        print "linkedList:", pobj.linkedList
+        self.assertTrue(isinstance(pobj.linkedList, list)) # Fails
 
 if __name__ == '__main__':
     unittest.main()

@@ -72,8 +72,10 @@ class JavaClass(object):
 
 
 class JavaObject(object):
-    classdesc = None
-    annotations = []
+
+    def __init__(self):
+        self.classdesc = None
+        self.annotations = []
 
     def get_class(self):
         return self.classdesc
@@ -314,6 +316,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         # TC_OBJECT classDesc newHandle classdata[]  // data for each class
         java_object = JavaObject()
         log_debug("[object]", ident)
+        log_debug("java_object.annotations just after instantination: " + str(java_object.annotations), ident)
 
         # TODO: what to do with "(ClassDesc)prevObject". (see 3rd line for classDesc:)
         opcode, classdesc = self._read_and_exec_opcode(ident=ident+1, expect=[self.TC_CLASSDESC, self.TC_PROXYCLASSDESC, self.TC_NULL, self.TC_REFERENCE])
@@ -357,11 +360,13 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
         if classdesc.flags & self.SC_SERIALIZABLE and classdesc.flags & self.SC_WRITE_METHOD or classdesc.flags & self.SC_EXTERNALIZABLE and classdesc.flags & self.SC_BLOCK_DATA:
             # objectAnnotation
+            log_debug("java_object.annotations before: " + str(java_object.annotations), ident)
             while opcode != self.TC_ENDBLOCKDATA:
                 opcode, obj = self._read_and_exec_opcode(ident=ident+1) # , expect=[self.TC_ENDBLOCKDATA, self.TC_BLOCKDATA, self.TC_OBJECT, self.TC_NULL, self.TC_REFERENCE])
                 if opcode != self.TC_ENDBLOCKDATA:
                     java_object.annotations.append(obj)
                 log_debug("objectAnnotation value: " + str(obj), ident)
+            log_debug("java_object.annotations after: " + str(java_object.annotations), ident)
 
         # Transform object
         for transformer in self.object_transformers:
@@ -370,6 +375,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
                 java_object = tmp_object
                 break
 
+        log_debug(">>> java_object: " + str(java_object), ident)
         return java_object
 
     def do_string(self, parent=None, ident=0):
@@ -534,16 +540,23 @@ class DefaultObjectTransformer(object):
     class JavaList(list, JavaObject):
         pass
 
+    class JavaMap(dict, JavaObject):
+        pass
+
     def transform(self, object):
-#        if object.get_class().name == "java.util.ArrayList":
-#            print "---"
-#            print "java.util.ArrayList"
-#            print object.annotations
-#            print "---"
-#            new_object = self.JavaList()
-#            object.copy(new_object)
-#            new_object.extend(object.annotations)
-#            return new_object
+        if object.get_class().name == "java.util.ArrayList":
+            #    * @serialData The length of the array backing the <tt>ArrayList</tt>
+            #    *             instance is emitted (int), followed by all of its elements
+            #    *             (each an <tt>Object</tt>) in the proper order.
+            print "---"
+            print "java.util.ArrayList"
+            print object.annotations
+            print "---"
+            new_object = self.JavaList()
+            object.copy(new_object)
+            new_object.extend(object.annotations[1:])
+            print ">>> object:", new_object
+            return new_object
         if object.get_class().name == "java.util.LinkedList":
             print "---"
             print
@@ -552,7 +565,22 @@ class DefaultObjectTransformer(object):
             print "---"
             new_object = self.JavaList()
             object.copy(new_object)
-            new_object.extend(object.annotations)
+            new_object.extend(object.annotations[1:])
+            print ">>> object:", new_object
+            return new_object
+        if object.get_class().name == "java.util.HashMap":
+            print "---"
+            print
+            print "java.util.HashMap"
+            print object.annotations
+            print "---"
+            new_object = self.JavaMap()
+            object.copy(new_object)
+
+            for i in range((len(object.annotations)-1)/2):
+                new_object[object.annotations[i*2+1]] = object.annotations[i*2+2]
+
+            print ">>> object:", new_object
             return new_object
 
         return object
