@@ -10,7 +10,11 @@ import java.util.Hashtable;
 import java.util.Vector;
 
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
+
+import javax.swing.*;
 
 class MyExceptionWhenDumping implements java.io.Serializable {
     private static class MyException extends java.io.IOException {
@@ -70,14 +74,16 @@ class TestConcrete extends SuperAaaa implements Serializable {
         super();
     }
 
-}   
+}
 
 public class OneTest {
+
+    @Rule
+    public TestName name = new TestName();
 
 	ObjectOutputStream oos;
 	ByteArrayOutputStream bao;
 	FileOutputStream fos;
-	static int counter;
 
 	public class SerializableTestHelper implements Serializable {
 
@@ -139,8 +145,7 @@ public class OneTest {
 
 	@Before
 	public void setUp() throws Exception {
-		oos = new ObjectOutputStream(fos = new FileOutputStream("obj" + counter++
-				+ ".ser"));
+		oos = new ObjectOutputStream(fos = new FileOutputStream(name.getMethodName() + ".ser"));
 	}
 
 	@Test
@@ -195,7 +200,7 @@ public class OneTest {
 		});
 		frame.setSize(300, 200);
 		frame.setVisible(true);
-        oos.writeObject(frame);
+        oos.writeObject(((JScrollPane)frame.getRootPane().getContentPane().getComponent(0)).getComponent(1));
         oos.flush();
     }
 
