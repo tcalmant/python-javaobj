@@ -1,54 +1,122 @@
-import unittest
+#!/usr/bin/python
+# -- Content-Encoding: UTF-8 --
+"""
+Tests for javaobj
+
+See:
+http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.html
+
+:authors: Volodymyr Buell, Thomas Calmant
+:license: Apache License 2.0
+:version: 0.1.1
+:status: Alpha
+
+..
+
+    Copyright 2013 Thomas Calmant
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+        http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+"""
+
+# Documentation strings format
+__docformat__ = "restructuredtext en"
+
+# ------------------------------------------------------------------------------
+
+# Local
 import javaobj
+
+# Standard library
 import logging
+import os
+import subprocess
+import unittest
+
+# ------------------------------------------------------------------------------
+
+_logger = logging.getLogger("javaobj.tests")
+
+# ------------------------------------------------------------------------------
 
 class TestJavaobj(unittest.TestCase):
-
+    """
+    Full test suite for javaobj
+    """
     @classmethod
-    def setUpClass(clazz):
-        import sys
-        import os
-        from subprocess import call
-        os.chdir('./java')
-        logging.basicConfig(level=logging.DEBUG, stream=sys.stdout)
-        call(['mvn', 'test'])
+    def setUpClass(cls):
+        """
+        Calls Maven to compile & run Java classes that will generate serialized
+        data
+        """
+        os.chdir('java')
+        subprocess.call(['mvn', 'test'])
         os.chdir('..')
 
-    def setUp(self):
-        pass
 
     def read_file(self, filename):
-        file = open(filename, 'rb')
-        return file.read()
+        """
+        Reads the content of the given file in binary mode
 
-    def test_0_rw(self):
+        :param filename: Name of the file to read
+        :return: File content
+        """
+        with open(filename, 'rb') as filep:
+            return filep.read()
+
+
+    def test_char_rw(self):
+        """
+        Reads testChar.ser and checks the serialization process
+        """
         jobj = self.read_file("java/testChar.ser")
         pobj = javaobj.loads(jobj)
-        print pobj
+        _logger.debug("Read char object: %s", pobj)
         self.assertEqual(pobj, '\x00C')
         jobj_ = javaobj.dumps(pobj)
         self.assertEqual(jobj, jobj_)
 
-    def test_1(self):
+
+    def test_double_rw(self):
+        """
+        Reads testDouble.ser and checks the serialization process
+        """
         jobj = self.read_file("java/testDouble.ser")
         pobj = javaobj.loads(jobj)
-        print pobj
+        _logger.debug("Read double object: %s", pobj)
         self.assertEqual(pobj, '\x7f\xef\xff\xff\xff\xff\xff\xff')
         jobj_ = javaobj.dumps(pobj)
         self.assertEqual(jobj, jobj_)
 
-    def test_2(self):
+
+    def test_bytes_rw(self):
+        """
+        Reads testBytes.ser and checks the serialization process
+        """
         jobj = self.read_file("java/testBytes.ser")
         pobj = javaobj.loads(jobj)
-        print pobj
+        _logger.debug("Read bytes: %s", pobj)
         self.assertEqual(pobj, 'HelloWorld')
         jobj_ = javaobj.dumps(pobj)
         self.assertEqual(jobj, jobj_)
 
-    def test_3(self):
+
+    def test_boolean(self):
+        """
+        Reads testBoolean.ser and checks the serialization process
+        """
         jobj = self.read_file("java/testBoolean.ser")
         pobj = javaobj.loads(jobj)
-        print pobj
+        _logger.debug("Read boolean object: %s", pobj)
         self.assertEqual(pobj, chr(0))
         jobj_ = javaobj.dumps(pobj)
         self.assertEqual(jobj, jobj_)
@@ -62,10 +130,14 @@ class TestJavaobj(unittest.TestCase):
 #        jobj_ = javaobj.dumps(pobj)
 #        self.assertEqual(jobj, jobj_)
 
-    def test_5(self):
+
+    def test_fields(self):
+        """
+        Reads a serialized object and checks its fields
+        """
         jobj = self.read_file("java/test_readFields.ser")
         pobj = javaobj.loads(jobj)
-        print pobj
+        _logger.debug("Read object: %s", pobj)
 
         self.assertEqual(pobj.aField1, 'Gabba')
         self.assertEqual(pobj.aField2, None)
@@ -74,33 +146,41 @@ class TestJavaobj(unittest.TestCase):
         self.assertTrue(classdesc)
         self.assertEqual(classdesc.serialVersionUID, 0x7F0941F5)
         self.assertEqual(classdesc.name, "OneTest$SerializableTestHelper")
-        print classdesc
-        print classdesc.flags
-        print classdesc.fields_names
-        print classdesc.fields_types
+
+        _logger.debug("Class..........: %s", classdesc)
+        _logger.debug(".. Flags.......: %s", classdesc.flags)
+        _logger.debug(".. Fields Names: %s", classdesc.fields_names)
+        _logger.debug(".. Fields Types: %s", classdesc.fields_types)
+
         self.assertEqual(len(classdesc.fields_names), 3)
 
 #        jobj_ = javaobj.dumps(pobj)
 #        self.assertEqual(jobj, jobj_)
 
-    def test_6(self):
+    def test_class(self):
+        """
+        Reads the serialized String class
+        """
         jobj = self.read_file("java/testClass.ser")
         pobj = javaobj.loads(jobj)
-        print pobj
+        _logger.debug("Read object: %s", pobj)
         self.assertEqual(pobj.name, 'java.lang.String')
 
 #        jobj_ = javaobj.dumps(pobj)
 #        self.assertEqual(jobj, jobj_)
 
-    def test_7(self):
-        jobj = self.read_file("java/testSwingObject.ser")
-        pobj = javaobj.loads(jobj)
-        print pobj
-
-        classdesc = pobj.get_class()
-        print classdesc
-        print classdesc.fields_names
-        print classdesc.fields_types
+#     def test_swing_object(self):
+#         """
+#         Reads a serialized Swing component
+#         """
+#         jobj = self.read_file("java/testSwingObject.ser")
+#         pobj = javaobj.loads(jobj)
+#         _logger.debug("Read object: %s", pobj)
+#
+#         classdesc = pobj.get_class()
+#         _logger.debug("Class..........: %s", classdesc)
+#         _logger.debug(".. Fields Names: %s", classdesc.fields_names)
+#         _logger.debug(".. Fields Types: %s", classdesc.fields_types)
 
 #    def test_super(self):
 #        jobj = self.read_file("objSuper.ser")
@@ -126,10 +206,10 @@ class TestJavaobj(unittest.TestCase):
 #        print classdesc.fields_names
 #        print classdesc.fields_types
 #
-##        public String[] stringArr = {"1", "2", "3"};
-##        public int[] integerArr = {1,2,3};
-##        public boolean[] boolArr = {true, false, true};
-##        public TestConcrete[] concreteArr = {new TestConcrete(), new TestConcrete()};
+# #        public String[] stringArr = {"1", "2", "3"};
+# #        public int[] integerArr = {1,2,3};
+# #        public boolean[] boolArr = {true, false, true};
+# #        public TestConcrete[] concreteArr = {new TestConcrete(), new TestConcrete()};
 #
 #        print pobj.stringArr
 #        print pobj.integerArr
@@ -180,5 +260,11 @@ class TestJavaobj(unittest.TestCase):
 #        print "linkedList:", pobj.linkedList
 #        self.assertTrue(isinstance(pobj.linkedList, list)) # Fails
 
+# ------------------------------------------------------------------------------
+
 if __name__ == '__main__':
+    # Setup logging
+    logging.basicConfig(level=logging.INFO)
+
+    # Run tests
     unittest.main()
