@@ -93,7 +93,7 @@ public class OneTest {
 		/**
 		 * 
 		 */
-		private static final long serialVersionUID = 1L;
+		private static final long serialVersionUID = 0x7F0941F5L;
 
 		public String aField1;
 
