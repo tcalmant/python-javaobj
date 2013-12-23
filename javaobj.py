@@ -1,3 +1,5 @@
+#!/usr/bin/python
+# -- Content-Encoding: UTF-8 --
 """
 Provides functions for reading and writing (writing is WIP currently) Java
 objects serialized or will be deserialized by ObjectOutputStream. This form of
@@ -706,13 +708,14 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         """
         FILTER = ''.join((len(repr(chr(x))) == 3) and chr(x) or '.'
                          for x in range(256))
+        pattern = "{{0:04X}}   {{1:<{0}}}  {{2}}\n".format(length * 3)
+
         result = []
         for i in range(0, len(src), length):
             s = src[i:i + length]
             hexa = ' '.join("{0:02X}".format(ord(x)) for x in s)
             printable = s.translate(FILTER)
-            result.append("{0:04X}   {1:-*s}  {2}\n".format(i, length * 3, hexa,
-                                                            printable))
+            result.append(pattern.format(i, hexa, printable))
 
         return ''.join(result)
 
