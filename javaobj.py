@@ -49,11 +49,11 @@ import sys
 
 if sys.version_info[0] < 3:
     # Python 2
-    import StringIO
+    from StringIO import StringIO
 
 else:
     # Python 3+
-    import io as StringIO
+    from io import BytesIO as StringIO
 
 # ------------------------------------------------------------------------------
 
@@ -103,22 +103,22 @@ def loads(string):
     :param string: A Java data string
     :return: The deserialized object
     """
-    f = StringIO.StringIO(string)
+    f = StringIO(string)
     marshaller = JavaObjectUnmarshaller(f)
     marshaller.add_transformer(DefaultObjectTransformer())
     return marshaller.readObject()
 
 
-def dumps(object):
+def dumps(obj):
     """
     Serializes Java primitive data and objects unmarshaled by load(s) before
     into string.
 
-    :param object: A Python primitive object, or one loaded using load(s)
+    :param obj: A Python primitive object, or one loaded using load(s)
     :return: The serialized data as a string
     """
     marshaller = JavaObjectMarshaller()
-    return marshaller.dump(object)
+    return marshaller.dump(obj)
 
 # ------------------------------------------------------------------------------
 
@@ -421,6 +421,11 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         clazz.name = ba
         log_debug("Class name: %s" % ba, ident)
         (serialVersionUID, newHandle, classDescFlags) = self._readStruct(">LLB")
+
+        # FIXME: Fix for 1.6 ?
+        if serialVersionUID == 0:
+            serialVersionUID = newHandle
+
         clazz.serialVersionUID = serialVersionUID
         clazz.flags = classDescFlags
 
@@ -822,7 +827,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
         Dumps the given object in the Java serialization format
         """
         self.object_obj = obj
-        self.object_stream = StringIO.StringIO()
+        self.object_stream = StringIO()
         self._writeStreamHeader()
         self.writeObject(obj)
         return self.object_stream.getvalue()
@@ -873,8 +878,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
 
         :param string: String to serialize
         """
-        len = len(string)
-        self._writeStruct(">H", 2, (len,))
+        self._writeStruct(">H", 2, (len(string),))
         self.object_stream.write(string)
 
 
@@ -914,15 +918,15 @@ class DefaultObjectTransformer(object):
     class JavaMap(dict, JavaObject):
         pass
 
-    def transform(self, object):
+    def transform(self, java_object):
         """
         Transforms a deserialized Java object into a Python object
 
-        :param object: A JavaObject instance
+        :param java_object: A JavaObject instance
         :return: The Python form of the object, or the original JavaObject
         """
-        # Get the Java object class name
-        classname = object.get_class().name
+        # Get the Java java_object class name
+        classname = java_object.get_class().name
 
         if classname == "java.util.ArrayList":
             # @serialData The length of the array backing the <tt>ArrayList</tt>
@@ -930,45 +934,45 @@ class DefaultObjectTransformer(object):
             #             elements (each an <tt>Object</tt>) in the proper order
             log_debug("---")
             log_debug("java.util.ArrayList")
-            log_debug(object.annotations)
+            log_debug(java_object.annotations)
             log_debug("---")
 
             new_object = self.JavaList()
-            object.copy(new_object)
-            new_object.extend(object.annotations[1:])
+            java_object.copy(new_object)
+            new_object.extend(java_object.annotations[1:])
 
-            log_debug(">>> object: {0}".format(new_object))
+            log_debug(">>> java_object: {0}".format(new_object))
             return new_object
 
         elif classname == "java.util.LinkedList":
             log_debug("---")
             log_debug("java.util.LinkedList")
-            log_debug(object.annotations)
+            log_debug(java_object.annotations)
             log_debug("---")
 
             new_object = self.JavaList()
-            object.copy(new_object)
-            new_object.extend(object.annotations[1:])
+            java_object.copy(new_object)
+            new_object.extend(java_object.annotations[1:])
 
-            log_debug(">>> object: {0}".format(new_object))
+            log_debug(">>> java_object: {0}".format(new_object))
             return new_object
 
-        elif object.get_class().name == "java.util.HashMap":
+        elif java_object.get_class().name == "java.util.HashMap":
             log_debug("---")
             log_debug("java.util.HashMap")
-            log_debug(object.annotations)
+            log_debug(java_object.annotations)
             log_debug("---")
 
             new_object = self.JavaMap()
-            object.copy(new_object)
+            java_object.copy(new_object)
 
-            for i in range((len(object.annotations) - 1) / 2):
-                new_object[object.annotations[i * 2 + 1]] = \
-                                                object.annotations[i * 2 + 2]
+            for i in range((len(java_object.annotations) - 1) / 2):
+                new_object[java_object.annotations[i * 2 + 1]] = \
+                                                java_object.annotations[i * 2 + 2]
 
-            log_debug(">>> object: {0}".format(new_object))
+            log_debug(">>> java_object: {0}".format(new_object))
             return new_object
 
         else:
             # Return the JavaObject by default
-            return object
+            return java_object
