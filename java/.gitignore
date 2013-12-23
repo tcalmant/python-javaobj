@@ -1,0 +1,6 @@
+# Maven output
+target/
+
+# Generated files
+*.ser
+
