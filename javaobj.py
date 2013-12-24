@@ -44,6 +44,7 @@ __docformat__ = "restructuredtext en"
 
 # Standard library
 import logging
+import os
 import struct
 import sys
 
@@ -787,6 +788,9 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
                          for x in range(256))
         pattern = "{{0:04X}}   {{1:<{0}}}  {{2}}\n".format(length * 3)
 
+        # Convert raw data to str (Python 3 compatibility)
+        src = to_str(src, 'latin-1')
+
         result = []
         for i in range(0, len(src), length):
             s = src[i:i + length]
@@ -869,7 +873,8 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         log_error("Stream seeking back at -16 byte (2nd line is an actual "
                   "position!):")
 
-        self.object_stream.seek(-16, mode=1)
+        # Do not use a keyword argument
+        self.object_stream.seek(-16, os.SEEK_CUR)
         the_rest = self.object_stream.read()
 
         if len(the_rest):
