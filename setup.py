@@ -55,7 +55,7 @@ def read(fname):
 # ------------------------------------------------------------------------------
 
 setup(
-    name="javaobj-tcalmant",
+    name="javaobj-py3",
     version=__version__,
     author="Volodymyr Buell",
     author_email="vbuell@gmail.com",
