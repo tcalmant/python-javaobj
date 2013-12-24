@@ -48,11 +48,11 @@ import os
 import struct
 import sys
 
-if sys.version_info[0] < 3:
+try:
     # Python 2
     from StringIO import StringIO as BytesIO
 
-else:
+except ImportError:
     # Python 3+
     from io import BytesIO
 
@@ -350,7 +350,8 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             self.TC_BLOCKDATA: self.do_blockdata,
             self.TC_REFERENCE: self.do_reference,
             self.TC_ENUM: self.do_enum,
-            self.TC_ENDBLOCKDATA: self.do_null,  # note that we are reusing of do_null
+            # note that we are reusing do_null:
+            self.TC_ENDBLOCKDATA: self.do_null,
         }
         self.current_object = None
         self.reference_counter = 0
@@ -365,7 +366,8 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         Reads an object from the input stream
         """
         try:
-            opcode, res = self._read_and_exec_opcode(ident=0)  # TODO: add expects
+            # TODO: add expects
+            _, res = self._read_and_exec_opcode(ident=0)
 
             position_bak = self.object_stream.tell()
             the_rest = self.object_stream.read()
@@ -502,9 +504,10 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
         self._add_reference(clazz)
 
-        log_debug("Serial: 0x%X newHandle: 0x%X. classDescFlags: 0x%X" % (serialVersionUID, newHandle, classDescFlags), ident)
+        log_debug("Serial: 0x{0:X} newHandle: 0x{1:X}. classDescFlags: 0x{2:X}"\
+                  .format(serialVersionUID, newHandle, classDescFlags), ident)
         (length,) = self._readStruct(">H")
-        log_debug("Fields num: 0x%X" % length, ident)
+        log_debug("Fields num: 0x{0:X}".format(length), ident)
 
         clazz.fields_names = []
         clazz.fields_types = []
@@ -515,32 +518,44 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             field_type = self._convert_char_to_type(typecode)
 
             if field_type == self.TYPE_ARRAY:
-                opcode, field_type = self._read_and_exec_opcode(ident=ident + 1, expect=[self.TC_STRING, self.TC_REFERENCE])
+                _, field_type = self._read_and_exec_opcode(ident=ident + 1,
+                                                   expect=(self.TC_STRING,
+                                                           self.TC_REFERENCE))
                 assert type(field_type) is str
 #                if field_type is not None:
 #                    field_type = "array of " + field_type
 #                else:
 #                    field_type = "array of None"
+
             elif field_type == self.TYPE_OBJECT:
-                opcode, field_type = self._read_and_exec_opcode(ident=ident + 1, expect=[self.TC_STRING, self.TC_REFERENCE])
+                _, field_type = self._read_and_exec_opcode(ident=ident + 1,
+                                                   expect=(self.TC_STRING,
+                                                           self.TC_REFERENCE))
                 assert type(field_type) is str
 
-            log_debug("FieldName: 0x%X" % typecode + " " + str(field_name) + " " + str(field_type), ident)
+            log_debug("FieldName: 0x{0:X} Name:{1} Type:{2} ID:{3}"\
+                      .format(typecode, field_name, field_type, fieldId), ident)
             assert field_name is not None
             assert field_type is not None
 
             clazz.fields_names.append(field_name)
             clazz.fields_types.append(field_type)
+
         if parent:
             parent.__fields = clazz.fields_names
             parent.__types = clazz.fields_types
+
         # classAnnotation
         (opid,) = self._readStruct(">B")
-        log_debug("OpCode: 0x%X" % opid, ident)
+        log_debug("OpCode: 0x{0:X}".format(opid), ident)
         if opid != self.TC_ENDBLOCKDATA:
             raise NotImplementedError("classAnnotation isn't implemented yet")
+
         # superClassDesc
-        opcode, superclassdesc = self._read_and_exec_opcode(ident=ident + 1, expect=[self.TC_CLASSDESC, self.TC_NULL, self.TC_REFERENCE])
+        _, superclassdesc = self._read_and_exec_opcode(ident=ident + 1,
+                                                   expect=(self.TC_CLASSDESC,
+                                                           self.TC_NULL,
+                                                           self.TC_REFERENCE))
         log_debug(str(superclassdesc), ident)
         clazz.superclass = superclassdesc
 
@@ -574,8 +589,9 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         # TC_CLASS classDesc newHandle
         log_debug("[class]", ident)
 
-        # TODO: what to do with "(ClassDesc)prevObject". (see 3rd line for classDesc:)
-        opcode, classdesc = self._read_and_exec_opcode(ident=ident + 1,
+        # TODO: what to do with "(ClassDesc)prevObject".
+        # (see 3rd line for classDesc:)
+        _, classdesc = self._read_and_exec_opcode(ident=ident + 1,
                                                 expect=(self.TC_CLASSDESC,
                                                         self.TC_PROXYCLASSDESC,
                                                         self.TC_NULL,
@@ -599,7 +615,8 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         log_debug("java_object.annotations just after instantiation: {0}"\
                   .format(java_object.annotations), ident)
 
-        # TODO: what to do with "(ClassDesc)prevObject". (see 3rd line for classDesc:)
+        # TODO: what to do with "(ClassDesc)prevObject".
+        # (see 3rd line for classDesc:)
         opcode, classdesc = self._read_and_exec_opcode(ident=ident + 1,
                                                expect=(self.TC_CLASSDESC,
                                                        self.TC_PROXYCLASSDESC,
@@ -616,7 +633,8 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
         if classdesc.flags & self.SC_EXTERNALIZABLE \
         and not classdesc.flags & self.SC_BLOCK_DATA:
-            raise NotImplementedError("externalContents isn't implemented yet")  # TODO:
+            # TODO:
+            raise NotImplementedError("externalContents isn't implemented yet")
 
         if classdesc.flags & self.SC_SERIALIZABLE:
             # create megalist
@@ -699,11 +717,11 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         """
         # TC_ARRAY classDesc newHandle (int)<size> values[size]
         log_debug("[array]", ident)
-        opcode, classdesc = self._read_and_exec_opcode(ident=ident + 1,
-                                            expect=(self.TC_CLASSDESC,
-                                                    self.TC_PROXYCLASSDESC,
-                                                    self.TC_NULL,
-                                                    self.TC_REFERENCE))
+        _, classdesc = self._read_and_exec_opcode(ident=ident + 1,
+                                                expect=(self.TC_CLASSDESC,
+                                                        self.TC_PROXYCLASSDESC,
+                                                        self.TC_NULL,
+                                                        self.TC_REFERENCE))
 
         array = []
 
@@ -717,12 +735,12 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         type_char = classdesc.name[1]
 
         if type_char == self.TYPE_OBJECT or type_char == self.TYPE_ARRAY:
-            for i in range(size):
-                opcode, res = self._read_and_exec_opcode(ident=ident + 1)
+            for _ in range(size):
+                _, res = self._read_and_exec_opcode(ident=ident + 1)
                 log_debug("Object value: {0}".format(res), ident)
                 array.append(res)
         else:
-            for i in range(size):
+            for _ in range(size):
                 res = self._read_value(type_char, ident)
                 log_debug("Native value: {0}".format(res), ident)
                 array.append(res)
@@ -764,13 +782,13 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         """
         # TC_ENUM classDesc newHandle enumConstantName
         enum = JavaObject()
-        opcode, classdesc = self._read_and_exec_opcode(ident=ident + 1,
-                                               expect=(self.TC_CLASSDESC,
-                                                       self.TC_PROXYCLASSDESC,
-                                                       self.TC_NULL,
-                                                       self.TC_REFERENCE))
+        _, _ = self._read_and_exec_opcode(ident=ident + 1,
+                                          expect=(self.TC_CLASSDESC,
+                                                  self.TC_PROXYCLASSDESC,
+                                                  self.TC_NULL,
+                                                  self.TC_REFERENCE))
         self._add_reference(enum)
-        opcode, enumConstantName = self._read_and_exec_opcode(ident=ident + 1,
+        _, enumConstantName = self._read_and_exec_opcode(ident=ident + 1,
                                                   expect=(self.TC_STRING,
                                                           self.TC_REFERENCE))
         return enumConstantName
@@ -831,7 +849,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         elif field_type == self.TYPE_DOUBLE:
             (res,) = self._readStruct(">d")
         elif field_type == self.TYPE_OBJECT or field_type == self.TYPE_ARRAY:
-            opcode, res = self._read_and_exec_opcode(ident=ident + 1)
+            _, res = self._read_and_exec_opcode(ident=ident + 1)
         else:
             raise RuntimeError("Unknown typecode: {0}".format(field_type))
 
@@ -853,7 +871,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         if typecode in self.TYPECODES_LIST:
             return typecode
         else:
-            raise RuntimeError("Typecode {0} ({1}) isn't supported."\
+            raise RuntimeError("Typecode {0} ({1}) isn't supported." \
                                .format(type_char, typecode))
 
 
@@ -973,7 +991,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
             self._writeStruct(">B", 1, (len(obj),))
             self.object_stream.write(obj)
         else:
-            log_error("Not a str blockdata: %r" % obj)
+            log_error("Not a str blockdata: {0:r}".format(obj))
 
 
     def write_object(self, obj, parent=None):
