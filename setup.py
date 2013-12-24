@@ -66,7 +66,7 @@ setup(
     license='Apache License 2.0',
     keywords="python java marshalling serialization",
     py_modules=['javaobj'],
-    test_suite="tests",
+    test_suite="tests.tests",
     long_description=read('README.rst'),
     classifiers=[
             "Development Status :: 3 - Alpha",

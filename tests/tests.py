@@ -33,12 +33,16 @@ __docformat__ = "restructuredtext en"
 
 # ------------------------------------------------------------------------------
 
+# Prepare Python path to import javaobj
+import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.getcwd(), '..')))
+
 # Local
 import javaobj
 
 # Standard library
 import logging
-import os
 import subprocess
 import unittest
 
@@ -58,7 +62,15 @@ class TestJavaobj(unittest.TestCase):
         Calls Maven to compile & run Java classes that will generate serialized
         data
         """
-        os.chdir('java')
+        # Compute the java directory (from top folder or test folder)
+        java_dir = [os.getcwd()]
+        if not os.getcwd().endswith('tests'):
+            # Not in the test folder
+            java_dir.append('tests')
+
+        java_dir.append('java')
+
+        os.chdir(os.path.join(*java_dir))
         subprocess.call(['mvn', 'test'])
         os.chdir('..')
 
