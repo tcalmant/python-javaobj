@@ -19,5 +19,4 @@ This fork intends to work both on Python 2.7 and Python 3.
 TODO
 ****
 
-* Correct I/O handling in Python 3 (bytes versus strings)
 * Correct tests (Swing, ...)

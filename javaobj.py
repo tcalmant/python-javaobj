@@ -49,11 +49,11 @@ import sys
 
 if sys.version_info[0] < 3:
     # Python 2
-    from StringIO import StringIO
+    from StringIO import StringIO as BytesIO
 
 else:
     # Python 3+
-    from io import BytesIO as StringIO
+    from io import BytesIO
 
 # ------------------------------------------------------------------------------
 
@@ -82,6 +82,76 @@ def log_error(message, ident=0):
 
 # ------------------------------------------------------------------------------
 
+if sys.version_info[0] >= 3:
+    # Python 3 interpreter : bytes & str
+    def to_bytes(data, encoding="UTF-8"):
+        """
+        Converts the given string to an array of bytes.
+        Returns the first parameter if it is already an array of bytes.
+
+        :param data: A unicode string
+        :param encoding: The encoding of data
+        :return: The corresponding array of bytes
+        """
+        if type(data) is bytes:
+            # Nothing to do
+            return data
+
+        return data.encode(encoding)
+
+
+    def to_str(data, encoding="UTF-8"):
+        """
+        Converts the given parameter to a string.
+        Returns the first parameter if it is already an instance of ``str``.
+
+        :param data: A string
+        :param encoding: The encoding of data
+        :return: The corresponding string
+        """
+        if type(data) is str:
+            # Nothing to do
+            return data
+
+        return str(data, encoding)
+
+
+    def read_to_str(data):
+        """
+        Concats all bytes into a string
+        """
+        return ''.join(chr(char) for char in data)
+
+else:
+    # Python 2 interpreter : str & unicode
+    def to_str(data, encoding="UTF-8"):
+        """
+        Converts the given parameter to a string.
+        Returns the first parameter if it is already an instance of ``str``.
+
+        :param data: A string
+        :param encoding: The encoding of data
+        :return: The corresponding string
+        """
+        if type(data) is str:
+            # Nothing to do
+            return data
+
+        return data.encode(encoding)
+
+
+    # Same operation
+    to_bytes = to_str
+
+
+    def read_to_str(data):
+        """
+        Nothing to do in Python 2
+        """
+        return data
+
+# ------------------------------------------------------------------------------
+
 def load(file_object):
     """
     Deserializes Java primitive data and objects serialized using
@@ -103,8 +173,8 @@ def loads(string):
     :param string: A Java data string
     :return: The deserialized object
     """
-    f = StringIO(string)
-    marshaller = JavaObjectUnmarshaller(f)
+    file_like = BytesIO(string)
+    marshaller = JavaObjectUnmarshaller(file_like)
     marshaller.add_transformer(DefaultObjectTransformer())
     return marshaller.readObject()
 
@@ -267,7 +337,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         """
         Sets up members
 
-        :param stream: An optional input stream
+        :param stream: An optional input stream (opened in binary/bytes mode)
         """
         self.opmap = {
             self.TC_NULL: self.do_null,
@@ -389,7 +459,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         """
         (length,) = self._readStruct(">H")
         ba = self.object_stream.read(length)
-        return ba
+        return to_str(ba)
 
 
     def do_classdesc(self, parent=None, ident=0):
@@ -487,7 +557,9 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         log_debug("[blockdata]", ident)
         (length,) = self._readStruct(">B")
         ba = self.object_stream.read(length)
-        return ba
+
+        # Ensure we have an str
+        return read_to_str(ba)
 
 
     def do_class(self, parent=None, ident=0):
@@ -613,8 +685,8 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         """
         log_debug("[string]", ident)
         ba = self._readString()
-        self._add_reference(str(ba))
-        return str(ba)
+        self._add_reference(ba)
+        return ba
 
     def do_array(self, parent=None, ident=0):
         """
@@ -827,7 +899,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
         Dumps the given object in the Java serialization format
         """
         self.object_obj = obj
-        self.object_stream = StringIO()
+        self.object_stream = BytesIO()
         self._writeStreamHeader()
         self.writeObject(obj)
         return self.object_stream.getvalue()
@@ -891,8 +963,12 @@ class JavaObjectMarshaller(JavaObjectConstants):
         # TC_BLOCKDATA (unsigned byte)<size> (byte)[size]
         self._writeStruct(">B", 1, (self.TC_BLOCKDATA,))
         if type(obj) is str:
+            # Latin-1: keep bytes as is
+            obj = to_bytes(obj, "latin-1")
             self._writeStruct(">B", 1, (len(obj),))
             self.object_stream.write(obj)
+        else:
+            log_error("Not a str blockdata: %r" % obj)
 
 
     def write_object(self, obj, parent=None):
