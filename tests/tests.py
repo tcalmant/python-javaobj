@@ -105,7 +105,9 @@ class TestJavaobj(unittest.TestCase):
         jobj = self.read_file("java/testDouble.ser")
         pobj = javaobj.loads(jobj)
         _logger.debug("Read double object: %s", pobj)
+
         self.assertEqual(pobj, '\x7f\xef\xff\xff\xff\xff\xff\xff')
+
         jobj_ = javaobj.dumps(pobj)
         self.assertEqual(jobj, jobj_)
 
@@ -117,7 +119,9 @@ class TestJavaobj(unittest.TestCase):
         jobj = self.read_file("java/testBytes.ser")
         pobj = javaobj.loads(jobj)
         _logger.debug("Read bytes: %s", pobj)
+
         self.assertEqual(pobj, 'HelloWorld')
+
         jobj_ = javaobj.dumps(pobj)
         self.assertEqual(jobj, jobj_)
 
@@ -129,18 +133,27 @@ class TestJavaobj(unittest.TestCase):
         jobj = self.read_file("java/testBoolean.ser")
         pobj = javaobj.loads(jobj)
         _logger.debug("Read boolean object: %s", pobj)
+
         self.assertEqual(pobj, chr(0))
+
         jobj_ = javaobj.dumps(pobj)
         self.assertEqual(jobj, jobj_)
 
-#    def test_4(self):
-#        jobj = self.read_file("java/testByte.ser")
-#        pobj = javaobj.loads(jobj)
-#        print pobj
-#        self.assertEqual(pobj, 127)
-#
-#        jobj_ = javaobj.dumps(pobj)
-#        self.assertEqual(jobj, jobj_)
+
+    def test_byte(self):
+        """
+        Reads testByte.ser
+
+        The result from javaobj is a single-character string.
+        """
+        jobj = self.read_file("java/testByte.ser")
+        pobj = javaobj.loads(jobj)
+        _logger.debug("Read Byte: %r", pobj)
+
+        self.assertEqual(pobj, chr(127))
+
+        jobj_ = javaobj.dumps(pobj)
+        self.assertEqual(jobj, jobj_)
 
 
     def test_fields(self):
