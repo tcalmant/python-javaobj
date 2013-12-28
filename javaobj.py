@@ -334,12 +334,18 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
     """
     Deserializes a Java serialization stream
     """
-    def __init__(self, stream=None):
+    def __init__(self, stream):
         """
         Sets up members
 
-        :param stream: An optional input stream (opened in binary/bytes mode)
+        :param stream: An input stream (opened in binary/bytes mode)
+        :raise IOError: Invalid input stream
         """
+        # Check stream
+        if stream is None:
+            raise IOError("No input stream given")
+
+        # Prepare the association Terminal Symbol -> Reading method
         self.opmap = {
             self.TC_NULL: self.do_null,
             self.TC_CLASSDESC: self.do_classdesc,
@@ -353,17 +359,24 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             # note that we are reusing do_null:
             self.TC_ENDBLOCKDATA: self.do_null,
         }
+
+        # Set up members
         self.current_object = None
         self.reference_counter = 0
         self.references = []
-        self.object_stream = stream
-        self._readStreamHeader()
         self.object_transformers = []
+        self.object_stream = stream
+
+        # Read the stream header (magic & version)
+        self._readStreamHeader()
 
 
     def readObject(self):
         """
         Reads an object from the input stream
+
+        :return: The unmarshalled object
+        :raise Exception: Any exception that occurred during unmarshalling
         """
         try:
             # TODO: add expects
@@ -490,22 +503,19 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         #   obj_typecode fieldName className1
         clazz = JavaClass()
         log_debug("[classdesc]", ident)
-        ba = self._readString()
-        clazz.name = ba
-        log_debug("Class name: %s" % ba, ident)
-        (serialVersionUID, newHandle, classDescFlags) = self._readStruct(">LLB")
+        class_name = self._readString()
+        clazz.name = class_name
+        log_debug("Class name: %s" % class_name, ident)
 
-        # FIXME: Fix for 1.6 ?
-        if serialVersionUID == 0:
-            serialVersionUID = newHandle
-
+        # serialVersionUID is a Java (signed) long => 8 bytes
+        (serialVersionUID, classDescFlags) = self._readStruct(">qB")
         clazz.serialVersionUID = serialVersionUID
         clazz.flags = classDescFlags
 
         self._add_reference(clazz)
 
-        log_debug("Serial: 0x{0:X} newHandle: 0x{1:X}. classDescFlags: 0x{2:X}"\
-                  .format(serialVersionUID, newHandle, classDescFlags), ident)
+        log_debug("Serial: 0x{0:X} / {0:d} - classDescFlags: 0x{1:X}"\
+                  .format(serialVersionUID, classDescFlags), ident)
         (length,) = self._readStruct(">H")
         log_debug("Fields num: 0x{0:X}".format(length), ident)
 
