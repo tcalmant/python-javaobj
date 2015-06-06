@@ -319,6 +319,37 @@ class JavaObjectConstants(object):
 
     BASE_REFERENCE_IDX = 0x7E0000
 
+
+class OpCodeDebug(object):
+    # Type codes
+    OP_CODE = {getattr(JavaObjectConstants, key): key
+               for key in dir(JavaObjectConstants) if key.startswith("TC_")}
+
+    TYPE = {getattr(JavaObjectConstants, key): key
+            for key in dir(JavaObjectConstants) if key.startswith("TYPE_")}
+
+    STREAM_CONSTANT = {getattr(JavaObjectConstants, key): key
+                       for key in dir(JavaObjectConstants)
+                       if key.startswith("SC_")}
+
+    @staticmethod
+    def op_id(op_id):
+        return OpCodeDebug.OP_CODE.get(
+            op_id, "<unknown OP:{0}>".format(op_id))
+
+    @staticmethod
+    def type_code(type_id):
+        return OpCodeDebug.TYPE.get(
+            type_id, "<unknown Type:{0}>".format(type_id))
+
+    @staticmethod
+    def flags(flags):
+        names = sorted(
+            descr for key, descr in OpCodeDebug.STREAM_CONSTANT.items()
+            if key & flags)
+        return ', '.join(names)
+
+
 # ------------------------------------------------------------------------------
 
 
@@ -420,10 +451,12 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         :raise RuntimeError: Unknown opcode
         """
         (opid,) = self._readStruct(">B")
-        log_debug("OpCode: 0x{0:X}".format(opid), ident)
+        log_debug("OpCode: 0x{0:X} -- {1}"
+                  .format(opid, OpCodeDebug.op_id(opid)), ident)
 
         if expect and opid not in expect:
-            raise IOError("Unexpected opcode 0x{0:X}".format(opid))
+            raise IOError("Unexpected opcode 0x{0:X} -- {1}"
+                          .format(opid, OpCodeDebug.op_id(opid)))
 
         try:
             handler = self.opmap[opid]
@@ -497,8 +530,9 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
         self._add_reference(clazz)
 
-        log_debug("Serial: 0x{0:X} / {0:d} - classDescFlags: 0x{1:X}"
-                  .format(serialVersionUID, classDescFlags), ident)
+        log_debug("Serial: 0x{0:X} / {0:d} - classDescFlags: 0x{1:X} {2}"
+                  .format(serialVersionUID, classDescFlags,
+                          OpCodeDebug.flags(classDescFlags)), ident)
         (length,) = self._readStruct(">H")
         log_debug("Fields num: 0x{0:X}".format(length), ident)
 
@@ -624,6 +658,9 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             raise NotImplementedError("externalContents isn't implemented yet")
 
         if classdesc.flags & self.SC_SERIALIZABLE:
+            # TODO: look at ObjectInputStream.readSerialData()
+            # FIXME: Handle the SC_WRITE_METHOD flag
+
             # create megalist
             tempclass = classdesc
             megalist = []
