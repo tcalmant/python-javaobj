@@ -51,7 +51,6 @@ import sys
 try:
     # Python 2
     from StringIO import StringIO as BytesIO
-
 except ImportError:
     # Python 3+
     from io import BytesIO
@@ -97,9 +96,7 @@ if sys.version_info[0] >= 3:
         if type(data) is bytes:
             # Nothing to do
             return data
-
         return data.encode(encoding)
-
 
     def to_str(data, encoding="UTF-8"):
         """
@@ -113,9 +110,7 @@ if sys.version_info[0] >= 3:
         if type(data) is str:
             # Nothing to do
             return data
-
         return str(data, encoding)
-
 
     def read_to_str(data):
         """
@@ -137,13 +132,10 @@ else:
         if type(data) is str:
             # Nothing to do
             return data
-
         return data.encode(encoding)
-
 
     # Same operation
     to_bytes = to_str
-
 
     def read_to_str(data):
         """
@@ -152,6 +144,7 @@ else:
         return data
 
 # ------------------------------------------------------------------------------
+
 
 def load(file_object):
     """
@@ -193,6 +186,7 @@ def dumps(obj):
 
 # ------------------------------------------------------------------------------
 
+
 class JavaClass(object):
     """
     Represents a class in the Java world
@@ -232,20 +226,17 @@ class JavaObject(object):
         self.classdesc = None
         self.annotations = []
 
-
     def get_class(self):
         """
         Returns the JavaClass that defines the type of this object
         """
         return self.classdesc
 
-
     def __str__(self):
         """
         String representation
         """
         return self.__repr__()
-
 
     def __repr__(self):
         """
@@ -255,7 +246,6 @@ class JavaObject(object):
         if self.classdesc:
             name = self.classdesc.name
         return "<javaobj:{0}>".format(name)
-
 
     def copy(self, new_object):
         """
@@ -267,6 +257,7 @@ class JavaObject(object):
             new_object.__setattr__(name, getattr(self, name))
 
 # ------------------------------------------------------------------------------
+
 
 class JavaObjectConstants(object):
     """
@@ -294,41 +285,42 @@ class JavaObjectConstants(object):
 
     # classDescFlags
     SC_WRITE_METHOD = 0x01  # if SC_SERIALIZABLE
-    SC_BLOCK_DATA = 0x08  # if SC_EXTERNALIZABLE
+    SC_BLOCK_DATA = 0x08    # if SC_EXTERNALIZABLE
     SC_SERIALIZABLE = 0x02
     SC_EXTERNALIZABLE = 0x04
     SC_ENUM = 0x10
 
     # type definition chars (typecode)
-    TYPE_BYTE = 'B'  # 0x42
-    TYPE_CHAR = 'C'
-    TYPE_DOUBLE = 'D'  # 0x44
-    TYPE_FLOAT = 'F'  # 0x46
+    TYPE_BYTE = 'B'     # 0x42
+    TYPE_CHAR = 'C'     # 0x43
+    TYPE_DOUBLE = 'D'   # 0x44
+    TYPE_FLOAT = 'F'    # 0x46
     TYPE_INTEGER = 'I'  # 0x49
-    TYPE_LONG = 'J'  # 0x4A
-    TYPE_SHORT = 'S'  # 0x53
+    TYPE_LONG = 'J'     # 0x4A
+    TYPE_SHORT = 'S'    # 0x53
     TYPE_BOOLEAN = 'Z'  # 0x5A
-    TYPE_OBJECT = 'L'  # 0x4C
-    TYPE_ARRAY = '['  # 0x5B
+    TYPE_OBJECT = 'L'   # 0x4C
+    TYPE_ARRAY = '['    # 0x5B
 
     # list of supported typecodes listed above
     TYPECODES_LIST = [
-            # primitive types
-            TYPE_BYTE,
-            TYPE_CHAR,
-            TYPE_DOUBLE,
-            TYPE_FLOAT,
-            TYPE_INTEGER,
-            TYPE_LONG,
-            TYPE_SHORT,
-            TYPE_BOOLEAN,
-            # object types
-            TYPE_OBJECT,
-            TYPE_ARRAY ]
+        # primitive types
+        TYPE_BYTE,
+        TYPE_CHAR,
+        TYPE_DOUBLE,
+        TYPE_FLOAT,
+        TYPE_INTEGER,
+        TYPE_LONG,
+        TYPE_SHORT,
+        TYPE_BOOLEAN,
+        # object types
+        TYPE_OBJECT,
+        TYPE_ARRAY]
 
     BASE_REFERENCE_IDX = 0x7E0000
 
 # ------------------------------------------------------------------------------
+
 
 class JavaObjectUnmarshaller(JavaObjectConstants):
     """
@@ -370,7 +362,6 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         # Read the stream header (magic & version)
         self._readStreamHeader()
 
-
     def readObject(self):
         """
         Reads an object from the input stream
@@ -386,20 +377,17 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             the_rest = self.object_stream.read()
             if len(the_rest):
                 log_error("Warning!!!!: Stream still has {0} bytes left. "
-                          "Enable debug mode of logging to see the hexdump."\
+                          "Enable debug mode of logging to see the hexdump."
                           .format(len(the_rest)))
                 log_debug(self._create_hexdump(the_rest))
             else:
                 log_debug("Java Object unmarshalled successfully!")
 
             self.object_stream.seek(position_bak)
-
             return res
-
         except Exception:
             self._oops_dump_state()
             raise
-
 
     def add_transformer(self, transformer):
         """
@@ -408,7 +396,6 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         :param transformer: An object with a transform(obj) method
         """
         self.object_transformers.append(transformer)
-
 
     def _readStreamHeader(self):
         """
@@ -419,9 +406,8 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         (magic, version) = self._readStruct(">HH")
         if magic != self.STREAM_MAGIC or version != self.STREAM_VERSION:
             raise IOError("The stream is not java serialized object. "
-                          "Invalid stream header: {0:04X}{1:04X}"\
+                          "Invalid stream header: {0:04X}{1:04X}"
                           .format(magic, version))
-
 
     def _read_and_exec_opcode(self, ident=0, expect=None):
         """
@@ -442,11 +428,10 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         try:
             handler = self.opmap[opid]
         except KeyError:
-            raise RuntimeError("Unknown OpCode in the stream: 0x{0:X}"\
+            raise RuntimeError("Unknown OpCode in the stream: 0x{0:X}"
                                .format(opid))
         else:
-            return (opid, handler(ident=ident))
-
+            return opid, handler(ident=ident)
 
     def _readStruct(self, unpack):
         """
@@ -465,7 +450,6 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
         return struct.unpack(unpack, ba)
 
-
     def _readString(self):
         """
         Reads a serialized string
@@ -476,7 +460,6 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         (length,) = self._readStruct(">H")
         ba = self.object_stream.read(length)
         return to_str(ba)
-
 
     def do_classdesc(self, parent=None, ident=0):
         """
@@ -508,13 +491,13 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         log_debug("Class name: %s" % class_name, ident)
 
         # serialVersionUID is a Java (signed) long => 8 bytes
-        (serialVersionUID, classDescFlags) = self._readStruct(">qB")
+        serialVersionUID, classDescFlags = self._readStruct(">qB")
         clazz.serialVersionUID = serialVersionUID
         clazz.flags = classDescFlags
 
         self._add_reference(clazz)
 
-        log_debug("Serial: 0x{0:X} / {0:d} - classDescFlags: 0x{1:X}"\
+        log_debug("Serial: 0x{0:X} / {0:d} - classDescFlags: 0x{1:X}"
                   .format(serialVersionUID, classDescFlags), ident)
         (length,) = self._readStruct(">H")
         log_debug("Fields num: 0x{0:X}".format(length), ident)
@@ -524,13 +507,12 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         for fieldId in range(length):
             (typecode,) = self._readStruct(">B")
             field_name = self._readString()
-            field_type = None
             field_type = self._convert_char_to_type(typecode)
 
             if field_type == self.TYPE_ARRAY:
-                _, field_type = self._read_and_exec_opcode(ident=ident + 1,
-                                                   expect=(self.TC_STRING,
-                                                           self.TC_REFERENCE))
+                _, field_type = self._read_and_exec_opcode(
+                    ident=ident + 1, expect=(self.TC_STRING,
+                                             self.TC_REFERENCE))
                 assert type(field_type) is str
 #                if field_type is not None:
 #                    field_type = "array of " + field_type
@@ -538,13 +520,14 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 #                    field_type = "array of None"
 
             elif field_type == self.TYPE_OBJECT:
-                _, field_type = self._read_and_exec_opcode(ident=ident + 1,
-                                                   expect=(self.TC_STRING,
-                                                           self.TC_REFERENCE))
+                _, field_type = self._read_and_exec_opcode(
+                    ident=ident + 1, expect=(self.TC_STRING,
+                                             self.TC_REFERENCE))
                 assert type(field_type) is str
 
-            log_debug("FieldName: 0x{0:X} Name:{1} Type:{2} ID:{3}"\
-                      .format(typecode, field_name, field_type, fieldId), ident)
+            log_debug("FieldName: 0x{0:X} Name:{1} Type:{2} ID:{3}"
+                      .format(typecode, field_name, field_type, fieldId),
+                      ident)
             assert field_name is not None
             assert field_type is not None
 
@@ -562,13 +545,11 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             raise NotImplementedError("classAnnotation isn't implemented yet")
 
         # superClassDesc
-        _, superclassdesc = self._read_and_exec_opcode(ident=ident + 1,
-                                                   expect=(self.TC_CLASSDESC,
-                                                           self.TC_NULL,
-                                                           self.TC_REFERENCE))
+        _, superclassdesc = self._read_and_exec_opcode(
+            ident=ident + 1, expect=(self.TC_CLASSDESC, self.TC_NULL,
+                                     self.TC_REFERENCE))
         log_debug(str(superclassdesc), ident)
         clazz.superclass = superclassdesc
-
         return clazz
 
     def do_blockdata(self, parent=None, ident=0):
@@ -587,7 +568,6 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         # Ensure we have an str
         return read_to_str(ba)
 
-
     def do_class(self, parent=None, ident=0):
         """
         Handles TC_CLASS opcode
@@ -601,15 +581,13 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
         # TODO: what to do with "(ClassDesc)prevObject".
         # (see 3rd line for classDesc:)
-        _, classdesc = self._read_and_exec_opcode(ident=ident + 1,
-                                                expect=(self.TC_CLASSDESC,
-                                                        self.TC_PROXYCLASSDESC,
-                                                        self.TC_NULL,
-                                                        self.TC_REFERENCE))
+        _, classdesc = self._read_and_exec_opcode(
+            ident=ident + 1, expect=(self.TC_CLASSDESC,
+                                     self.TC_PROXYCLASSDESC,
+                                     self.TC_NULL, self.TC_REFERENCE))
         log_debug("Classdesc: {0}".format(classdesc), ident)
         self._add_reference(classdesc)
         return classdesc
-
 
     def do_object(self, parent=None, ident=0):
         """
@@ -622,16 +600,15 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         # TC_OBJECT classDesc newHandle classdata[]  // data for each class
         java_object = JavaObject()
         log_debug("[object]", ident)
-        log_debug("java_object.annotations just after instantiation: {0}"\
+        log_debug("java_object.annotations just after instantiation: {0}"
                   .format(java_object.annotations), ident)
 
         # TODO: what to do with "(ClassDesc)prevObject".
         # (see 3rd line for classDesc:)
-        opcode, classdesc = self._read_and_exec_opcode(ident=ident + 1,
-                                               expect=(self.TC_CLASSDESC,
-                                                       self.TC_PROXYCLASSDESC,
-                                                       self.TC_NULL,
-                                                       self.TC_REFERENCE))
+        opcode, classdesc = self._read_and_exec_opcode(
+            ident=ident + 1, expect=(self.TC_CLASSDESC,
+                                     self.TC_PROXYCLASSDESC,
+                                     self.TC_NULL, self.TC_REFERENCE))
         # self.TC_REFERENCE hasn't shown in spec, but actually is here
 
         self._add_reference(java_object)
@@ -642,7 +619,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         java_object.classdesc = classdesc
 
         if classdesc.flags & self.SC_EXTERNALIZABLE \
-        and not classdesc.flags & self.SC_BLOCK_DATA:
+                and not classdesc.flags & self.SC_BLOCK_DATA:
             # TODO:
             raise NotImplementedError("externalContents isn't implemented yet")
 
@@ -652,7 +629,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             megalist = []
             megatypes = []
             while tempclass:
-                log_debug(">>> {0} {1}"\
+                log_debug(">>> {0} {1}"
                           .format(tempclass.fields_names, tempclass), ident)
                 log_debug(">>> {0}".format(tempclass.fields_types), ident)
 
@@ -675,11 +652,11 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
                 java_object.__setattr__(field_name, res)
 
         if classdesc.flags & self.SC_SERIALIZABLE \
-        and classdesc.flags & self.SC_WRITE_METHOD \
-        or classdesc.flags & self.SC_EXTERNALIZABLE \
-        and classdesc.flags & self.SC_BLOCK_DATA:
+                and classdesc.flags & self.SC_WRITE_METHOD \
+                or classdesc.flags & self.SC_EXTERNALIZABLE \
+                and classdesc.flags & self.SC_BLOCK_DATA:
             # objectAnnotation
-            log_debug("java_object.annotations before: {0}"\
+            log_debug("java_object.annotations before: {0}"
                       .format(java_object.annotations), ident)
 
             while opcode != self.TC_ENDBLOCKDATA:
@@ -691,7 +668,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
                 log_debug("objectAnnotation value: {0}".format(obj), ident)
 
-            log_debug("java_object.annotations after: {0}" \
+            log_debug("java_object.annotations after: {0}"
                       .format(java_object.annotations), ident)
 
         # Transform object
@@ -727,11 +704,10 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         """
         # TC_ARRAY classDesc newHandle (int)<size> values[size]
         log_debug("[array]", ident)
-        _, classdesc = self._read_and_exec_opcode(ident=ident + 1,
-                                                expect=(self.TC_CLASSDESC,
-                                                        self.TC_PROXYCLASSDESC,
-                                                        self.TC_NULL,
-                                                        self.TC_REFERENCE))
+        _, classdesc = self._read_and_exec_opcode(
+            ident=ident + 1, expect=(self.TC_CLASSDESC,
+                                     self.TC_PROXYCLASSDESC,
+                                     self.TC_NULL, self.TC_REFERENCE))
 
         array = []
 
@@ -757,7 +733,6 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
         return array
 
-
     def do_reference(self, parent=None, ident=0):
         """
         Handles a TC_REFERENCE opcode
@@ -770,8 +745,8 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         log_debug("## Reference handle: 0x{0:X}".format(handle), ident)
         return self.references[handle - self.BASE_REFERENCE_IDX]
 
-
-    def do_null(self, parent=None, ident=0):
+    @staticmethod
+    def do_null(parent=None, ident=0):
         """
         Handles a TC_NULL opcode
 
@@ -780,7 +755,6 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         :return: Always None
         """
         return None
-
 
     def do_enum(self, parent=None, ident=0):
         """
@@ -792,19 +766,17 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         """
         # TC_ENUM classDesc newHandle enumConstantName
         enum = JavaObject()
-        _, _ = self._read_and_exec_opcode(ident=ident + 1,
-                                          expect=(self.TC_CLASSDESC,
-                                                  self.TC_PROXYCLASSDESC,
-                                                  self.TC_NULL,
-                                                  self.TC_REFERENCE))
+        _, _ = self._read_and_exec_opcode(
+            ident=ident + 1, expect=(self.TC_CLASSDESC,
+                                     self.TC_PROXYCLASSDESC,
+                                     self.TC_NULL, self.TC_REFERENCE))
         self._add_reference(enum)
-        _, enumConstantName = self._read_and_exec_opcode(ident=ident + 1,
-                                                  expect=(self.TC_STRING,
-                                                          self.TC_REFERENCE))
+        _, enumConstantName = self._read_and_exec_opcode(
+            ident=ident + 1, expect=(self.TC_STRING, self.TC_REFERENCE))
         return enumConstantName
 
-
-    def _create_hexdump(self, src, length=16):
+    @staticmethod
+    def _create_hexdump(src, length=16):
         """
         Prepares an hexadecimal dump string
 
@@ -827,7 +799,6 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             result.append(pattern.format(i, hexa, printable))
 
         return ''.join(result)
-
 
     def _read_value(self, field_type, ident, name=""):
         """
@@ -881,16 +852,14 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         if typecode in self.TYPECODES_LIST:
             return typecode
         else:
-            raise RuntimeError("Typecode {0} ({1}) isn't supported." \
+            raise RuntimeError("Typecode {0} ({1}) isn't supported."
                                .format(type_char, typecode))
-
 
     def _add_reference(self, obj):
         """
         Adds a read reference to the marshaler storage
         """
         self.references.append(obj)
-
 
     def _oops_dump_state(self):
         """
@@ -906,13 +875,14 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         the_rest = self.object_stream.read()
 
         if len(the_rest):
-            log_error("Warning!!!!: Stream still has {0} bytes left." \
+            log_error("Warning!!!!: Stream still has {0} bytes left."
                       .format(len(the_rest)))
             log_error(self._create_hexdump(the_rest))
 
         log_error("=" * 30)
 
 # ------------------------------------------------------------------------------
+
 
 class JavaObjectMarshaller(JavaObjectConstants):
     """
@@ -925,7 +895,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
         :param stream: An output stream
         """
         self.object_stream = stream
-
+        self.object_obj = None
 
     def dump(self, obj):
         """
@@ -937,13 +907,11 @@ class JavaObjectMarshaller(JavaObjectConstants):
         self.writeObject(obj)
         return self.object_stream.getvalue()
 
-
     def _writeStreamHeader(self):
         """
         Writes the Java serialization magic header in the serialization stream
         """
         self._writeStruct(">HH", 4, (self.STREAM_MAGIC, self.STREAM_VERSION))
-
 
     def writeObject(self, obj):
         """
@@ -964,7 +932,6 @@ class JavaObjectMarshaller(JavaObjectConstants):
             raise RuntimeError("Object serialization of type {0} is not "
                                "supported.".format(type(obj)))
 
-
     def _writeStruct(self, unpack, length, args):
         """
         Appends data to the serialization stream
@@ -976,7 +943,6 @@ class JavaObjectMarshaller(JavaObjectConstants):
         ba = struct.pack(unpack, *args)
         self.object_stream.write(ba)
 
-
     def _writeString(self, string):
         """
         Appends a string to the serialization stream
@@ -985,7 +951,6 @@ class JavaObjectMarshaller(JavaObjectConstants):
         """
         self._writeStruct(">H", 2, (len(string),))
         self.object_stream.write(string)
-
 
     def write_blockdata(self, obj, parent=None):
         """
@@ -1003,7 +968,6 @@ class JavaObjectMarshaller(JavaObjectConstants):
         else:
             log_error("Not a str blockdata: {0:r}".format(obj))
 
-
     def write_object(self, obj, parent=None):
         """
         Writes an object header to the serialization stream
@@ -1015,6 +979,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
         self._writeStruct(">B", 1, (self.TC_CLASSDESC,))
 
 # ------------------------------------------------------------------------------
+
 
 class DefaultObjectTransformer(object):
     """
@@ -1077,7 +1042,7 @@ class DefaultObjectTransformer(object):
 
             for i in range((len(java_object.annotations) - 1) / 2):
                 new_object[java_object.annotations[i * 2 + 1]] = \
-                                                java_object.annotations[i * 2 + 2]
+                    java_object.annotations[i * 2 + 2]
 
             log_debug(">>> java_object: {0}".format(new_object))
             return new_object
