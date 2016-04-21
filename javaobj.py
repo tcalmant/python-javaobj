@@ -450,6 +450,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             self.TC_ARRAY: self.do_array,
             self.TC_CLASS: self.do_class,
             self.TC_BLOCKDATA: self.do_blockdata,
+            self.TC_BLOCKDATALONG: self.do_blockdata_long,
             self.TC_REFERENCE: self.do_reference,
             self.TC_ENUM: self.do_enum,
             # note that we are reusing do_null:
@@ -676,6 +677,22 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         # TC_BLOCKDATA (unsigned byte)<size> (byte)[size]
         log_debug("[blockdata]", ident)
         (length,) = self._readStruct(">B")
+        ba = self.object_stream.read(length)
+
+        # Ensure we have an str
+        return read_to_str(ba)
+
+    def do_blockdata_long(self, parent=None, ident=0):
+        """
+        Handles TC_BLOCKDATALONG opcode
+
+        :param parent:
+        :param ident: Log indentation level
+        :return: A string containing the block data
+        """
+        # TC_BLOCKDATALONG (int)<size> (byte)[size]
+        log_debug("[blockdatalong]", ident)
+        (length,) = self._readStruct(">I")
         ba = self.object_stream.read(length)
 
         # Ensure we have an str
