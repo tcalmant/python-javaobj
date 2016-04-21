@@ -26,7 +26,7 @@ This fork intends to work both on Python 2.7 and Python 3.
 
 ## Requirements
 
- * Python >= 2.6, but < 3.0 (porting to 3.0 is in progress)
+ * Python >= 2.7 or Python >= 3.2
  * Maven 2+ (for building test data of serialized objects.
    You can skip it if you do not plan to run tests.py)
 
