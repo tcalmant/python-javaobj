@@ -525,19 +525,22 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         :raise IOError: Read opcode is not one of the expected ones
         :raise RuntimeError: Unknown opcode
         """
+        position = self.object_stream.tell()
         (opid,) = self._readStruct(">B")
-        log_debug("OpCode: 0x{0:X} -- {1}"
-                  .format(opid, OpCodeDebug.op_id(opid)), ident)
+        log_debug("OpCode: 0x{0:X} -- {1} (at offset 0x{2:X})"
+                  .format(opid, OpCodeDebug.op_id(opid), position), ident)
 
         if expect and opid not in expect:
-            raise IOError("Unexpected opcode 0x{0:X} -- {1}"
-                          .format(opid, OpCodeDebug.op_id(opid)))
+            raise IOError(
+                "Unexpected opcode 0x{0:X} -- {1} (at offset 0x{2:X})"
+                .format(opid, OpCodeDebug.op_id(opid), position))
 
         try:
             handler = self.opmap[opid]
         except KeyError:
-            raise RuntimeError("Unknown OpCode in the stream: 0x{0:X}"
-                               .format(opid))
+            raise RuntimeError(
+                "Unknown OpCode in the stream: 0x{0:X} (at offset 0x{1:X})"
+                .format(opid, position))
         else:
             return opid, handler(ident=ident)
 
