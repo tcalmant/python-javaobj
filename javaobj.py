@@ -909,18 +909,20 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
         :param parent:
         :param ident: Log indentation level
-        :return: An enumeration name
+        :return: A JavaEnum object
         """
         # TC_ENUM classDesc newHandle enumConstantName
-        enum = JavaObject()
-        _, _ = self._read_and_exec_opcode(
-            ident=ident + 1, expect=(self.TC_CLASSDESC,
-                                     self.TC_PROXYCLASSDESC,
-                                     self.TC_NULL, self.TC_REFERENCE))
-        self._add_reference(enum)
+        enum = JavaEnum()
+        _, classdesc = self._read_and_exec_opcode(
+            ident=ident + 1,
+            expect=(self.TC_CLASSDESC, self.TC_PROXYCLASSDESC,
+                    self.TC_NULL, self.TC_REFERENCE))
+        enum.classdesc = classdesc
+        self._add_reference(enum, ident)
         _, enumConstantName = self._read_and_exec_opcode(
             ident=ident + 1, expect=(self.TC_STRING, self.TC_REFERENCE))
-        return enumConstantName
+        enum.constant = enumConstantName
+        return enum
 
     @staticmethod
     def _create_hexdump(src, length=16):
