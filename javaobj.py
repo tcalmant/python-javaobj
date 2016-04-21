@@ -315,9 +315,6 @@ class JavaString(str):
     """
     Represents a Java String
     """
-    def __init__(self, *args, **kwargs):
-        str.__init__(self, *args, **kwargs)
-
     def __eq__(self, other):
         if not isinstance(other, str):
             return False
