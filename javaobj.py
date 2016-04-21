@@ -311,6 +311,19 @@ class JavaObject(object):
             new_object.__setattr__(name, getattr(self, name))
 
 
+class JavaString(str):
+    """
+    Represents a Java String
+    """
+    def __init__(self, *args, **kwargs):
+        str.__init__(self, *args, **kwargs)
+
+    def __eq__(self, other):
+        if not isinstance(other, str):
+            return False
+        return str.__eq__(self, other)
+
+
 class JavaEnum(JavaObject):
     """
     Represents a Java enumeration
@@ -628,7 +641,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
                 _, field_type = self._read_and_exec_opcode(
                     ident=ident + 1,
                     expect=(self.TC_STRING, self.TC_REFERENCE))
-                assert type(field_type) is str
+                assert type(field_type) is JavaString
 #                if field_type is not None:
 #                    field_type = "array of " + field_type
 #                else:
@@ -638,7 +651,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
                 _, field_type = self._read_and_exec_opcode(
                     ident=ident + 1,
                     expect=(self.TC_STRING, self.TC_REFERENCE))
-                assert type(field_type) is str
+                assert type(field_type) is JavaString
 
             log_debug("FieldName: 0x{0:X} Name:{1} Type:{2} ID:{3}"
                       .format(typecode, field_name, field_type, fieldId),
@@ -824,7 +837,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         :return: A string
         """
         log_debug("[string]", ident)
-        ba = self._readString()
+        ba = JavaString(self._readString())
         self._add_reference(ba, ident)
         return ba
 
@@ -837,7 +850,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         :return: A string
         """
         log_debug("[long string]", ident)
-        ba = self._readString("Q")
+        ba = JavaString(self._readString("Q"))
         self._add_reference(ba, ident)
         return ba
 
@@ -1099,6 +1112,9 @@ class JavaObjectMarshaller(JavaObjectConstants):
         elif isinstance(obj, JavaObject):
             # Deserialized Java object
             self.write_object(obj)
+        elif isinstance(obj, JavaString):
+            # Deserialized String
+            self.write_string(obj)
         elif isinstance(obj, JavaClass):
             # Java class
             self.write_class(obj)
@@ -1325,6 +1341,8 @@ class JavaObjectMarshaller(JavaObjectConstants):
                 self.write_enum(value)
             elif isinstance(value, JavaObject):
                 self.write_object(value)
+            elif isinstance(value, JavaString):
+                self.write_string(value)
             elif isinstance(value, str):
                 self.write_blockdata(value)
             else:
