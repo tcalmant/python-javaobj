@@ -852,13 +852,13 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         # TC_ARRAY classDesc newHandle (int)<size> values[size]
         log_debug("[array]", ident)
         _, classdesc = self._read_and_exec_opcode(
-            ident=ident + 1, expect=(self.TC_CLASSDESC,
-                                     self.TC_PROXYCLASSDESC,
-                                     self.TC_NULL, self.TC_REFERENCE))
+            ident=ident + 1,
+            expect=(self.TC_CLASSDESC, self.TC_PROXYCLASSDESC,
+                    self.TC_NULL, self.TC_REFERENCE))
 
-        array = []
+        array = JavaArray(classdesc)
 
-        self._add_reference(array)
+        self._add_reference(array, ident)
 
         (size,) = self._readStruct(">i")
         log_debug("size: {0}".format(size), ident)
