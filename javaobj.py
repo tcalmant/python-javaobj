@@ -561,14 +561,15 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
         return struct.unpack(unpack, ba)
 
-    def _readString(self):
+    def _readString(self, length_fmt="H"):
         """
         Reads a serialized string
 
+        :param length_fmt: Structure format of the string length (H or Q)
         :return: The deserialized string
         :raise RuntimeError: Unexpected end of stream
         """
-        (length,) = self._readStruct(">H")
+        (length,) = self._readStruct(">{0}".format(length_fmt))
         ba = self.object_stream.read(length)
         return to_str(ba)
 
