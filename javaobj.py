@@ -988,10 +988,16 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             raise RuntimeError("Typecode {0} ({1}) isn't supported."
                                .format(type_char, typecode))
 
-    def _add_reference(self, obj):
+    def _add_reference(self, obj, ident=0):
         """
         Adds a read reference to the marshaler storage
+
+        :param obj: Reference to add
+        :param ident: Log indentation level
         """
+        log_debug("## New reference handle 0x{0:X}"
+                  .format(len(self.references) + self.BASE_REFERENCE_IDX),
+                  ident)
         self.references.append(obj)
 
     def _oops_dump_state(self, ignore_remaining_data=False):
