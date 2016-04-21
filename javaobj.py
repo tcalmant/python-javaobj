@@ -310,6 +310,25 @@ class JavaObject(object):
         for name in self.classdesc.fields_names:
             new_object.__setattr__(name, getattr(self, name))
 
+
+class JavaEnum(JavaObject):
+    """
+    Represents a Java enumeration
+    """
+    def __init__(self, constant=None):
+        super(JavaEnum, self).__init__()
+        self.constant = constant
+
+
+class JavaArray(list, JavaObject):
+    """
+    Represents a Java Array
+    """
+    def __init__(self, classdesc=None):
+        list.__init__(self)
+        JavaObject.__init__(self)
+        self.classdesc = classdesc
+
 # ------------------------------------------------------------------------------
 
 
