@@ -33,15 +33,6 @@ http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.ht
     limitations under the License.
 """
 
-# Module version
-__version_info__ = (0, 1, 1)
-__version__ = ".".join(str(x) for x in __version_info__)
-
-# Documentation strings format
-__docformat__ = "restructuredtext en"
-
-# ------------------------------------------------------------------------------
-
 # Standard library
 import logging
 import os
@@ -54,6 +45,15 @@ try:
 except ImportError:
     # Python 3+
     from io import BytesIO
+
+# ------------------------------------------------------------------------------
+
+# Module version
+__version_info__ = (0, 1, 1)
+__version__ = ".".join(str(x) for x in __version_info__)
+
+# Documentation strings format
+__docformat__ = "restructuredtext en"
 
 # ------------------------------------------------------------------------------
 
