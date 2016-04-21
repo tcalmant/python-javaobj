@@ -146,31 +146,35 @@ else:
 # ------------------------------------------------------------------------------
 
 
-def load(file_object):
+def load(file_object, ignore_remaining_data=False):
     """
     Deserializes Java primitive data and objects serialized using
     ObjectOutputStream from a file-like object.
 
     :param file_object: A file-like object
+    :param ignore_remaining_data: If True, don't log an error when unused
+                                  trailing bytes are remaining
     :return: The deserialized object
     """
     marshaller = JavaObjectUnmarshaller(file_object)
     marshaller.add_transformer(DefaultObjectTransformer())
-    return marshaller.readObject()
+    return marshaller.readObject(ignore_remaining_data=ignore_remaining_data)
 
 
-def loads(string):
+def loads(string, ignore_remaining_data=False):
     """
     Deserializes Java objects and primitive data serialized using
     ObjectOutputStream from a string.
 
     :param string: A Java data string
+    :param ignore_remaining_data: If True, don't log an error when unused
+                                  trailing bytes are remaining
     :return: The deserialized object
     """
     file_like = BytesIO(string)
     marshaller = JavaObjectUnmarshaller(file_like)
     marshaller.add_transformer(DefaultObjectTransformer())
-    return marshaller.readObject()
+    return marshaller.readObject(ignore_remaining_data=ignore_remaining_data)
 
 
 def dumps(obj):
@@ -393,10 +397,12 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         # Read the stream header (magic & version)
         self._readStreamHeader()
 
-    def readObject(self):
+    def readObject(self, ignore_remaining_data=False):
         """
         Reads an object from the input stream
 
+        :param ignore_remaining_data: If True, don't log an error when
+                                      unused trailing bytes are remaining
         :return: The unmarshalled object
         :raise Exception: Any exception that occurred during unmarshalling
         """
@@ -406,7 +412,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
             position_bak = self.object_stream.tell()
             the_rest = self.object_stream.read()
-            if len(the_rest):
+            if not ignore_remaining_data and len(the_rest):
                 log_error("Warning!!!!: Stream still has {0} bytes left. "
                           "Enable debug mode of logging to see the hexdump."
                           .format(len(the_rest)))
@@ -417,7 +423,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             self.object_stream.seek(position_bak)
             return res
         except Exception:
-            self._oops_dump_state()
+            self._oops_dump_state(ignore_remaining_data)
             raise
 
     def add_transformer(self, transformer):
@@ -898,9 +904,12 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         """
         self.references.append(obj)
 
-    def _oops_dump_state(self):
+    def _oops_dump_state(self, ignore_remaining_data=False):
         """
         Log a deserialization error
+
+        :param ignore_remaining_data: If True, don't log an error when
+                                      unused trailing bytes are remaining
         """
         log_error("==Oops state dump" + "=" * (30 - 17))
         log_error("References: {0}".format(self.references))
@@ -911,7 +920,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         self.object_stream.seek(-16, os.SEEK_CUR)
         the_rest = self.object_stream.read()
 
-        if len(the_rest):
+        if not ignore_remaining_data and len(the_rest):
             log_error("Warning!!!!: Stream still has {0} bytes left."
                       .format(len(the_rest)))
             log_error(self._create_hexdump(the_rest))
