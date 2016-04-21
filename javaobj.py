@@ -230,6 +230,23 @@ class JavaClass(object):
         """
         return "[{0:s}:0x{1:X}]".format(self.name, self.serialVersionUID)
 
+    def __eq__(self, other):
+        """
+        Equality test between two Java classes
+
+        :param other: Other JavaClass to test
+        :return: True if both classes share the same fields and name
+        """
+        if not isinstance(other, type(self)):
+            return False
+
+        return (self.name == other.name and
+                self.serialVersionUID == other.serialVersionUID and
+                self.flags == other.flags and
+                self.fields_names == other.fields_names and
+                self.fields_types == other.fields_types and
+                self.superclass == other.superclass)
+
 
 class JavaObject(object):
     """
@@ -263,11 +280,32 @@ class JavaObject(object):
             name = self.classdesc.name
         return "<javaobj:{0}>".format(name)
 
+    def __eq__(self, other):
+        """
+        Equality test between two Java classes
+
+        :param other: Other JavaClass to test
+        :return: True if both classes share the same fields and name
+        """
+        if not isinstance(other, type(self)):
+            return False
+
+        res = (self.classdesc == other.classdesc and
+               self.annotations == other.annotations)
+        if not res:
+            return False
+
+        for name in self.classdesc.fields_names:
+            if not (getattr(self, name) == getattr(other, name)):
+                return False
+        return True
+
     def copy(self, new_object):
         """
         Returns a shallow copy of this object
         """
         new_object.classdesc = self.classdesc
+        new_object.annotations = self.annotations
 
         for name in self.classdesc.fields_names:
             new_object.__setattr__(name, getattr(self, name))
