@@ -624,8 +624,8 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
             if field_type == self.TYPE_ARRAY:
                 _, field_type = self._read_and_exec_opcode(
-                    ident=ident + 1, expect=(self.TC_STRING,
-                                             self.TC_REFERENCE))
+                    ident=ident + 1,
+                    expect=(self.TC_STRING, self.TC_REFERENCE))
                 assert type(field_type) is str
 #                if field_type is not None:
 #                    field_type = "array of " + field_type
@@ -634,8 +634,8 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
             elif field_type == self.TYPE_OBJECT:
                 _, field_type = self._read_and_exec_opcode(
-                    ident=ident + 1, expect=(self.TC_STRING,
-                                             self.TC_REFERENCE))
+                    ident=ident + 1,
+                    expect=(self.TC_STRING, self.TC_REFERENCE))
                 assert type(field_type) is str
 
             log_debug("FieldName: 0x{0:X} Name:{1} Type:{2} ID:{3}"
@@ -659,8 +659,8 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
         # superClassDesc
         _, superclassdesc = self._read_and_exec_opcode(
-            ident=ident + 1, expect=(self.TC_CLASSDESC, self.TC_NULL,
-                                     self.TC_REFERENCE))
+            ident=ident + 1,
+            expect=(self.TC_CLASSDESC, self.TC_NULL, self.TC_REFERENCE))
         log_debug(str(superclassdesc), ident)
         clazz.superclass = superclassdesc
         return clazz
