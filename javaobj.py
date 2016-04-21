@@ -1380,10 +1380,14 @@ class DefaultObjectTransformer(object):
     Converts JavaObject objects to Python types (maps, lists, ...)
     """
     class JavaList(list, JavaObject):
-        pass
+        def __init__(self, *args, **kwargs):
+            list.__init__(self, *args, **kwargs)
+            JavaObject.__init__(self)
 
     class JavaMap(dict, JavaObject):
-        pass
+        def __init__(self, *args, **kwargs):
+            dict.__init__(self, *args, **kwargs)
+            JavaObject.__init__(self)
 
     def transform(self, java_object):
         """
