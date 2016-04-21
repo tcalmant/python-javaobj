@@ -28,29 +28,28 @@ http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.ht
     limitations under the License.
 """
 
-# Documentation strings format
-__docformat__ = "restructuredtext en"
-
-# ------------------------------------------------------------------------------
-
-# Prepare Python path to import javaobj
-import os
-import sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.getcwd(), '..')))
-
-# Local
-import javaobj
-
 # Standard library
 import logging
 import subprocess
 import unittest
+import os
+import sys
+
+# Prepare Python path to import javaobj
+sys.path.insert(0, os.path.abspath(os.path.dirname(os.getcwd())))
+
+# Local
+import javaobj
 
 # ------------------------------------------------------------------------------
+
+# Documentation strings format
+__docformat__ = "restructuredtext en"
 
 _logger = logging.getLogger("javaobj.tests")
 
 # ------------------------------------------------------------------------------
+
 
 class TestJavaobj(unittest.TestCase):
     """
@@ -71,9 +70,8 @@ class TestJavaobj(unittest.TestCase):
         java_dir.append('java')
 
         os.chdir(os.path.join(*java_dir))
-        subprocess.call(['mvn', 'test'])
+        subprocess.call(['mvn', 'test'], shell=True)
         os.chdir('..')
-
 
     def read_file(self, filename):
         """
@@ -85,7 +83,6 @@ class TestJavaobj(unittest.TestCase):
         with open(filename, 'rb') as filep:
             return filep.read()
 
-
     def test_char_rw(self):
         """
         Reads testChar.ser and checks the serialization process
@@ -96,7 +93,6 @@ class TestJavaobj(unittest.TestCase):
         self.assertEqual(pobj, '\x00C')
         jobj_ = javaobj.dumps(pobj)
         self.assertEqual(jobj, jobj_)
-
 
     def test_double_rw(self):
         """
@@ -111,7 +107,6 @@ class TestJavaobj(unittest.TestCase):
         jobj_ = javaobj.dumps(pobj)
         self.assertEqual(jobj, jobj_)
 
-
     def test_bytes_rw(self):
         """
         Reads testBytes.ser and checks the serialization process
@@ -125,7 +120,6 @@ class TestJavaobj(unittest.TestCase):
         jobj_ = javaobj.dumps(pobj)
         self.assertEqual(jobj, jobj_)
 
-
     def test_boolean(self):
         """
         Reads testBoolean.ser and checks the serialization process
@@ -138,7 +132,6 @@ class TestJavaobj(unittest.TestCase):
 
         jobj_ = javaobj.dumps(pobj)
         self.assertEqual(jobj, jobj_)
-
 
     def test_byte(self):
         """
@@ -154,7 +147,6 @@ class TestJavaobj(unittest.TestCase):
 
         jobj_ = javaobj.dumps(pobj)
         self.assertEqual(jobj, jobj_)
-
 
     def test_fields(self):
         """
