@@ -1399,25 +1399,12 @@ class DefaultObjectTransformer(object):
         # Get the Java java_object class name
         classname = java_object.get_class().name
 
-        if classname == "java.util.ArrayList":
+        if classname in ("java.util.ArrayList", "java.util.LinkedList"):
             # @serialData The length of the array backing the <tt>ArrayList</tt>
             #             instance is emitted (int), followed by all of its
             #             elements (each an <tt>Object</tt>) in the proper order
             log_debug("---")
-            log_debug("java.util.ArrayList")
-            log_debug(java_object.annotations)
-            log_debug("---")
-
-            new_object = self.JavaList()
-            java_object.copy(new_object)
-            new_object.extend(java_object.annotations[1:])
-
-            log_debug(">>> java_object: {0}".format(new_object))
-            return new_object
-
-        elif classname == "java.util.LinkedList":
-            log_debug("---")
-            log_debug("java.util.LinkedList")
+            log_debug(classname)
             log_debug(java_object.annotations)
             log_debug("---")
 
