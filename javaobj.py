@@ -925,11 +925,12 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         return enum
 
     @staticmethod
-    def _create_hexdump(src, length=16):
+    def _create_hexdump(src, start_offset=0, length=16):
         """
         Prepares an hexadecimal dump string
 
         :param src: A string containing binary data
+        :param start_offset: The start offset of the source
         :param length: Length of a dump line
         :return: A dump string
         """
@@ -945,7 +946,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             s = src[i:i + length]
             hexa = ' '.join("{0:02X}".format(ord(x)) for x in s)
             printable = s.translate(FILTER)
-            result.append(pattern.format(i, hexa, printable))
+            result.append(pattern.format(i + start_offset, hexa, printable))
 
         return ''.join(result)
 
