@@ -67,7 +67,7 @@ setup(
     keywords="python java marshalling serialization",
     py_modules=['javaobj'],
     test_suite="tests.tests",
-    long_description=read('README.rst'),
+    long_description=read('README.md'),
     classifiers=[
             "Development Status :: 3 - Alpha",
             "License :: OSI Approved :: Apache Software License",
