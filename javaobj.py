@@ -184,15 +184,20 @@ def loads(string, *transformers, ignore_remaining_data=False):
                 ignore_remaining_data=ignore_remaining_data)
 
 
-def dumps(obj):
+def dumps(obj, *transformers):
     """
     Serializes Java primitive data and objects unmarshaled by load(s) before
     into string.
 
     :param obj: A Python primitive object, or one loaded using load(s)
+    :param transformers: Custom transformers to use
     :return: The serialized data as a string
     """
     marshaller = JavaObjectMarshaller()
+    # Add custom transformers
+    for transformer in transformers:
+        marshaller.add_transformer(transformer)
+
     return marshaller.dump(obj)
 
 # ------------------------------------------------------------------------------
@@ -949,6 +954,15 @@ class JavaObjectMarshaller(JavaObjectConstants):
         """
         self.object_stream = stream
         self.object_obj = None
+        self.object_transformers = []
+
+    def add_transformer(self, transformer):
+        """
+        Appends an object transformer to the serialization process
+
+        :param transformer: An object with a transform(obj) method
+        """
+        self.object_transformers.append(transformer)
 
     def dump(self, obj):
         """
@@ -1028,6 +1042,13 @@ class JavaObjectMarshaller(JavaObjectConstants):
         :param obj: Not yet used
         :param parent: Not yet used
         """
+        # Transform object
+        for transformer in self.object_transformers:
+            tmp_object = transformer.transform(obj)
+            if tmp_object is not obj:
+                obj = tmp_object
+                break
+
         self._writeStruct(">B", 1, (self.TC_OBJECT,))
         self._writeStruct(">B", 1, (self.TC_CLASSDESC,))
 
