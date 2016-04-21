@@ -447,6 +447,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             self.TC_CLASSDESC: self.do_classdesc,
             self.TC_OBJECT: self.do_object,
             self.TC_STRING: self.do_string,
+            self.TC_LONGSTRING: self.do_string_long,
             self.TC_ARRAY: self.do_array,
             self.TC_CLASS: self.do_class,
             self.TC_BLOCKDATA: self.do_blockdata,
@@ -824,7 +825,20 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         """
         log_debug("[string]", ident)
         ba = self._readString()
-        self._add_reference(ba)
+        self._add_reference(ba, ident)
+        return ba
+
+    def do_string_long(self, parent=None, ident=0):
+        """
+        Handles a TC_LONGSTRING opcode
+
+        :param parent:
+        :param ident: Log indentation level
+        :return: A string
+        """
+        log_debug("[long string]", ident)
+        ba = self._readString("Q")
+        self._add_reference(ba, ident)
         return ba
 
     def do_array(self, parent=None, ident=0):
