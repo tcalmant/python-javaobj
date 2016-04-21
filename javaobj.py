@@ -146,35 +146,42 @@ else:
 # ------------------------------------------------------------------------------
 
 
-def load(file_object, ignore_remaining_data=False):
+def load(file_object, *transformers, ignore_remaining_data=False):
     """
     Deserializes Java primitive data and objects serialized using
     ObjectOutputStream from a file-like object.
 
     :param file_object: A file-like object
+    :param transformers: Custom transformers to use
     :param ignore_remaining_data: If True, don't log an error when unused
                                   trailing bytes are remaining
     :return: The deserialized object
     """
     marshaller = JavaObjectUnmarshaller(file_object)
+
+    # Add custom transformers first
+    for transformer in transformers:
+        marshaller.add_transformer(transformer)
     marshaller.add_transformer(DefaultObjectTransformer())
+
+    # Read the file object
     return marshaller.readObject(ignore_remaining_data=ignore_remaining_data)
 
 
-def loads(string, ignore_remaining_data=False):
+def loads(string, *transformers, ignore_remaining_data=False):
     """
     Deserializes Java objects and primitive data serialized using
     ObjectOutputStream from a string.
 
     :param string: A Java data string
+    :param transformers: Custom transformers to use
     :param ignore_remaining_data: If True, don't log an error when unused
                                   trailing bytes are remaining
     :return: The deserialized object
     """
-    file_like = BytesIO(string)
-    marshaller = JavaObjectUnmarshaller(file_like)
-    marshaller.add_transformer(DefaultObjectTransformer())
-    return marshaller.readObject(ignore_remaining_data=ignore_remaining_data)
+    # Reuse the load method (avoid code duplication)
+    return load(BytesIO(string), *transformers,
+                ignore_remaining_data=ignore_remaining_data)
 
 
 def dumps(obj):
