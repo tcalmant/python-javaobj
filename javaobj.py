@@ -716,7 +716,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
                                      self.TC_PROXYCLASSDESC,
                                      self.TC_NULL, self.TC_REFERENCE))
         log_debug("Classdesc: {0}".format(classdesc), ident)
-        self._add_reference(classdesc)
+        self._add_reference(classdesc, ident)
         return classdesc
 
     def do_object(self, parent=None, ident=0):
@@ -736,12 +736,12 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         # TODO: what to do with "(ClassDesc)prevObject".
         # (see 3rd line for classDesc:)
         opcode, classdesc = self._read_and_exec_opcode(
-            ident=ident + 1, expect=(self.TC_CLASSDESC,
-                                     self.TC_PROXYCLASSDESC,
-                                     self.TC_NULL, self.TC_REFERENCE))
+            ident=ident + 1,
+            expect=(self.TC_CLASSDESC, self.TC_PROXYCLASSDESC,
+                    self.TC_NULL, self.TC_REFERENCE))
         # self.TC_REFERENCE hasn't shown in spec, but actually is here
 
-        self._add_reference(java_object)
+        self._add_reference(java_object, ident)
 
         # classdata[]
 
