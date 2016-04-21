@@ -726,9 +726,9 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         # TODO: what to do with "(ClassDesc)prevObject".
         # (see 3rd line for classDesc:)
         _, classdesc = self._read_and_exec_opcode(
-            ident=ident + 1, expect=(self.TC_CLASSDESC,
-                                     self.TC_PROXYCLASSDESC,
-                                     self.TC_NULL, self.TC_REFERENCE))
+            ident=ident + 1,
+            expect=(self.TC_CLASSDESC, self.TC_PROXYCLASSDESC,
+                    self.TC_NULL, self.TC_REFERENCE))
         log_debug("Classdesc: {0}".format(classdesc), ident)
         self._add_reference(classdesc, ident)
         return classdesc
