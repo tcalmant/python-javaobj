@@ -1031,12 +1031,13 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
         # Do not use a keyword argument
         self.object_stream.seek(-16, os.SEEK_CUR)
+        position = self.object_stream.tell()
         the_rest = self.object_stream.read()
 
         if not ignore_remaining_data and len(the_rest):
             log_error("Warning!!!!: Stream still has {0} bytes left."
                       .format(len(the_rest)))
-            log_error(self._create_hexdump(the_rest))
+            log_error(self._create_hexdump(the_rest, position))
 
         log_error("=" * 30)
 
