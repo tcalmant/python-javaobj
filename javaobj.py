@@ -1152,6 +1152,10 @@ class JavaObjectMarshaller(JavaObjectConstants):
 
         :param string: String to serialize
         """
+        # TODO: Convert to "modified UTF-8"
+        # http://docs.oracle.com/javase/7/docs/api/java/io/DataInput.html#modified-utf-8
+        string = to_bytes(string, "utf-8")
+
         self._writeStruct(">H", 2, (len(string),))
         self.object_stream.write(string)
 
