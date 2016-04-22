@@ -21,18 +21,18 @@ This fork intends to work both on Python 2.7 and Python 3.
 Features
 ========
 
- * Java object instance unmarshaling
- * Java classes unmarshaling
- * Primitive values unmarshaling
- * Automatic conversion of Java Collections to python ones
-   (_HashMap_ => dict, _ArrayList_ => list, etc)
+* Java object instance unmarshaling
+* Java classes unmarshaling
+* Primitive values unmarshaling
+* Automatic conversion of Java Collections to python ones
+  (_HashMap_ => dict, _ArrayList_ => list, etc)
 
 Requirements
 ============
 
- * Python >= 2.7 or Python >= 3.2
- * Maven 2+ (for building test data of serialized objects.
-   You can skip it if you do not plan to run tests.py)
+* Python >= 2.7 or Python >= 3.2
+* Maven 2+ (for building test data of serialized objects.
+  You can skip it if you do not plan to run tests.py)
 
 Usage
 =====
