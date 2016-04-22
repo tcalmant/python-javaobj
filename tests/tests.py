@@ -214,25 +214,26 @@ class TestJavaobj(unittest.TestCase):
         self.assertEqual(pobj.integer, -1)
         self.assertEqual(pobj.superString, "Super!!")
 
-#    def test_arrays(self):
-#        jobj = self.read_file("objArrays.ser")
-#        pobj = javaobj.loads(jobj)
-#        print pobj
-#
-#        classdesc = pobj.get_class()
-#        print classdesc
-#        print classdesc.fields_names
-#        print classdesc.fields_types
-#
-# #        public String[] stringArr = {"1", "2", "3"};
-# #        public int[] integerArr = {1,2,3};
-# #        public boolean[] boolArr = {true, false, true};
-# #        public TestConcrete[] concreteArr = {new TestConcrete(), new TestConcrete()};
-#
-#        print pobj.stringArr
-#        print pobj.integerArr
-#        print pobj.boolArr
-#        print pobj.concreteArr
+    # def test_arrays(self):
+    #     jobj = self.read_file("objArrays.ser")
+    #     pobj = javaobj.loads(jobj)
+    #     _logger.debug(pobj)
+    #
+    #     classdesc = pobj.get_class()
+    #     _logger.debug(classdesc)
+    #     _logger.debug(classdesc.fields_names)
+    #     _logger.debug(classdesc.fields_types)
+    #
+    #     # public String[] stringArr = {"1", "2", "3"};
+    #     # public int[] integerArr = {1,2,3};
+    #     # public boolean[] boolArr = {true, false, true};
+    #     # public TestConcrete[] concreteArr = {new TestConcrete(),
+    #     #                                      new TestConcrete()};
+    #
+    #     _logger.debug(pobj.stringArr)
+    #     _logger.debug(pobj.integerArr)
+    #     _logger.debug(pobj.boolArr)
+    #     _logger.debug(pobj.concreteArr)
 
     def test_enums(self):
         jobj = self.read_file("objEnums.ser")
