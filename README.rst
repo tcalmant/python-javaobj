@@ -1,4 +1,5 @@
-# javaobj-py3
+javaobj-py3
+###########
 
 python-javaobj is a python library that provides functions for reading and
 writing (writing is WIP currently) Java objects serialized or will be
@@ -8,15 +9,17 @@ standard data interchange format in Java world.
 javaobj module exposes an API familiar to users of the standard library
 marshal, pickle and json modules.
 
-## About this repository
+About this repository
+=====================
 
 This project is a fork of python-javaobj by Volodymyr Buell, originally from
-[Google Code](http://code.google.com/p/python-javaobj/) and now hosted on
-[GitHub](https://github.com/vbuell/python-javaobj).
+`Google Code <http://code.google.com/p/python-javaobj/>`_ and now hosted on
+`GitHub <https://github.com/vbuell/python-javaobj>`_.
 
 This fork intends to work both on Python 2.7 and Python 3.
 
-## Features
+Features
+========
 
  * Java object instance unmarshaling
  * Java classes unmarshaling
@@ -24,34 +27,36 @@ This fork intends to work both on Python 2.7 and Python 3.
  * Automatic conversion of Java Collections to python ones
    (_HashMap_ => dict, _ArrayList_ => list, etc)
 
-## Requirements
+Requirements
+============
 
  * Python >= 2.7 or Python >= 3.2
  * Maven 2+ (for building test data of serialized objects.
    You can skip it if you do not plan to run tests.py)
 
-## Usage
+Usage
+=====
 
 Unmarshalling of Java serialised object:
 
-```python
-import javaobj
+.. code-block:: python
 
-jobj = self.read_file("obj5.ser")
-pobj = javaobj.loads(jobj)
-print pobj
-```
+    import javaobj
+    
+    jobj = self.read_file("obj5.ser")
+    pobj = javaobj.loads(jobj)
+    print(pobj)
 
 Or, you can use Unmarshaller object directly:
 
-```python
-import javaobj
+.. code-block:: python
 
-marshaller = javaobj.JavaObjectUnmarshaller(open("sunExample.ser"))
-pobj = marshaller.readObject()
-
-self.assertEqual(pobj.value, 17)
-self.assertTrue(pobj.next)
-
-pobj = marshaller.readObject()
-```
+    import javaobj
+    
+    marshaller = javaobj.JavaObjectUnmarshaller(open("sunExample.ser"))
+    pobj = marshaller.readObject()
+    
+    self.assertEqual(pobj.value, 17)
+    self.assertTrue(pobj.next)
+    
+    pobj = marshaller.readObject()
