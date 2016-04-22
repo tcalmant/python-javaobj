@@ -199,20 +199,21 @@ class TestJavaobj(unittest.TestCase):
     #     _logger.debug(".. Fields Names: %s", classdesc.fields_names)
     #     _logger.debug(".. Fields Types: %s", classdesc.fields_types)
 
-#    def test_super(self):
-#        jobj = self.read_file("objSuper.ser")
-#        pobj = javaobj.loads(jobj)
-#        print pobj
-#
-#        classdesc = pobj.get_class()
-#        print classdesc
-#        print classdesc.fields_names
-#        print classdesc.fields_types
-#
-#        print pobj.childString
-#        print pobj.bool
-#        print pobj.integer
-#
+    def test_super(self):
+        jobj = self.read_file("objSuper.ser")
+        pobj = javaobj.loads(jobj)
+        _logger.debug(pobj)
+
+        classdesc = pobj.get_class()
+        _logger.debug(classdesc)
+        _logger.debug(classdesc.fields_names)
+        _logger.debug(classdesc.fields_types)
+
+        self.assertEqual(pobj.childString, "Child!!")
+        self.assertEqual(pobj.bool, True)
+        self.assertEqual(pobj.integer, -1)
+        self.assertEqual(pobj.superString, "Super!!")
+
 #    def test_arrays(self):
 #        jobj = self.read_file("objArrays.ser")
 #        pobj = javaobj.loads(jobj)
