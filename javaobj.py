@@ -755,8 +755,6 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
                     self.TC_NULL, self.TC_REFERENCE))
         # self.TC_REFERENCE hasn't shown in spec, but actually is here
 
-        self._add_reference(java_object, ident)
-
         # classdata[]
 
         # Store classdesc of this object
@@ -764,6 +762,9 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
         if classdesc.flags & self.SC_EXTERNALIZABLE \
                 and not classdesc.flags & self.SC_BLOCK_DATA:
+            # Store the reference anyway (to avoid a delta in indices)
+            self._add_reference(java_object, ident)
+
             # TODO:
             raise NotImplementedError("externalContents isn't implemented yet")
 
@@ -824,6 +825,9 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             if tmp_object is not java_object:
                 java_object = tmp_object
                 break
+
+        # Store the reference
+        self._add_reference(java_object, ident)
 
         log_debug(">>> java_object: {0}".format(java_object), ident)
         return java_object
@@ -903,7 +907,9 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         """
         (handle,) = self._readStruct(">L")
         log_debug("## Reference handle: 0x{0:X}".format(handle), ident)
-        return self.references[handle - self.BASE_REFERENCE_IDX]
+        ref = self.references[handle - self.BASE_REFERENCE_IDX]
+        log_debug("Reference: %s" % ref)
+        return ref
 
     @staticmethod
     def do_null(parent=None, ident=0):

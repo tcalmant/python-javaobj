@@ -265,17 +265,17 @@ class TestJavaobj(unittest.TestCase):
 #        self.assertEqual(pobj.value, 19)
 #        self.assertFalse(pobj.next)
 #
-#    def test_collections(self):
-#        jobj = self.read_file("objCollections.ser")
-#        pobj = javaobj.loads(jobj)
-#        print pobj
-#
-#        print "arrayList:", pobj.arrayList
-#        self.assertTrue(isinstance(pobj.arrayList, list))
-#        print "hashMap:", pobj.hashMap
-#        self.assertTrue(isinstance(pobj.hashMap, dict))
-#        print "linkedList:", pobj.linkedList
-#        self.assertTrue(isinstance(pobj.linkedList, list)) # Fails
+    def test_collections(self):
+        jobj = self.read_file("objCollections.ser")
+        pobj = javaobj.loads(jobj)
+        _logger.debug(pobj)
+
+        _logger.debug("arrayList: %s", pobj.arrayList)
+        self.assertTrue(isinstance(pobj.arrayList, list))
+        _logger.debug("hashMap: %s", pobj.hashMap)
+        self.assertTrue(isinstance(pobj.hashMap, dict))
+        _logger.debug("linkedList: %s", pobj.linkedList)
+        self.assertTrue(isinstance(pobj.linkedList, list))
 
 # ------------------------------------------------------------------------------
 
