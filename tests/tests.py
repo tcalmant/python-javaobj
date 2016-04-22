@@ -171,8 +171,8 @@ class TestJavaobj(unittest.TestCase):
 
         self.assertEqual(len(classdesc.fields_names), 3)
 
-#        jobj_ = javaobj.dumps(pobj)
-#        self.assertEqual(jobj, jobj_)
+       # jobj_ = javaobj.dumps(pobj)
+       # self.assertEqual(jobj, jobj_)
 
     def test_class(self):
         """
@@ -183,21 +183,21 @@ class TestJavaobj(unittest.TestCase):
         _logger.debug("Read object: %s", pobj)
         self.assertEqual(pobj.name, 'java.lang.String')
 
-#        jobj_ = javaobj.dumps(pobj)
-#        self.assertEqual(jobj, jobj_)
+        jobj_ = javaobj.dumps(pobj)
+        self.assertEqual(jobj, jobj_)
 
-#     def test_swing_object(self):
-#         """
-#         Reads a serialized Swing component
-#         """
-#         jobj = self.read_file("java/testSwingObject.ser")
-#         pobj = javaobj.loads(jobj)
-#         _logger.debug("Read object: %s", pobj)
-#
-#         classdesc = pobj.get_class()
-#         _logger.debug("Class..........: %s", classdesc)
-#         _logger.debug(".. Fields Names: %s", classdesc.fields_names)
-#         _logger.debug(".. Fields Types: %s", classdesc.fields_types)
+    # def test_swing_object(self):
+    #     """
+    #     Reads a serialized Swing component
+    #     """
+    #     jobj = self.read_file("java/testSwingObject.ser")
+    #     pobj = javaobj.loads(jobj)
+    #     _logger.debug("Read object: %s", pobj)
+    #
+    #     classdesc = pobj.get_class()
+    #     _logger.debug("Class..........: %s", classdesc)
+    #     _logger.debug(".. Fields Names: %s", classdesc.fields_names)
+    #     _logger.debug(".. Fields Types: %s", classdesc.fields_types)
 
 #    def test_super(self):
 #        jobj = self.read_file("objSuper.ser")
@@ -232,39 +232,52 @@ class TestJavaobj(unittest.TestCase):
 #        print pobj.integerArr
 #        print pobj.boolArr
 #        print pobj.concreteArr
-#
-#    def test_enums(self):
-#        jobj = self.read_file("objEnums.ser")
-#        pobj = javaobj.loads(jobj)
-#        print pobj
-#
-#        classdesc = pobj.get_class()
-#        print classdesc
-#        print classdesc.fields_names
-#        print classdesc.fields_types
-#
-#    def test_exception(self):
-#        jobj = self.read_file("objException.ser")
-#        pobj = javaobj.loads(jobj)
-#        print pobj
-#
-#        classdesc = pobj.get_class()
-#        print classdesc
-#        print classdesc.fields_names
-#        print classdesc.fields_types
-#
-#    def test_sun_example(self):
-#        marshaller = javaobj.JavaObjectUnmarshaller(open("sunExample.ser"))
-#        pobj = marshaller.readObject()
-#
-#        self.assertEqual(pobj.value, 17)
-#        self.assertTrue(pobj.next)
-#
-#        pobj = marshaller.readObject()
-#
-#        self.assertEqual(pobj.value, 19)
-#        self.assertFalse(pobj.next)
-#
+
+    def test_enums(self):
+        jobj = self.read_file("objEnums.ser")
+        pobj = javaobj.loads(jobj)
+        _logger.debug(pobj)
+
+        classdesc = pobj.get_class()
+        _logger.debug(classdesc)
+        _logger.debug(classdesc.fields_names)
+        _logger.debug(classdesc.fields_types)
+
+        self.assertEqual(classdesc.name, "ClassWithEnum")
+        self.assertEqual(pobj.color.classdesc.name, "Color")
+        self.assertEqual(pobj.color.constant, "GREEN")
+
+        # FIXME: got Strings instead of Enum
+        # for color, intended in zip(pobj.colors, ("GREEN", "BLUE", "RED")):
+        #     self.assertEqual(color.classdesc.name, "Color")
+        #     self.assertEqual(color.constant, intended)
+
+    def test_exception(self):
+        jobj = self.read_file("objException.ser")
+        pobj = javaobj.loads(jobj)
+        _logger.debug(pobj)
+
+        classdesc = pobj.get_class()
+        _logger.debug(classdesc)
+        _logger.debug(classdesc.fields_names)
+        _logger.debug(classdesc.fields_types)
+
+        # TODO: add some tests
+        self.assertEqual(classdesc.name, "MyExceptionWhenDumping")
+
+    # def test_sun_example(self):
+    #    marshaller = javaobj.JavaObjectUnmarshaller(
+    #       open("sunExample.ser", "rb"))
+    #    pobj = marshaller.readObject()
+    #
+    #    self.assertEqual(pobj.value, 17)
+    #    self.assertTrue(pobj.next)
+    #
+    #    pobj = marshaller.readObject()
+    #
+    #    self.assertEqual(pobj.value, 19)
+    #    self.assertFalse(pobj.next)
+
     def test_collections(self):
         jobj = self.read_file("objCollections.ser")
         pobj = javaobj.loads(jobj)
