@@ -27,15 +27,6 @@ http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.ht
     limitations under the License.
 """
 
-# Module version
-__version_info__ = (0, 1, 1)
-__version__ = ".".join(str(x) for x in __version_info__)
-
-# Documentation strings format
-__docformat__ = "restructuredtext en"
-
-# ------------------------------------------------------------------------------
-
 import os
 
 try:
@@ -44,6 +35,16 @@ except ImportError:
     from distutils.core import setup
 
 # ------------------------------------------------------------------------------
+
+# Module version
+__version_info__ = (0, 1, 2)
+__version__ = ".".join(str(x) for x in __version_info__)
+
+# Documentation strings format
+__docformat__ = "restructuredtext en"
+
+# ------------------------------------------------------------------------------
+
 
 def read(fname):
     """
@@ -73,10 +74,8 @@ setup(
             "License :: OSI Approved :: Apache Software License",
             'Operating System :: OS Independent',
             'Programming Language :: Python :: 2.7',
-            'Programming Language :: Python :: 3',
-            'Programming Language :: Python :: 3.0',
-            'Programming Language :: Python :: 3.1',
-            'Programming Language :: Python :: 3.2',
             'Programming Language :: Python :: 3.3',
+            'Programming Language :: Python :: 3.4',
+            'Programming Language :: Python :: 3.5',
             "Topic :: Software Development :: Libraries :: Python Modules",
     ])
