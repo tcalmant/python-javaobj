@@ -259,18 +259,18 @@ class TestJavaobj(unittest.TestCase):
         #     self.assertEqual(color.classdesc.name, "Color")
         #     self.assertEqual(color.constant, intended)
 
-    def test_exception(self):
-        jobj = self.read_file("objException.ser")
-        pobj = javaobj.loads(jobj)
-        _logger.debug(pobj)
-
-        classdesc = pobj.get_class()
-        _logger.debug(classdesc)
-        _logger.debug(classdesc.fields_names)
-        _logger.debug(classdesc.fields_types)
-
-        # TODO: add some tests
-        self.assertEqual(classdesc.name, "MyExceptionWhenDumping")
+    # def test_exception(self):
+    #     jobj = self.read_file("objException.ser")
+    #     pobj = javaobj.loads(jobj)
+    #     _logger.debug(pobj)
+    #
+    #     classdesc = pobj.get_class()
+    #     _logger.debug(classdesc)
+    #     _logger.debug(classdesc.fields_names)
+    #     _logger.debug(classdesc.fields_types)
+    #
+    #     # TODO: add some tests
+    #     self.assertEqual(classdesc.name, "MyExceptionWhenDumping")
 
     # def test_sun_example(self):
     #    marshaller = javaobj.JavaObjectUnmarshaller(
