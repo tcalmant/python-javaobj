@@ -1,6 +1,22 @@
 javaobj-py3
 ###########
 
+.. image:: https://img.shields.io/pypi/v/javaobj-py3.svg
+    :target: https://pypi.python.org/pypi/javaobj-py3/
+    :alt: Latest Version
+
+.. image:: https://img.shields.io/pypi/l/javaobj-py3.svg
+    :target: https://pypi.python.org/pypi/javaobj-py3/
+    :alt: License
+
+.. image:: https://travis-ci.org/tcalmant/python-javaobj.svg?branch=master
+     :target: https://travis-ci.org/tcalmant/python-javaobj
+     :alt: Travis-CI status
+
+.. image:: https://coveralls.io/repos/tcalmant/python-javaobj/badge.svg?branch=master
+     :target: https://coveralls.io/r/tcalmant/python-javaobj?branch=master
+     :alt: Coveralls status
+
 python-javaobj is a python library that provides functions for reading and
 writing (writing is WIP currently) Java objects serialized or will be
 deserialized by _ObjectOutputStream_. This form of object representation is a
@@ -16,7 +32,7 @@ This project is a fork of python-javaobj by Volodymyr Buell, originally from
 `Google Code <http://code.google.com/p/python-javaobj/>`_ and now hosted on
 `GitHub <https://github.com/vbuell/python-javaobj>`_.
 
-This fork intends to work both on Python 2.7 and Python 3.
+This fork intends to work both on Python 2.7 and Python 3.2+.
 
 Features
 ========
@@ -42,7 +58,7 @@ Unmarshalling of Java serialised object:
 .. code-block:: python
 
     import javaobj
-    
+
     jobj = self.read_file("obj5.ser")
     pobj = javaobj.loads(jobj)
     print(pobj)
@@ -52,11 +68,11 @@ Or, you can use Unmarshaller object directly:
 .. code-block:: python
 
     import javaobj
-    
-    marshaller = javaobj.JavaObjectUnmarshaller(open("sunExample.ser"))
+
+    marshaller = javaobj.JavaObjectUnmarshaller(open("objCollections.ser"))
     pobj = marshaller.readObject()
-    
+
     self.assertEqual(pobj.value, 17)
     self.assertTrue(pobj.next)
-    
+
     pobj = marshaller.readObject()
