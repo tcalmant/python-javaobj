@@ -628,7 +628,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         clazz.serialVersionUID = serialVersionUID
         clazz.flags = classDescFlags
 
-        self._add_reference(clazz)
+        self._add_reference(clazz, ident)
 
         log_debug("Serial: 0x{0:X} / {0:d} - classDescFlags: 0x{1:X} {2}"
                   .format(serialVersionUID, classDescFlags,
@@ -643,23 +643,27 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             field_name = self._readString()
             field_type = self._convert_char_to_type(typecode)
 
+            log_debug("> Reading field {0}".format(field_name), ident)
+
             if field_type == self.TYPE_ARRAY:
                 _, field_type = self._read_and_exec_opcode(
                     ident=ident + 1,
                     expect=(self.TC_STRING, self.TC_REFERENCE))
-                assert type(field_type) is JavaString
-#                if field_type is not None:
-#                    field_type = "array of " + field_type
-#                else:
-#                    field_type = "array of None"
+
+                if type(field_type) is not JavaString:
+                    raise AssertionError("Field type must be a JavaString, "
+                                         "not {0}".format(type(field_type)))
 
             elif field_type == self.TYPE_OBJECT:
                 _, field_type = self._read_and_exec_opcode(
                     ident=ident + 1,
                     expect=(self.TC_STRING, self.TC_REFERENCE))
-                assert type(field_type) is JavaString
 
-            log_debug("FieldName: 0x{0:X} Name:{1} Type:{2} ID:{3}"
+                if type(field_type) is not JavaString:
+                    raise AssertionError("Field type must be a JavaString, "
+                                         "not {0}".format(type(field_type)))
+
+            log_debug("< FieldName: 0x{0:X} Name:{1} Type:{2} ID:{3}"
                       .format(typecode, field_name, field_type, fieldId),
                       ident)
             assert field_name is not None
@@ -674,15 +678,18 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
         # classAnnotation
         (opid,) = self._readStruct(">B")
-        log_debug("OpCode: 0x{0:X}".format(opid), ident)
+        log_debug("OpCode: 0x{0:X} -- {1} (classAnnotation)"
+                  .format(opid, OpCodeDebug.op_id(opid)), ident)
         if opid != self.TC_ENDBLOCKDATA:
             raise NotImplementedError("classAnnotation isn't implemented yet")
 
         # superClassDesc
+        log_debug("Reading Super Class of {0}".format(clazz.name), ident)
         _, superclassdesc = self._read_and_exec_opcode(
             ident=ident + 1,
             expect=(self.TC_CLASSDESC, self.TC_NULL, self.TC_REFERENCE))
-        log_debug(str(superclassdesc), ident)
+        log_debug("Super Class for {0}: {1}"
+                  .format(clazz.name, str(superclassdesc)), ident)
         clazz.superclass = superclassdesc
         return clazz
 
@@ -782,10 +789,15 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             tempclass = classdesc
             megalist = []
             megatypes = []
+            log_debug("Constructing class...", ident)
             while tempclass:
-                log_debug(">>> {0} {1}"
-                          .format(tempclass.fields_names, tempclass), ident)
-                log_debug(">>> {0}".format(tempclass.fields_types), ident)
+                log_debug("Class: {0}".format(tempclass.name), ident + 1)
+                class_fields_str = ' - '.join(
+                    ' '.join((field_type, field_name))
+                    for field_type, field_name
+                    in zip(tempclass.fields_types, tempclass.fields_names))
+                if class_fields_str:
+                    log_debug(class_fields_str, ident + 2)
 
                 fieldscopy = tempclass.fields_names[:]
                 fieldscopy.extend(megalist)
@@ -802,6 +814,8 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             log_debug("Prepared list of types: {0}".format(megatypes), ident)
 
             for field_name, field_type in zip(megalist, megatypes):
+                log_debug("Reading field: {0} - {1}"
+                          .format(field_type, field_name))
                 res = self._read_value(field_type, ident, name=field_name)
                 java_object.__setattr__(field_name, res)
 
@@ -909,12 +923,12 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
         :param parent:
         :param ident: Log indentation level
-        :return:
+        :return: The referenced object
         """
         (handle,) = self._readStruct(">L")
         log_debug("## Reference handle: 0x{0:X}".format(handle), ident)
         ref = self.references[handle - self.BASE_REFERENCE_IDX]
-        log_debug("Reference: %s" % ref)
+        log_debug("###-> Type: {0} - Value: {1}".format(type(ref), ref), ident)
         return ref
 
     @staticmethod
@@ -1037,9 +1051,9 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         :param obj: Reference to add
         :param ident: Log indentation level
         """
-        log_debug("## New reference handle 0x{0:X}"
-                  .format(len(self.references) + self.BASE_REFERENCE_IDX),
-                  ident)
+        log_debug("## New reference handle 0x{0:X}: {1} -> {2}"
+                  .format(len(self.references) + self.BASE_REFERENCE_IDX,
+                          type(obj).__name__, obj), ident)
         self.references.append(obj)
 
     def _oops_dump_state(self, ignore_remaining_data=False):
