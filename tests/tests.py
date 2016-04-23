@@ -292,6 +292,11 @@ class TestJavaobj(unittest.TestCase):
         _logger.debug("linkedList: %s", pobj.linkedList)
         self.assertTrue(isinstance(pobj.linkedList, list))
 
+    def test_jceks_issue_5(self):
+        jobj = self.read_file("jceks_issue_5.ser")
+        pobj = javaobj.loads(jobj)
+        _logger.info(pobj)
+
 # ------------------------------------------------------------------------------
 
 if __name__ == '__main__':
