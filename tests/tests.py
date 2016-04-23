@@ -61,17 +61,14 @@ class TestJavaobj(unittest.TestCase):
         Calls Maven to compile & run Java classes that will generate serialized
         data
         """
-        # Compute the java directory (from top folder or test folder)
-        java_dir = [os.getcwd()]
-        if not os.getcwd().endswith('tests'):
-            # Not in the test folder
-            java_dir.append('tests')
+        # Compute the java directory
+        java_dir = os.path.join(os.path.dirname(__file__), 'java')
 
-        java_dir.append('java')
-
-        os.chdir(os.path.join(*java_dir))
+        # Run Maven and go back to the working folder
+        cwd = os.getcwd()
+        os.chdir(java_dir)
         subprocess.call(['mvn', 'test'], shell=True)
-        os.chdir('..')
+        os.chdir(cwd)
 
     def read_file(self, filename):
         """
@@ -80,14 +77,22 @@ class TestJavaobj(unittest.TestCase):
         :param filename: Name of the file to read
         :return: File content
         """
-        with open(filename, 'rb') as filep:
+        for subfolder in ('java', ''):
+            found_file = os.path.join(
+                os.path.dirname(__file__), subfolder, filename)
+            if os.path.exists(found_file):
+                break
+        else:
+            raise IOError("File not found: {0}".format(filename))
+
+        with open(found_file, 'rb') as filep:
             return filep.read()
 
     def test_char_rw(self):
         """
         Reads testChar.ser and checks the serialization process
         """
-        jobj = self.read_file("java/testChar.ser")
+        jobj = self.read_file("testChar.ser")
         pobj = javaobj.loads(jobj)
         _logger.debug("Read char object: %s", pobj)
         self.assertEqual(pobj, '\x00C')
@@ -98,7 +103,7 @@ class TestJavaobj(unittest.TestCase):
         """
         Reads testDouble.ser and checks the serialization process
         """
-        jobj = self.read_file("java/testDouble.ser")
+        jobj = self.read_file("testDouble.ser")
         pobj = javaobj.loads(jobj)
         _logger.debug("Read double object: %s", pobj)
 
@@ -111,7 +116,7 @@ class TestJavaobj(unittest.TestCase):
         """
         Reads testBytes.ser and checks the serialization process
         """
-        jobj = self.read_file("java/testBytes.ser")
+        jobj = self.read_file("testBytes.ser")
         pobj = javaobj.loads(jobj)
         _logger.debug("Read bytes: %s", pobj)
 
@@ -124,7 +129,7 @@ class TestJavaobj(unittest.TestCase):
         """
         Reads testBoolean.ser and checks the serialization process
         """
-        jobj = self.read_file("java/testBoolean.ser")
+        jobj = self.read_file("testBoolean.ser")
         pobj = javaobj.loads(jobj)
         _logger.debug("Read boolean object: %s", pobj)
 
@@ -139,7 +144,7 @@ class TestJavaobj(unittest.TestCase):
 
         The result from javaobj is a single-character string.
         """
-        jobj = self.read_file("java/testByte.ser")
+        jobj = self.read_file("testByte.ser")
         pobj = javaobj.loads(jobj)
         _logger.debug("Read Byte: %r", pobj)
 
@@ -152,7 +157,7 @@ class TestJavaobj(unittest.TestCase):
         """
         Reads a serialized object and checks its fields
         """
-        jobj = self.read_file("java/test_readFields.ser")
+        jobj = self.read_file("test_readFields.ser")
         pobj = javaobj.loads(jobj)
         _logger.debug("Read object: %s", pobj)
 
@@ -178,7 +183,7 @@ class TestJavaobj(unittest.TestCase):
         """
         Reads the serialized String class
         """
-        jobj = self.read_file("java/testClass.ser")
+        jobj = self.read_file("testClass.ser")
         pobj = javaobj.loads(jobj)
         _logger.debug("Read object: %s", pobj)
         self.assertEqual(pobj.name, 'java.lang.String')
@@ -190,7 +195,7 @@ class TestJavaobj(unittest.TestCase):
     #     """
     #     Reads a serialized Swing component
     #     """
-    #     jobj = self.read_file("java/testSwingObject.ser")
+    #     jobj = self.read_file("testSwingObject.ser")
     #     pobj = javaobj.loads(jobj)
     #     _logger.debug("Read object: %s", pobj)
     #
