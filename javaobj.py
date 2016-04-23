@@ -146,7 +146,7 @@ else:
 # ------------------------------------------------------------------------------
 
 
-def load(file_object, *transformers, ignore_remaining_data=False):
+def load(file_object, *transformers, **kwargs):
     """
     Deserializes Java primitive data and objects serialized using
     ObjectOutputStream from a file-like object.
@@ -157,6 +157,9 @@ def load(file_object, *transformers, ignore_remaining_data=False):
                                   trailing bytes are remaining
     :return: The deserialized object
     """
+    # Read keyword argument
+    ignore_remaining_data = kwargs.get('ignore_remaining_data', False)
+
     marshaller = JavaObjectUnmarshaller(file_object)
 
     # Add custom transformers first
@@ -168,7 +171,7 @@ def load(file_object, *transformers, ignore_remaining_data=False):
     return marshaller.readObject(ignore_remaining_data=ignore_remaining_data)
 
 
-def loads(string, *transformers, ignore_remaining_data=False):
+def loads(string, *transformers, **kwargs):
     """
     Deserializes Java objects and primitive data serialized using
     ObjectOutputStream from a string.
@@ -179,6 +182,9 @@ def loads(string, *transformers, ignore_remaining_data=False):
                                   trailing bytes are remaining
     :return: The deserialized object
     """
+    # Read keyword argument
+    ignore_remaining_data = kwargs.get('ignore_remaining_data', False)
+
     # Reuse the load method (avoid code duplication)
     return load(BytesIO(string), *transformers,
                 ignore_remaining_data=ignore_remaining_data)
