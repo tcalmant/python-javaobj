@@ -900,6 +900,12 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         (size,) = self._readStruct(">i")
         log_debug("size: {0}".format(size), ident)
 
+        if isinstance(classdesc, JavaArray):
+            # Issue #5 (JCEKS): It seems that a similar array can be referred
+            # instead of its type
+            log_debug("JavaArray referred instead of a classdesc...", ident)
+            classdesc = classdesc.classdesc
+
         type_char = classdesc.name[0]
         assert type_char == self.TYPE_ARRAY
         type_char = classdesc.name[1]
