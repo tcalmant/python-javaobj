@@ -70,12 +70,13 @@ class TestJavaobj(unittest.TestCase):
         subprocess.call(['mvn', 'test'], shell=True)
         os.chdir(cwd)
 
-    def read_file(self, filename):
+    def read_file(self, filename, stream=False):
         """
         Reads the content of the given file in binary mode
 
         :param filename: Name of the file to read
-        :return: File content
+        :param stream: If True, return the file stream
+        :return: File content or stream
         """
         for subfolder in ('java', ''):
             found_file = os.path.join(
@@ -85,8 +86,11 @@ class TestJavaobj(unittest.TestCase):
         else:
             raise IOError("File not found: {0}".format(filename))
 
-        with open(found_file, 'rb') as filep:
-            return filep.read()
+        if stream:
+            return open(found_file, "rb")
+        else:
+            with open(found_file, 'rb') as filep:
+                return filep.read()
 
     def test_char_rw(self):
         """
@@ -219,26 +223,26 @@ class TestJavaobj(unittest.TestCase):
         self.assertEqual(pobj.integer, -1)
         self.assertEqual(pobj.superString, "Super!!")
 
-    # def test_arrays(self):
-    #     jobj = self.read_file("objArrays.ser")
-    #     pobj = javaobj.loads(jobj)
-    #     _logger.debug(pobj)
-    #
-    #     classdesc = pobj.get_class()
-    #     _logger.debug(classdesc)
-    #     _logger.debug(classdesc.fields_names)
-    #     _logger.debug(classdesc.fields_types)
-    #
-    #     # public String[] stringArr = {"1", "2", "3"};
-    #     # public int[] integerArr = {1,2,3};
-    #     # public boolean[] boolArr = {true, false, true};
-    #     # public TestConcrete[] concreteArr = {new TestConcrete(),
-    #     #                                      new TestConcrete()};
-    #
-    #     _logger.debug(pobj.stringArr)
-    #     _logger.debug(pobj.integerArr)
-    #     _logger.debug(pobj.boolArr)
-    #     _logger.debug(pobj.concreteArr)
+    def test_arrays(self):
+        jobj = self.read_file("objArrays.ser")
+        pobj = javaobj.loads(jobj)
+        _logger.debug(pobj)
+
+        classdesc = pobj.get_class()
+        _logger.debug(classdesc)
+        _logger.debug(classdesc.fields_names)
+        _logger.debug(classdesc.fields_types)
+
+        # public String[] stringArr = {"1", "2", "3"};
+        # public int[] integerArr = {1,2,3};
+        # public boolean[] boolArr = {true, false, true};
+        # public TestConcrete[] concreteArr = {new TestConcrete(),
+        #                                      new TestConcrete()};
+
+        _logger.debug(pobj.stringArr)
+        _logger.debug(pobj.integerArr)
+        _logger.debug(pobj.boolArr)
+        _logger.debug(pobj.concreteArr)
 
     def test_enums(self):
         jobj = self.read_file("objEnums.ser")
@@ -254,10 +258,9 @@ class TestJavaobj(unittest.TestCase):
         self.assertEqual(pobj.color.classdesc.name, "Color")
         self.assertEqual(pobj.color.constant, "GREEN")
 
-        # FIXME: got Strings instead of Enum
-        # for color, intended in zip(pobj.colors, ("GREEN", "BLUE", "RED")):
-        #     self.assertEqual(color.classdesc.name, "Color")
-        #     self.assertEqual(color.constant, intended)
+        for color, intended in zip(pobj.colors, ("GREEN", "BLUE", "RED")):
+            self.assertEqual(color.classdesc.name, "Color")
+            self.assertEqual(color.constant, intended)
 
     # def test_exception(self):
     #     jobj = self.read_file("objException.ser")
@@ -272,18 +275,18 @@ class TestJavaobj(unittest.TestCase):
     #     # TODO: add some tests
     #     self.assertEqual(classdesc.name, "MyExceptionWhenDumping")
 
-    # def test_sun_example(self):
-    #    marshaller = javaobj.JavaObjectUnmarshaller(
-    #       open("sunExample.ser", "rb"))
-    #    pobj = marshaller.readObject()
-    #
-    #    self.assertEqual(pobj.value, 17)
-    #    self.assertTrue(pobj.next)
-    #
-    #    pobj = marshaller.readObject()
-    #
-    #    self.assertEqual(pobj.value, 19)
-    #    self.assertFalse(pobj.next)
+    def test_sun_example(self):
+       marshaller = javaobj.JavaObjectUnmarshaller(
+           self.read_file("sunExample.ser", stream=True))
+       pobj = marshaller.readObject()
+
+       self.assertEqual(pobj.value, 17)
+       self.assertTrue(pobj.next)
+
+       pobj = marshaller.readObject()
+
+       self.assertEqual(pobj.value, 19)
+       self.assertFalse(pobj.next)
 
     def test_collections(self):
         jobj = self.read_file("objCollections.ser")
