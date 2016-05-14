@@ -306,16 +306,6 @@ class JavaObject(object):
                 return False
         return True
 
-    def copy(self, new_object):
-        """
-        Returns a shallow copy of this object
-        """
-        new_object.classdesc = self.classdesc
-        new_object.annotations = self.annotations
-
-        for name in self.classdesc.fields_names:
-            new_object.__setattr__(name, getattr(self, name))
-
 
 class JavaString(str):
     """
@@ -768,16 +758,22 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
                     self.TC_NULL, self.TC_REFERENCE))
         # self.TC_REFERENCE hasn't shown in spec, but actually is here
 
-        # classdata[]
+        # Create object
+        for transformer in self.object_transformers:
+            java_object = transformer.create(classdesc)
+            if java_object:
+                break
 
         # Store classdesc of this object
         java_object.classdesc = classdesc
 
+        # Store the reference
+        self._add_reference(java_object, ident)
+
+        # classdata[]
+
         if classdesc.flags & self.SC_EXTERNALIZABLE \
                 and not classdesc.flags & self.SC_BLOCK_DATA:
-            # Store the reference anyway (to avoid a delta in indices)
-            self._add_reference(java_object, ident)
-
             # TODO:
             raise NotImplementedError("externalContents isn't implemented yet")
 
@@ -839,16 +835,6 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             log_debug("java_object.annotations after: {0}"
                       .format(java_object.annotations), ident)
 
-        # Transform object
-        for transformer in self.object_transformers:
-            tmp_object = transformer.transform(java_object)
-            if tmp_object is not java_object:
-                java_object = tmp_object
-                break
-
-        # Store the reference
-        self._add_reference(java_object, ident)
-
         log_debug(">>> java_object: {0}".format(java_object), ident)
         return java_object
 
@@ -899,12 +885,6 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
         (size,) = self._readStruct(">i")
         log_debug("size: {0}".format(size), ident)
-
-        if isinstance(classdesc, JavaArray):
-            # Issue #5 (JCEKS): It seems that a similar array can be referred
-            # instead of its type
-            log_debug("JavaArray referred instead of a classdesc...", ident)
-            classdesc = classdesc.classdesc
 
         type_char = classdesc.name[0]
         assert type_char == self.TYPE_ARRAY
@@ -1425,48 +1405,36 @@ class DefaultObjectTransformer(object):
             dict.__init__(self, *args, **kwargs)
             JavaObject.__init__(self)
 
-    def transform(self, java_object):
+    def create(self, classdesc):
         """
         Transforms a deserialized Java object into a Python object
 
         :param java_object: A JavaObject instance
         :return: The Python form of the object, or the original JavaObject
         """
-        # Get the Java java_object class name
-        classname = java_object.get_class().name
 
-        if classname in ("java.util.ArrayList", "java.util.LinkedList"):
+        if classdesc.name in ("java.util.ArrayList", "java.util.LinkedList"):
             # @serialData The length of the array backing the <tt>ArrayList</tt>
             #             instance is emitted (int), followed by all of its
             #             elements (each an <tt>Object</tt>) in the proper order
             log_debug("---")
-            log_debug(classname)
-            log_debug(java_object.annotations)
+            log_debug(classdesc.name)
             log_debug("---")
 
-            new_object = self.JavaList()
-            java_object.copy(new_object)
-            new_object.extend(java_object.annotations[1:])
+            java_object = self.JavaList()
 
-            log_debug(">>> java_object: {0}".format(new_object))
-            return new_object
+            log_debug(">>> java_object: {0}".format(java_object))
+            return java_object
 
-        elif java_object.get_class().name == "java.util.HashMap":
+        if classdesc.name == "java.util.HashMap":
             log_debug("---")
             log_debug("java.util.HashMap")
-            log_debug(java_object.annotations)
             log_debug("---")
 
-            new_object = self.JavaMap()
-            java_object.copy(new_object)
+            java_object = self.JavaMap()
 
-            for i in range((len(java_object.annotations) - 1) // 2):
-                new_object[java_object.annotations[i * 2 + 1]] = \
-                    java_object.annotations[i * 2 + 2]
-
-            log_debug(">>> java_object: {0}".format(new_object))
-            return new_object
-
-        else:
-            # Return the JavaObject by default
+            log_debug(">>> java_object: {0}".format(java_object))
             return java_object
+
+        # Return a JavaObject by default
+        return JavaObject()
