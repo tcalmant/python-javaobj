@@ -219,26 +219,26 @@ class TestJavaobj(unittest.TestCase):
         self.assertEqual(pobj.integer, -1)
         self.assertEqual(pobj.superString, "Super!!")
 
-    # def test_arrays(self):
-    #     jobj = self.read_file("objArrays.ser")
-    #     pobj = javaobj.loads(jobj)
-    #     _logger.debug(pobj)
-    #
-    #     classdesc = pobj.get_class()
-    #     _logger.debug(classdesc)
-    #     _logger.debug(classdesc.fields_names)
-    #     _logger.debug(classdesc.fields_types)
-    #
-    #     # public String[] stringArr = {"1", "2", "3"};
-    #     # public int[] integerArr = {1,2,3};
-    #     # public boolean[] boolArr = {true, false, true};
-    #     # public TestConcrete[] concreteArr = {new TestConcrete(),
-    #     #                                      new TestConcrete()};
-    #
-    #     _logger.debug(pobj.stringArr)
-    #     _logger.debug(pobj.integerArr)
-    #     _logger.debug(pobj.boolArr)
-    #     _logger.debug(pobj.concreteArr)
+    def test_arrays(self):
+        jobj = self.read_file("objArrays.ser")
+        pobj = javaobj.loads(jobj)
+        _logger.debug(pobj)
+
+        classdesc = pobj.get_class()
+        _logger.debug(classdesc)
+        _logger.debug(classdesc.fields_names)
+        _logger.debug(classdesc.fields_types)
+
+        # public String[] stringArr = {"1", "2", "3"};
+        # public int[] integerArr = {1,2,3};
+        # public boolean[] boolArr = {true, false, true};
+        # public TestConcrete[] concreteArr = {new TestConcrete(),
+        #                                      new TestConcrete()};
+
+        _logger.debug(pobj.stringArr)
+        _logger.debug(pobj.integerArr)
+        _logger.debug(pobj.boolArr)
+        _logger.debug(pobj.concreteArr)
 
     def test_enums(self):
         jobj = self.read_file("objEnums.ser")
@@ -254,10 +254,9 @@ class TestJavaobj(unittest.TestCase):
         self.assertEqual(pobj.color.classdesc.name, "Color")
         self.assertEqual(pobj.color.constant, "GREEN")
 
-        # FIXME: got Strings instead of Enum
-        # for color, intended in zip(pobj.colors, ("GREEN", "BLUE", "RED")):
-        #     self.assertEqual(color.classdesc.name, "Color")
-        #     self.assertEqual(color.constant, intended)
+        for color, intended in zip(pobj.colors, ("GREEN", "BLUE", "RED")):
+            self.assertEqual(color.classdesc.name, "Color")
+            self.assertEqual(color.constant, intended)
 
     # def test_exception(self):
     #     jobj = self.read_file("objException.ser")
