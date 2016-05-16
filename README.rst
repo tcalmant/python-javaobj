@@ -17,18 +17,18 @@ javaobj-py3
      :target: https://coveralls.io/r/tcalmant/python-javaobj?branch=master
      :alt: Coveralls status
 
-python-javaobj is a python library that provides functions for reading and
+*python-javaobj* is a python library that provides functions for reading and
 writing (writing is WIP currently) Java objects serialized or will be
-deserialized by _ObjectOutputStream_. This form of object representation is a
+deserialized by ``ObjectOutputStream``. This form of object representation is a
 standard data interchange format in Java world.
 
-javaobj module exposes an API familiar to users of the standard library
-marshal, pickle and json modules.
+The ``javaobj`` module exposes an API familiar to users of the standard library
+``marshal``, ``pickle`` and ``json`` modules.
 
 About this repository
 =====================
 
-This project is a fork of python-javaobj by Volodymyr Buell, originally from
+This project is a fork of *python-javaobj* by Volodymyr Buell, originally from
 `Google Code <http://code.google.com/p/python-javaobj/>`_ and now hosted on
 `GitHub <https://github.com/vbuell/python-javaobj>`_.
 
@@ -41,14 +41,14 @@ Features
 * Java classes unmarshaling
 * Primitive values unmarshaling
 * Automatic conversion of Java Collections to python ones
-  (_HashMap_ => dict, _ArrayList_ => list, etc)
+  (``HashMap`` => ``dict``, ``ArrayList`` => ``list``, etc.)
 
 Requirements
 ============
 
 * Python >= 2.7 or Python >= 3.2
 * Maven 2+ (for building test data of serialized objects.
-  You can skip it if you do not plan to run tests.py)
+  You can skip it if you do not plan to run ``tests.py``)
 
 Usage
 =====
