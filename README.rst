@@ -34,6 +34,16 @@ This project is a fork of *python-javaobj* by Volodymyr Buell, originally from
 
 This fork intends to work both on Python 2.7 and Python 3.2+.
 
+Compatibility Warning: object transformer
+-----------------------------------------
+
+As of version 0.2.0, the notion of *object transformer* from the original
+project as been replaced by an *object creator*.
+
+The *object creator* is called before the deserialization.
+This allows to store the reference of the converted object before deserializing
+it, and avoids a mismatch between the referenced object and the transformed one.
+
 Features
 ========
 
