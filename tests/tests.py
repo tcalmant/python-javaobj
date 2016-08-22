@@ -67,7 +67,7 @@ class TestJavaobj(unittest.TestCase):
         # Run Maven and go back to the working folder
         cwd = os.getcwd()
         os.chdir(java_dir)
-        subprocess.call(['mvn', 'test'], shell=True)
+        subprocess.call('mvn test', shell=True)
         os.chdir(cwd)
 
     def read_file(self, filename, stream=False):
