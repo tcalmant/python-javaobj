@@ -404,15 +404,14 @@ class JavaObjectConstants(object):
 
 class OpCodeDebug(object):
     # Type codes
-    OP_CODE = {getattr(JavaObjectConstants, key): key
-               for key in dir(JavaObjectConstants) if key.startswith("TC_")}
+    OP_CODE = dict((getattr(JavaObjectConstants, key), key)
+                   for key in dir(JavaObjectConstants) if key.startswith("TC_"))
 
-    TYPE = {getattr(JavaObjectConstants, key): key
-            for key in dir(JavaObjectConstants) if key.startswith("TYPE_")}
+    TYPE = dict((getattr(JavaObjectConstants, key), key)
+                for key in dir(JavaObjectConstants) if key.startswith("TYPE_"))
 
-    STREAM_CONSTANT = {getattr(JavaObjectConstants, key): key
-                       for key in dir(JavaObjectConstants)
-                       if key.startswith("SC_")}
+    STREAM_CONSTANT = dict((getattr(JavaObjectConstants, key), key)
+                           for key in dir(JavaObjectConstants) if key.startswith("SC_"))
 
     @staticmethod
     def op_id(op_id):
