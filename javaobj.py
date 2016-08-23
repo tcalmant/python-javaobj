@@ -5,8 +5,8 @@ Provides functions for reading and writing (writing is WIP currently) Java
 objects serialized or will be deserialized by ObjectOutputStream. This form of
 object representation is a standard data interchange format in Java world.
 
-javaobj module exposes an API familiar to users of the standard library marshal,
-pickle and json modules.
+javaobj module exposes an API familiar to users of the standard library
+marshal, pickle and json modules.
 
 See:
 http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.html
@@ -405,13 +405,16 @@ class JavaObjectConstants(object):
 class OpCodeDebug(object):
     # Type codes
     OP_CODE = dict((getattr(JavaObjectConstants, key), key)
-                   for key in dir(JavaObjectConstants) if key.startswith("TC_"))
+                   for key in dir(JavaObjectConstants)
+                   if key.startswith("TC_"))
 
     TYPE = dict((getattr(JavaObjectConstants, key), key)
-                for key in dir(JavaObjectConstants) if key.startswith("TYPE_"))
+                for key in dir(JavaObjectConstants)
+                if key.startswith("TYPE_"))
 
     STREAM_CONSTANT = dict((getattr(JavaObjectConstants, key), key)
-                           for key in dir(JavaObjectConstants) if key.startswith("SC_"))
+                           for key in dir(JavaObjectConstants)
+                           if key.startswith("SC_"))
 
     @staticmethod
     def op_id(op_id):
@@ -595,7 +598,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         # classDescInfo:
         #   classDescFlags fields classAnnotation superClassDesc
         # classDescFlags:
-        #   (byte)                  // Defined in Terminal Symbols and Constants
+        #   (byte)                 // Defined in Terminal Symbols and Constants
         # fields:
         #   (short)<count>  fieldDesc[count]
 
@@ -1413,9 +1416,10 @@ class DefaultObjectTransformer(object):
         """
 
         if classdesc.name in ("java.util.ArrayList", "java.util.LinkedList"):
-            # @serialData The length of the array backing the <tt>ArrayList</tt>
-            #             instance is emitted (int), followed by all of its
-            #             elements (each an <tt>Object</tt>) in the proper order
+            # @serialData The length of the array backing the
+            #             <tt>ArrayList</tt> instance is emitted (int),
+            #             followed by all of its elements
+            #             (each an <tt>Object</tt>) in the proper order
             log_debug("---")
             log_debug(classdesc.name)
             log_debug("---")
