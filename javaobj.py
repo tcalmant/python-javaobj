@@ -1357,6 +1357,8 @@ class JavaObjectMarshaller(JavaObjectConstants):
                 self.write_null()
             elif isinstance(value, JavaEnum):
                 self.write_enum(value)
+            elif isinstance(value, JavaArray):
+                self.write_array(value)
             elif isinstance(value, JavaObject):
                 self.write_object(value)
             elif isinstance(value, JavaString):

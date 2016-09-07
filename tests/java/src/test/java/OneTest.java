@@ -26,6 +26,11 @@ class ClassWithEnum implements Serializable {
 	public Color[] colors = { Color.GREEN, Color.BLUE, Color.RED };
 }
 
+class ClassWithByteArray implements Serializable {
+	private static final long serialVersionUID = 1L;
+	public byte[] myArray = new byte[]{1,3,7,11};
+}
+
 enum Color {
 	BLUE("BLUE"), GREEN("GREEN"), RED("RED"), UNKNOWN("UNKNOWN");
 	private final String value;
@@ -219,6 +224,13 @@ public class OneTest {
 			// Was intended
 			return;
 		}
+	}
+
+	@Test
+	public void testClassWithByteArray() throws Exception {
+		final ClassWithByteArray cwba = new ClassWithByteArray();
+		oos.writeObject(cwba);
+		oos.flush();
 	}
 
 	@Test
