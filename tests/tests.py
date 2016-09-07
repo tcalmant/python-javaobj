@@ -129,6 +129,16 @@ class TestJavaobj(unittest.TestCase):
         jobj_ = javaobj.dumps(pobj)
         self.assertEqual(jobj, jobj_)
 
+    def test_class_with_byte_array_rw(self):
+        jobj = self.read_file("testClassWithByteArray.ser")
+        pobj = javaobj.loads(jobj)
+
+        self.assertEqual(pobj.myArray, [1,3,7,11])
+
+        jobj_ = javaobj.dumps(pobj)
+        javaobj.loads(jobj_)
+        self.assertEqual(jobj, jobj_)
+
     def test_boolean(self):
         """
         Reads testBoolean.ser and checks the serialization process
