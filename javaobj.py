@@ -1084,6 +1084,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
         self.object_stream = stream
         self.object_obj = None
         self.object_transformers = []
+        self.references = []
 
     def add_transformer(self, transformer):
         """
@@ -1097,6 +1098,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
         """
         Dumps the given object in the Java serialization format
         """
+        self.references = []
         self.object_obj = obj
         self.object_stream = BytesIO()
         self._writeStreamHeader()
@@ -1282,6 +1284,9 @@ class JavaObjectMarshaller(JavaObjectConstants):
         :param obj: Class description to write
         :param parent:
         """
+        # Add reference
+        self.references.append(obj.name)
+
         self._writeStruct(">B", 1, (self.TC_CLASSDESC,))
         self._writeString(obj.name)
         self._writeStruct(">qB", 1, (obj.serialVersionUID, obj.flags))
@@ -1292,13 +1297,29 @@ class JavaObjectMarshaller(JavaObjectConstants):
                 ">B", 1, (self._convert_type_to_char(field_type),))
             self._writeString(field_name)
             if field_type[0] in (self.TYPE_OBJECT, self.TYPE_ARRAY):
-                self.write_string(field_type)
+                try:
+                    idx = self.references.index(field_type)
+                except ValueError:
+                    # First appearance of the type
+                    self.write_string(field_type)
+                    self.references.append(field_type)
+                else:
+                    # Write a reference to the previous type
+                    self.write_reference(idx)
 
         self._writeStruct(">B", 1, (self.TC_ENDBLOCKDATA,))
         if obj.superclass:
             self.write_classdesc(obj.superclass)
         else:
             self.write_null()
+
+    def write_reference(self, ref_index):
+        """
+        Writes a reference
+        :param ref_index: Local index (0-based) to the reference
+        """
+        self._writeStruct(
+            ">BL", 1, (self.TC_REFERENCE, ref_index + self.BASE_REFERENCE_IDX))
 
     def write_array(self, obj):
         """

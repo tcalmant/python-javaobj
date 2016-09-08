@@ -190,8 +190,10 @@ class TestJavaobj(unittest.TestCase):
 
         self.assertEqual(len(classdesc.fields_names), 3)
 
-       # jobj_ = javaobj.dumps(pobj)
-       # self.assertEqual(jobj, jobj_)
+        jobj_ = javaobj.dumps(pobj)
+        # Reloading the new dump allows to compare the decoding sequence
+        javaobj.loads(jobj_)
+        self.assertEqual(jobj, jobj_)
 
     def test_class(self):
         """
