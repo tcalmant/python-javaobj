@@ -8,7 +8,7 @@ http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.ht
 
 :authors: Volodymyr Buell, Thomas Calmant
 :license: Apache License 2.0
-:version: 0.2.1
+:version: 0.2.2
 :status: Alpha
 
 ..
