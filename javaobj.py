@@ -364,7 +364,8 @@ class JavaObjectConstants(object):
     TC_LONGSTRING = 0x7C
     TC_PROXYCLASSDESC = 0x7D
     TC_ENUM = 0x7E
-    TC_MAX = 0x7E
+    # Ignore TC_MAX: we don't use it and it messes with TC_ENUM
+    # TC_MAX = 0x7E
 
     # classDescFlags
     SC_WRITE_METHOD = 0x01  # if SC_SERIALIZABLE
@@ -1223,8 +1224,23 @@ class JavaObjectMarshaller(JavaObjectConstants):
 
         :param obj: A JavaEnum object
         """
+        # FIXME: the output doesn't have the same references as the real
+        # serializable form
         self._writeStruct(">B", 1, (self.TC_ENUM,))
-        self.write_classdesc(obj.get_class())
+
+        try:
+            idx = self.references.index(obj)
+        except ValueError:
+            # New reference
+            self.references.append(obj)
+            logging.debug(
+                "*** Adding ref 0x%X for enum: %s",
+                len(self.references) - 1 + self.BASE_REFERENCE_IDX, obj)
+
+            self.write_classdesc(obj.get_class())
+        else:
+            self.write_reference(idx)
+
         self.write_string(obj.constant)
 
     def write_blockdata(self, obj, parent=None):
@@ -1433,7 +1449,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
         if field_type == self.TYPE_BOOLEAN:
             self._writeStruct(">B", 1, (1 if value else 0,))
         elif field_type == self.TYPE_BYTE:
-            self._writeStruct(">B", 1, (value,))
+            self._writeStruct(">b", 1, (value,))
         elif field_type == self.TYPE_SHORT:
             self._writeStruct(">h", 1, (value,))
         elif field_type == self.TYPE_INTEGER:
