@@ -651,6 +651,10 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
                     ident=ident + 1,
                     expect=(self.TC_STRING, self.TC_REFERENCE))
 
+                if type(field_type) is JavaClass:
+                    # FIXME: ugly trick
+                    field_type = JavaString(field_type.name)
+
                 if type(field_type) is not JavaString:
                     raise AssertionError("Field type must be a JavaString, "
                                          "not {0}".format(type(field_type)))
@@ -1156,27 +1160,47 @@ class JavaObjectMarshaller(JavaObjectConstants):
         ba = struct.pack(unpack, *args)
         self.object_stream.write(ba)
 
-    def _writeString(self, string):
+    def _writeString(self, obj, use_reference=True):
         """
         Appends a string to the serialization stream
 
-        :param string: String to serialize
+        :param obj: String to serialize
+        :param use_reference: If True, allow writing a reference
         """
         # TODO: Convert to "modified UTF-8"
         # http://docs.oracle.com/javase/7/docs/api/java/io/DataInput.html#modified-utf-8
-        string = to_bytes(string, "utf-8")
+        string = to_bytes(obj, "utf-8")
 
-        self._writeStruct(">H", 2, (len(string),))
-        self.object_stream.write(string)
+        if use_reference and isinstance(obj, JavaString):
+            try:
+                idx = self.references.index(obj)
+            except ValueError:
+                # First appearance of the string
+                self.references.append(obj)
+                logging.debug(
+                    "*** Adding ref 0x%X for string: %s",
+                    len(self.references) - 1 + self.BASE_REFERENCE_IDX, obj)
 
-    def write_string(self, obj):
+                self._writeStruct(">H", 2, (len(string),))
+                self.object_stream.write(string)
+            else:
+                # Write a reference to the previous type
+                logging.debug("*** Reusing ref 0x%X for string: %s",
+                              idx + self.BASE_REFERENCE_IDX, obj)
+                self.write_reference(idx)
+        else:
+            self._writeStruct(">H", 2, (len(string),))
+            self.object_stream.write(string)
+
+    def write_string(self, obj, use_reference=True):
         """
         Writes a Java string with the TC_STRING type marker
 
         :param obj: The string to print
+        :param use_reference: If True, allow writing a reference
         """
         self._writeStruct(">B", 1, (self.TC_STRING,))
-        self._writeString(obj)
+        self._writeString(obj, use_reference)
 
     def write_enum(self, obj):
         """
@@ -1236,6 +1260,12 @@ class JavaObjectMarshaller(JavaObjectConstants):
         cls = obj.get_class()
         self.write_classdesc(cls)
 
+        # Add reference
+        self.references.append([])
+        logging.debug(
+            "*** Adding ref 0x%X for object %s",
+            len(self.references) - 1 + self.BASE_REFERENCE_IDX, obj)
+
         all_names = []
         all_types = []
         tmpcls = cls
@@ -1245,8 +1275,13 @@ class JavaObjectMarshaller(JavaObjectConstants):
             tmpcls = tmpcls.superclass
         del tmpcls
 
+        logging.debug("<=> Field names: %s", all_names)
+        logging.debug("<=> Field types: %s", all_types)
+
         for field_name, field_type in zip(all_names, all_types):
             try:
+                logging.debug("Writing field %s (%s): %s",
+                              field_name, field_type, getattr(obj, field_name))
                 self._write_value(field_type, getattr(obj, field_name))
             except AttributeError as ex:
                 log_error("No attribute {0} for object {1}\nDir: {2}"
@@ -1284,8 +1319,12 @@ class JavaObjectMarshaller(JavaObjectConstants):
         :param obj: Class description to write
         :param parent:
         """
-        # Add reference
-        self.references.append(obj.name)
+        if obj not in self.references:
+            # Add reference
+            self.references.append(obj)
+            logging.debug(
+                "*** Adding ref 0x%X for classdesc %s",
+                len(self.references) - 1 + self.BASE_REFERENCE_IDX, obj.name)
 
         self._writeStruct(">B", 1, (self.TC_CLASSDESC,))
         self._writeString(obj.name)
@@ -1301,10 +1340,18 @@ class JavaObjectMarshaller(JavaObjectConstants):
                     idx = self.references.index(field_type)
                 except ValueError:
                     # First appearance of the type
-                    self.write_string(field_type)
                     self.references.append(field_type)
+                    logging.debug(
+                        "*** Adding ref 0x%X for field type %s",
+                        len(self.references) - 1 + self.BASE_REFERENCE_IDX,
+                        field_type)
+
+                    self.write_string(field_type, False)
                 else:
                     # Write a reference to the previous type
+                    logging.debug("*** Reusing ref 0x%X for %s (%s)",
+                                  idx + self.BASE_REFERENCE_IDX,
+                                  field_type, field_name)
                     self.write_reference(idx)
 
         self._writeStruct(">B", 1, (self.TC_ENDBLOCKDATA,))
@@ -1327,11 +1374,16 @@ class JavaObjectMarshaller(JavaObjectConstants):
 
         :param obj: A JavaArray object
         """
+        classdesc = obj.get_class()
         self._writeStruct(">B", 1, (self.TC_ARRAY,))
-        self.write_classdesc(obj.get_class())
+        self.write_classdesc(classdesc)
         self._writeStruct(">i", 1, (len(obj),))
 
-        classdesc = obj.get_class()
+        # Add reference
+        self.references.append(obj)
+        logging.debug(
+            "*** Adding ref 0x%X for array []",
+            len(self.references) - 1 + self.BASE_REFERENCE_IDX)
 
         type_char = classdesc.name[0]
         assert type_char == self.TYPE_ARRAY
@@ -1339,7 +1391,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
 
         if type_char == self.TYPE_OBJECT:
             for o in obj:
-                self.write_object(o)
+                self._write_value(classdesc.name[1:], o)
         elif type_char == self.TYPE_ARRAY:
             for a in obj:
                 self.write_array(a)
