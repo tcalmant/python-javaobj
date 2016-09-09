@@ -34,6 +34,7 @@ http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.ht
 """
 
 # Standard library
+import collections
 import logging
 import os
 import struct
@@ -1199,8 +1200,22 @@ class JavaObjectMarshaller(JavaObjectConstants):
         :param obj: The string to print
         :param use_reference: If True, allow writing a reference
         """
-        self._writeStruct(">B", 1, (self.TC_STRING,))
-        self._writeString(obj, use_reference)
+        if use_reference and isinstance(obj, JavaString):
+            try:
+                idx = self.references.index(obj)
+            except ValueError:
+                # String is not referenced: let _writeString store it
+                self._writeStruct(">B", 1, (self.TC_STRING,))
+                self._writeString(obj, use_reference)
+            else:
+                # Reuse the referenced string
+                logging.debug("*** Reusing ref 0x%X for String: %s",
+                              idx + self.BASE_REFERENCE_IDX, obj)
+                self.write_reference(idx)
+        else:
+            # Don't use references
+            self._writeStruct(">B", 1, (self.TC_STRING,))
+            self._writeString(obj, use_reference)
 
     def write_enum(self, obj):
         """
@@ -1266,12 +1281,12 @@ class JavaObjectMarshaller(JavaObjectConstants):
             "*** Adding ref 0x%X for object %s",
             len(self.references) - 1 + self.BASE_REFERENCE_IDX, obj)
 
-        all_names = []
-        all_types = []
+        all_names = collections.deque()
+        all_types = collections.deque()
         tmpcls = cls
         while tmpcls:
-            all_names.extend(tmpcls.fields_names)
-            all_types.extend(tmpcls.fields_types)
+            all_names.extendleft(reversed(tmpcls.fields_names))
+            all_types.extendleft(reversed(tmpcls.fields_types))
             tmpcls = tmpcls.superclass
         del tmpcls
 
@@ -1326,39 +1341,43 @@ class JavaObjectMarshaller(JavaObjectConstants):
                 "*** Adding ref 0x%X for classdesc %s",
                 len(self.references) - 1 + self.BASE_REFERENCE_IDX, obj.name)
 
-        self._writeStruct(">B", 1, (self.TC_CLASSDESC,))
-        self._writeString(obj.name)
-        self._writeStruct(">qB", 1, (obj.serialVersionUID, obj.flags))
-        self._writeStruct(">H", 1, (len(obj.fields_names),))
+            self._writeStruct(">B", 1, (self.TC_CLASSDESC,))
+            self._writeString(obj.name)
+            self._writeStruct(">qB", 1, (obj.serialVersionUID, obj.flags))
+            self._writeStruct(">H", 1, (len(obj.fields_names),))
 
-        for field_name, field_type in zip(obj.fields_names, obj.fields_types):
-            self._writeStruct(
-                ">B", 1, (self._convert_type_to_char(field_type),))
-            self._writeString(field_name)
-            if field_type[0] in (self.TYPE_OBJECT, self.TYPE_ARRAY):
-                try:
-                    idx = self.references.index(field_type)
-                except ValueError:
-                    # First appearance of the type
-                    self.references.append(field_type)
-                    logging.debug(
-                        "*** Adding ref 0x%X for field type %s",
-                        len(self.references) - 1 + self.BASE_REFERENCE_IDX,
-                        field_type)
+            for field_name, field_type \
+                    in zip(obj.fields_names, obj.fields_types):
+                self._writeStruct(
+                    ">B", 1, (self._convert_type_to_char(field_type),))
+                self._writeString(field_name)
+                if field_type[0] in (self.TYPE_OBJECT, self.TYPE_ARRAY):
+                    try:
+                        idx = self.references.index(field_type)
+                    except ValueError:
+                        # First appearance of the type
+                        self.references.append(field_type)
+                        logging.debug(
+                            "*** Adding ref 0x%X for field type %s",
+                            len(self.references) - 1 + self.BASE_REFERENCE_IDX,
+                            field_type)
 
-                    self.write_string(field_type, False)
-                else:
-                    # Write a reference to the previous type
-                    logging.debug("*** Reusing ref 0x%X for %s (%s)",
-                                  idx + self.BASE_REFERENCE_IDX,
-                                  field_type, field_name)
-                    self.write_reference(idx)
+                        self.write_string(field_type, False)
+                    else:
+                        # Write a reference to the previous type
+                        logging.debug("*** Reusing ref 0x%X for %s (%s)",
+                                      idx + self.BASE_REFERENCE_IDX,
+                                      field_type, field_name)
+                        self.write_reference(idx)
 
-        self._writeStruct(">B", 1, (self.TC_ENDBLOCKDATA,))
-        if obj.superclass:
-            self.write_classdesc(obj.superclass)
+            self._writeStruct(">B", 1, (self.TC_ENDBLOCKDATA,))
+            if obj.superclass:
+                self.write_classdesc(obj.superclass)
+            else:
+                self.write_null()
         else:
-            self.write_null()
+            # Use reference
+            self.write_reference(self.references.index(obj))
 
     def write_reference(self, ref_index):
         """
