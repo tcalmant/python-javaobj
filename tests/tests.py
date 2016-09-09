@@ -92,6 +92,26 @@ class TestJavaobj(unittest.TestCase):
             with open(found_file, 'rb') as filep:
                 return filep.read()
 
+    def _try_marshalling(self, original_stream, original_object):
+        """
+        Tries to marshall an object and compares it to the original stream
+        """
+        marshalled_stream = javaobj.dumps(original_object)
+        # Reloading the new dump allows to compare the decoding sequence
+        try:
+            javaobj.loads(marshalled_stream)
+            self.assertEqual(original_stream, marshalled_stream)
+        except:
+            print("-" * 80)
+            print("=" * 30, "Original", "=" * 30)
+            print(javaobj.JavaObjectUnmarshaller._create_hexdump(
+                original_stream))
+            print("*" * 30, "Marshalled", "*" * 30)
+            print(javaobj.JavaObjectUnmarshaller._create_hexdump(
+                marshalled_stream))
+            print("-" * 80)
+            raise
+
     def test_char_rw(self):
         """
         Reads testChar.ser and checks the serialization process
@@ -100,8 +120,7 @@ class TestJavaobj(unittest.TestCase):
         pobj = javaobj.loads(jobj)
         _logger.debug("Read char object: %s", pobj)
         self.assertEqual(pobj, '\x00C')
-        jobj_ = javaobj.dumps(pobj)
-        self.assertEqual(jobj, jobj_)
+        self._try_marshalling(jobj, pobj)
 
     def test_double_rw(self):
         """
@@ -112,9 +131,7 @@ class TestJavaobj(unittest.TestCase):
         _logger.debug("Read double object: %s", pobj)
 
         self.assertEqual(pobj, '\x7f\xef\xff\xff\xff\xff\xff\xff')
-
-        jobj_ = javaobj.dumps(pobj)
-        self.assertEqual(jobj, jobj_)
+        self._try_marshalling(jobj, pobj)
 
     def test_bytes_rw(self):
         """
@@ -125,19 +142,14 @@ class TestJavaobj(unittest.TestCase):
         _logger.debug("Read bytes: %s", pobj)
 
         self.assertEqual(pobj, 'HelloWorld')
-
-        jobj_ = javaobj.dumps(pobj)
-        self.assertEqual(jobj, jobj_)
+        self._try_marshalling(jobj, pobj)
 
     def test_class_with_byte_array_rw(self):
         jobj = self.read_file("testClassWithByteArray.ser")
         pobj = javaobj.loads(jobj)
 
         self.assertEqual(pobj.myArray, [1,3,7,11])
-
-        jobj_ = javaobj.dumps(pobj)
-        javaobj.loads(jobj_)
-        self.assertEqual(jobj, jobj_)
+        self._try_marshalling(jobj, pobj)
 
     def test_boolean(self):
         """
@@ -148,9 +160,7 @@ class TestJavaobj(unittest.TestCase):
         _logger.debug("Read boolean object: %s", pobj)
 
         self.assertEqual(pobj, chr(0))
-
-        jobj_ = javaobj.dumps(pobj)
-        self.assertEqual(jobj, jobj_)
+        self._try_marshalling(jobj, pobj)
 
     def test_byte(self):
         """
@@ -163,9 +173,7 @@ class TestJavaobj(unittest.TestCase):
         _logger.debug("Read Byte: %r", pobj)
 
         self.assertEqual(pobj, chr(127))
-
-        jobj_ = javaobj.dumps(pobj)
-        self.assertEqual(jobj, jobj_)
+        self._try_marshalling(jobj, pobj)
 
     def test_fields(self):
         """
@@ -189,11 +197,7 @@ class TestJavaobj(unittest.TestCase):
         _logger.debug(".. Fields Types: %s", classdesc.fields_types)
 
         self.assertEqual(len(classdesc.fields_names), 3)
-
-        jobj_ = javaobj.dumps(pobj)
-        # Reloading the new dump allows to compare the decoding sequence
-        javaobj.loads(jobj_)
-        self.assertEqual(jobj, jobj_)
+        self._try_marshalling(jobj, pobj)
 
     def test_class(self):
         """
@@ -203,9 +207,7 @@ class TestJavaobj(unittest.TestCase):
         pobj = javaobj.loads(jobj)
         _logger.debug("Read object: %s", pobj)
         self.assertEqual(pobj.name, 'java.lang.String')
-
-        jobj_ = javaobj.dumps(pobj)
-        self.assertEqual(jobj, jobj_)
+        self._try_marshalling(jobj, pobj)
 
     # def test_swing_object(self):
     #     """
@@ -235,6 +237,8 @@ class TestJavaobj(unittest.TestCase):
         self.assertEqual(pobj.integer, -1)
         self.assertEqual(pobj.superString, "Super!!")
 
+        self._try_marshalling(jobj, pobj)
+
     def test_arrays(self):
         jobj = self.read_file("objArrays.ser")
         pobj = javaobj.loads(jobj)
@@ -256,6 +260,8 @@ class TestJavaobj(unittest.TestCase):
         _logger.debug(pobj.boolArr)
         _logger.debug(pobj.concreteArr)
 
+        self._try_marshalling(jobj, pobj)
+
     def test_enums(self):
         jobj = self.read_file("objEnums.ser")
         pobj = javaobj.loads(jobj)
@@ -273,6 +279,8 @@ class TestJavaobj(unittest.TestCase):
         for color, intended in zip(pobj.colors, ("GREEN", "BLUE", "RED")):
             self.assertEqual(color.classdesc.name, "Color")
             self.assertEqual(color.constant, intended)
+
+            # self._try_marshalling(jobj, pobj)
 
     # def test_exception(self):
     #     jobj = self.read_file("objException.ser")
@@ -312,10 +320,14 @@ class TestJavaobj(unittest.TestCase):
         _logger.debug("linkedList: %s", pobj.linkedList)
         self.assertTrue(isinstance(pobj.linkedList, list))
 
+        # FIXME: referencing problems with the collection class
+        # self._try_marshalling(jobj, pobj)
+
     def test_jceks_issue_5(self):
         jobj = self.read_file("jceks_issue_5.ser")
         pobj = javaobj.loads(jobj)
         _logger.info(pobj)
+        # self._try_marshalling(jobj, pobj)
 
 # ------------------------------------------------------------------------------
 
