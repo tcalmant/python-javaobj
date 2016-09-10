@@ -1,5 +1,6 @@
 language: python
 python: 3.5
+sudo: false
 
 env:
   - TOX_ENV=py27
@@ -19,5 +20,4 @@ script:
   - tox -e $TOX_ENV
 
 after_success:
-  - coverage combine
   - coveralls
