@@ -161,7 +161,8 @@ def load(file_object, *transformers, **kwargs):
     # Read keyword argument
     ignore_remaining_data = kwargs.get('ignore_remaining_data', False)
 
-    marshaller = JavaObjectUnmarshaller(file_object)
+    marshaller = JavaObjectUnmarshaller(
+        file_object, kwargs.get('use_numpy_arrays', False))
 
     # Add custom transformers first
     for transformer in transformers:
@@ -413,6 +414,17 @@ class JavaObjectConstants(object):
 
     BASE_REFERENCE_IDX = 0x7E0000
 
+    NUMPY_TYPE_MAP = {
+        TYPE_BYTE: 'B',
+        TYPE_CHAR: 'b',
+        TYPE_DOUBLE: '>d',
+        TYPE_FLOAT: '>f',
+        TYPE_INTEGER: '>i',
+        TYPE_LONG: '>l',
+        TYPE_SHORT: '>h',
+        TYPE_BOOLEAN: '>B'
+    }
+
 
 class OpCodeDebug(object):
     # Type codes
@@ -453,13 +465,15 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
     """
     Deserializes a Java serialization stream
     """
-    def __init__(self, stream):
+    def __init__(self, stream, use_numpy_arrays=False):
         """
         Sets up members
 
         :param stream: An input stream (opened in binary/bytes mode)
         :raise IOError: Invalid input stream
         """
+        self.use_numpy_arrays = use_numpy_arrays
+
         # Check stream
         if stream is None:
             raise IOError("No input stream given")
@@ -915,6 +929,12 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
                 array.append(res)
         elif type_char == self.TYPE_BYTE:
             array = JavaByteArray(self.object_stream.read(size), classdesc)
+        elif self.use_numpy_arrays and type_char != self.TYPE_BYTE:
+            import numpy
+            array = numpy.fromfile(
+                self.object_stream,
+                dtype=JavaObjectConstants.NUMPY_TYPE_MAP[type_char],
+                count=size)
         else:
             for _ in range(size):
                 res = self._read_value(type_char, ident)
