@@ -1002,6 +1002,11 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             res = bool(val)
         elif field_type == self.TYPE_BYTE:
             (res,) = self._readStruct(">b")
+        elif field_type == self.TYPE_CHAR:
+            # TYPE_CHAR is defined by the serialization specification
+            # but not used in the implementation, so this is
+            # a hypothetical code
+            res = bytes(self._readStruct(">bb")).decode("utf-16-be")
         elif field_type == self.TYPE_SHORT:
             (res,) = self._readStruct(">h")
         elif field_type == self.TYPE_INTEGER:
