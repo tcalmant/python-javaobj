@@ -148,7 +148,7 @@ class TestJavaobj(unittest.TestCase):
         jobj = self.read_file("testClassWithByteArray.ser")
         pobj = javaobj.loads(jobj)
 
-        self.assertEqual(pobj.myArray, [1,3,7,11])
+        self.assertEqual(pobj.myArray, b"\x01\x03\x07\x0b")
         self._try_marshalling(jobj, pobj)
 
     def test_boolean(self):
