@@ -344,7 +344,6 @@ class JavaByteArray(bytearray, JavaObject):
     """
     Represents the special case of Java Array which contains bytes
     """
-
     def __init__(self, data, classdesc=None):
         bytearray.__init__(self, data)
         JavaObject.__init__(self)
@@ -1478,8 +1477,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
                 self.write_null()
             elif isinstance(value, JavaEnum):
                 self.write_enum(value)
-            elif isinstance(value, JavaArray) \
-                    or isinstance(value, JavaByteArray):
+            elif isinstance(value, (JavaArray, JavaByteArray)):
                 self.write_array(value)
             elif isinstance(value, JavaObject):
                 self.write_object(value)
