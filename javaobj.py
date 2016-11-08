@@ -339,6 +339,17 @@ class JavaArray(list, JavaObject):
         JavaObject.__init__(self)
         self.classdesc = classdesc
 
+
+class JavaByteArray(bytearray, JavaObject):
+    """
+    Represents the special case of Java Array which contains bytes
+    """
+
+    def __init__(self, data, classdesc=None):
+        bytearray.__init__(self, data)
+        JavaObject.__init__(self)
+        self.classdesc = classdesc
+
 # ------------------------------------------------------------------------------
 
 
@@ -903,6 +914,8 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
                 _, res = self._read_and_exec_opcode(ident=ident + 1)
                 log_debug("Object value: {0}".format(res), ident)
                 array.append(res)
+        elif type_char == self.TYPE_BYTE:
+            array = JavaByteArray(self.object_stream.read(size), classdesc)
         else:
             for _ in range(size):
                 res = self._read_value(type_char, ident)
@@ -1465,7 +1478,8 @@ class JavaObjectMarshaller(JavaObjectConstants):
                 self.write_null()
             elif isinstance(value, JavaEnum):
                 self.write_enum(value)
-            elif isinstance(value, JavaArray):
+            elif isinstance(value, JavaArray) \
+                    or isinstance(value, JavaByteArray):
                 self.write_array(value)
             elif isinstance(value, JavaObject):
                 self.write_object(value)
