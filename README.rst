@@ -44,6 +44,14 @@ The *object creator* is called before the deserialization.
 This allows to store the reference of the converted object before deserializing
 it, and avoids a mismatch between the referenced object and the transformed one.
 
+
+Compatibility Warning: bytes arrays
+-----------------------------------
+
+As of version 0.2.3, bytes arrays are loaded as a ``bytes`` object instead of
+an array of integers.
+
+
 Features
 ========
 
