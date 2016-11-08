@@ -929,7 +929,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
                 array.append(res)
         elif type_char == self.TYPE_BYTE:
             array = JavaByteArray(self.object_stream.read(size), classdesc)
-        elif self.use_numpy_arrays and type_char != self.TYPE_BYTE:
+        elif self.use_numpy_arrays:
             import numpy
             array = numpy.fromfile(
                 self.object_stream,
