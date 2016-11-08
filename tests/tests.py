@@ -122,6 +122,19 @@ class TestJavaobj(unittest.TestCase):
         self.assertEqual(pobj, '\x00C')
         self._try_marshalling(jobj, pobj)
 
+    def test_chars_rw(self):
+        """
+        Reads testChars.ser and checks the serialization process
+        """
+        # Expected string as a UTF-16 string
+        expected = "python-javaobj".encode("utf-16-be").decode("latin1")
+
+        jobj = self.read_file("testChars.ser")
+        pobj = javaobj.loads(jobj)
+        _logger.debug("Read char objects: %s", pobj)
+        self.assertEqual(pobj, expected)
+        self._try_marshalling(jobj, pobj)
+
     def test_double_rw(self):
         """
         Reads testDouble.ser and checks the serialization process

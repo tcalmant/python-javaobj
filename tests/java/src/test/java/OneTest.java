@@ -19,7 +19,7 @@ import org.junit.rules.TestName;
 
 class ClassWithEnum implements Serializable {
 	/**
-	 * 
+	 *
 	 */
 	private static final long serialVersionUID = 1L;
 	public Color color = Color.GREEN;
@@ -48,13 +48,13 @@ class MyExceptionWhenDumping implements java.io.Serializable {
 	protected static class MyException extends java.io.IOException {
 
 		/**
-		 * 
+		 *
 		 */
 		private static final long serialVersionUID = 1L;
 	}
 
 	/**
-	 * 
+	 *
 	 */
 	private static final long serialVersionUID = 1L;;
 
@@ -86,7 +86,7 @@ public class OneTest {
 
 	public static class B1 implements Serializable {
 		/**
-		 * 
+		 *
 		 */
 		private static final long serialVersionUID = 1L;
 		Hashtable<Object, Object> h = new Hashtable<Object, Object>();
@@ -96,7 +96,7 @@ public class OneTest {
 	public class SerializableTestHelper implements Serializable {
 
 		/**
-		 * 
+		 *
 		 */
 		private static final long serialVersionUID = 0x7F0941F5L;
 
@@ -187,6 +187,12 @@ public class OneTest {
 	@Test
 	public void testChar() throws IOException {
 		oos.writeChar('C');
+		oos.close();
+	}
+
+	@Test
+	public void testChars() throws IOException {
+		oos.writeChars("python-javaobj");
 		oos.close();
 	}
 
@@ -365,7 +371,7 @@ public class OneTest {
 class SuperAaaa implements Serializable {
 
 	/**
-	 * 
+	 *
 	 */
 	private static final long serialVersionUID = 1L;
 	public boolean bool = true;
@@ -377,7 +383,7 @@ class SuperAaaa implements Serializable {
 class TestConcrete extends SuperAaaa implements Serializable {
 
 	/**
-	 * 
+	 *
 	 */
 	private static final long serialVersionUID = 1L;
 	public String childString = "Child!!";
