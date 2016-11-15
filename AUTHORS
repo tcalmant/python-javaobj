@@ -1,9 +1,10 @@
 The python-javaobj package was originally developed by
-* Volodymyr BUELL (@vbuell)
+* Volodymyr Buell (@vbuell)
 
 This fork, javaobj-py3, is maintained by
-* Thomas CALMANT (@tcalmant)
+* Thomas Calmant (@tcalmant)
 
 Many thanks to the contributors:
 * Patrick J. McNerthney (@iciclespider)
 * @voetsjoeba
+* Vadim Markovtsev (@vmarkovtsev)
