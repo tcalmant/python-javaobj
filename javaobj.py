@@ -304,7 +304,7 @@ class JavaObject(object):
             return False
 
         for name in self.classdesc.fields_names:
-            if not (getattr(self, name) == getattr(other, name)):
+            if not getattr(self, name) == getattr(other, name):
                 return False
         return True
 
@@ -427,6 +427,9 @@ class JavaObjectConstants(object):
 
 
 class OpCodeDebug(object):
+    """
+    OP Codes definition and utility methods
+    """
     # Type codes
     OP_CODE = dict((getattr(JavaObjectConstants, key), key)
                    for key in dir(JavaObjectConstants)
@@ -442,21 +445,37 @@ class OpCodeDebug(object):
 
     @staticmethod
     def op_id(op_id):
+        """
+        Returns the name of the given OP Code
+        :param op_id: OP Code
+        :return: Name of the OP Code
+        """
         return OpCodeDebug.OP_CODE.get(
             op_id, "<unknown OP:{0}>".format(op_id))
 
     @staticmethod
     def type_code(type_id):
+        """
+        Returns the name of the given Type Code
+        :param type_id: Type code
+        :return: Name of the type code
+        """
         return OpCodeDebug.TYPE.get(
             type_id, "<unknown Type:{0}>".format(type_id))
 
     @staticmethod
     def flags(flags):
+        """
+        Returns the names of the class description flags found in the given
+        integer
+
+        :param flags: A class description flag entry
+        :return: The flags names as a single string
+        """
         names = sorted(
             descr for key, descr in OpCodeDebug.STREAM_CONSTANT.items()
             if key & flags)
         return ', '.join(names)
-
 
 # ------------------------------------------------------------------------------
 
@@ -1545,46 +1564,47 @@ class DefaultObjectTransformer(object):
     Converts JavaObject objects to Python types (maps, lists, ...)
     """
     class JavaList(list, JavaObject):
+        """
+        Python-Java list bridge type
+        """
         def __init__(self, *args, **kwargs):
             list.__init__(self, *args, **kwargs)
             JavaObject.__init__(self)
 
     class JavaMap(dict, JavaObject):
+        """
+        Python-Java dictionary/map bridge type
+        """
         def __init__(self, *args, **kwargs):
             dict.__init__(self, *args, **kwargs)
             JavaObject.__init__(self)
+
+    TYPE_MAPPER = {
+        "java.util.ArrayList": JavaList,
+        "java.util.LinkedList": JavaList,
+        "java.util.HashMap": JavaMap,
+        "java.util.LinkedHashMap": JavaMap,
+        "java.util.TreeMap": JavaMap,
+    }
 
     def create(self, classdesc):
         """
         Transforms a deserialized Java object into a Python object
 
-        :param java_object: A JavaObject instance
+        :param classdesc: The description of a Java class
         :return: The Python form of the object, or the original JavaObject
         """
-
-        if classdesc.name in ("java.util.ArrayList", "java.util.LinkedList"):
-            # @serialData The length of the array backing the
-            #             <tt>ArrayList</tt> instance is emitted (int),
-            #             followed by all of its elements
-            #             (each an <tt>Object</tt>) in the proper order
+        try:
+            mapped_type = self.TYPE_MAPPER[classdesc.name]
+        except KeyError:
+            # Return a JavaObject by default
+            return JavaObject()
+        else:
             log_debug("---")
             log_debug(classdesc.name)
             log_debug("---")
 
-            java_object = self.JavaList()
+            java_object = mapped_type()
 
             log_debug(">>> java_object: {0}".format(java_object))
             return java_object
-
-        if classdesc.name == "java.util.HashMap":
-            log_debug("---")
-            log_debug("java.util.HashMap")
-            log_debug("---")
-
-            java_object = self.JavaMap()
-
-            log_debug(">>> java_object: {0}".format(java_object))
-            return java_object
-
-        # Return a JavaObject by default
-        return JavaObject()
