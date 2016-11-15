@@ -60,6 +60,7 @@ Features
 * Primitive values unmarshaling
 * Automatic conversion of Java Collections to python ones
   (``HashMap`` => ``dict``, ``ArrayList`` => ``list``, etc.)
+* Basic marshalling of simple Java objects
 
 Requirements
 ============
