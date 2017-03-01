@@ -946,6 +946,12 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
                 _, res = self._read_and_exec_opcode(ident=ident + 1)
                 log_debug("Object value: {0}".format(res), ident)
                 array.append(res)
+        elif self.use_numpy_arrays and type_char != self.TYPE_BYTE:
+            import numpy
+            array = numpy.fromfile(
+                self.object_stream,
+                dtype=JavaObjectConstants.NUMPY_TYPE_MAP[type_char],
+                count=size)
         elif type_char == self.TYPE_BYTE:
             array = JavaByteArray(self.object_stream.read(size), classdesc)
         elif self.use_numpy_arrays:
