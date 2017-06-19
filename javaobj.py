@@ -341,14 +341,26 @@ class JavaArray(list, JavaObject):
         self.classdesc = classdesc
 
 
-class JavaByteArray(bytearray, JavaObject):
+class JavaByteArray(JavaObject):
     """
     Represents the special case of Java Array which contains bytes
     """
     def __init__(self, data, classdesc=None):
-        bytearray.__init__(self, data)
         JavaObject.__init__(self)
+        self._data = struct.unpack("b" * len(data), data)
         self.classdesc = classdesc
+
+    def __str__(self):
+        return "JavaByteArray({0})".format(self._data)
+
+    def __getitem__(self, item):
+        return self._data[item]
+
+    def __iter__(self):
+        return iter(self._data)
+
+    def __len__(self):
+        return len(self._data)
 
 # ------------------------------------------------------------------------------
 
@@ -1489,6 +1501,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
         else:
             log_debug("Write array of type %s" % type_char)
             for v in obj:
+                log_debug("Writing: %s" % v)
                 self._write_value(type_char, v)
 
     def _write_value(self, field_type, value):
