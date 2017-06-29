@@ -47,6 +47,12 @@ except ImportError:
     # Python 3+
     from io import BytesIO
 
+try:
+    import ftfy.bad_codecs
+    javacodec = "utf-8-var"
+except ImportError:
+    javacodec = "utf-8"
+
 # ------------------------------------------------------------------------------
 
 # Module version
@@ -641,7 +647,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         """
         (length,) = self._readStruct(">{0}".format(length_fmt))
         ba = self.object_stream.read(length)
-        return to_str(ba)
+        return to_str(ba.decode(javacodec))
 
     def do_classdesc(self, parent=None, ident=0):
         """
