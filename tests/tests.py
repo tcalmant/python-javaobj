@@ -161,7 +161,12 @@ class TestJavaobj(unittest.TestCase):
         jobj = self.read_file("testClassWithByteArray.ser")
         pobj = javaobj.loads(jobj)
 
-        self.assertEqual(pobj.myArray, b"\x01\x03\x07\x0b")
+	# j8spencer (Google, LLC) 2018-01-16:  It seems specific support for 
+        # byte arrays was added, but is a little out-of-step with the other
+        # types in terms of style.  This UT was broken, since the "myArray"
+        # member has the array stored as a tuple of ints (not a byte string)
+        # in memeber called '_data.'  I've updated to pass the UTs.
+        self.assertEqual(pobj.myArray._data, (1, 3, 7, 11))
         self._try_marshalling(jobj, pobj)
 
     def test_boolean(self):

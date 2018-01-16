@@ -750,6 +750,11 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         log_debug("Super Class for {0}: {1}"
                   .format(clazz.name, str(superclassdesc)), ident)
         clazz.superclass = superclassdesc
+        # j8spencer (Google, LLC) 2018-01-16: OR in superclass flags to catch
+        # any SC_WRITE_METHODs needed for objects.
+        if superclassdesc and hasattr(superclassdesc, "flags"):
+            clazz.flags |= superclassdesc.flags
+
         return clazz
 
     def do_blockdata(self, parent=None, ident=0):
