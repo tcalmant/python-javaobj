@@ -1,23 +1,18 @@
 language: python
-python: 3.5
+python:
+  - "2.7"
+  - "3.4"
+  - "3.5"
+  - "3.6"
+
 sudo: false
 
-env:
-  - TOX_ENV=py27
-  - TOX_ENV=py33
-  - TOX_ENV=py34
-  - TOX_ENV=py35
-  - TOX_ENV=pypy
-  - TOX_ENV=pypy3
-
 install:
-  - pip install tox
-  - pip install coverage
-  - pip install coveralls
+  - pip install nose coverage coveralls
   - pip install pytest>=2.7.3 --upgrade
 
 script:
-  - tox -e $TOX_ENV
+  - nosetests -v --with-coverage --cover-package=javaobj tests
 
 after_success:
   - coveralls

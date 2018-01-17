@@ -65,7 +65,7 @@ Features
 Requirements
 ============
 
-* Python >= 2.7 or Python >= 3.2
+* Python >= 2.7 or Python >= 3.4
 * Maven 2+ (for building test data of serialized objects.
   You can skip it if you do not plan to run ``tests.py``)
 
