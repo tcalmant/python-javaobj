@@ -161,7 +161,7 @@ class TestJavaobj(unittest.TestCase):
         jobj = self.read_file("testClassWithByteArray.ser")
         pobj = javaobj.loads(jobj)
 
-	# j8spencer (Google, LLC) 2018-01-16:  It seems specific support for 
+        # j8spencer (Google, LLC) 2018-01-16:  It seems specific support for
         # byte arrays was added, but is a little out-of-step with the other
         # types in terms of style.  This UT was broken, since the "myArray"
         # member has the array stored as a tuple of ints (not a byte string)
