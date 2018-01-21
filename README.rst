@@ -32,7 +32,7 @@ This project is a fork of *python-javaobj* by Volodymyr Buell, originally from
 `Google Code <http://code.google.com/p/python-javaobj/>`_ and now hosted on
 `GitHub <https://github.com/vbuell/python-javaobj>`_.
 
-This fork intends to work both on Python 2.7 and Python 3.2+.
+This fork intends to work both on Python 2.7 and Python 3.4+.
 
 Compatibility Warning: object transformer
 -----------------------------------------

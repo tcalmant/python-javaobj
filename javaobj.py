@@ -13,7 +13,7 @@ http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.ht
 
 :authors: Volodymyr Buell, Thomas Calmant
 :license: Apache License 2.0
-:version: 0.2.3
+:version: 0.2.4
 :status: Alpha
 
 ..
@@ -56,7 +56,7 @@ except ImportError:
 # ------------------------------------------------------------------------------
 
 # Module version
-__version_info__ = (0, 2, 3)
+__version_info__ = (0, 2, 4)
 __version__ = ".".join(str(x) for x in __version_info__)
 
 # Documentation strings format
@@ -88,6 +88,7 @@ def log_error(message, ident=0):
     _log.error(" " * (ident * 2) + str(message))
 
 # ------------------------------------------------------------------------------
+
 
 if sys.version_info[0] >= 3:
     # Python 3 interpreter : bytes & str

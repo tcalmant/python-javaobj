@@ -7,7 +7,7 @@ http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.ht
 
 :authors: Volodymyr Buell, Thomas Calmant
 :license: Apache License 2.0
-:version: 0.2.3
+:version: 0.2.4
 :status: Alpha
 
 ..
@@ -37,7 +37,7 @@ except ImportError:
 # ------------------------------------------------------------------------------
 
 # Module version
-__version_info__ = (0, 2, 3)
+__version_info__ = (0, 2, 4)
 __version__ = ".".join(str(x) for x in __version_info__)
 
 # Documentation strings format
@@ -74,8 +74,8 @@ setup(
             "License :: OSI Approved :: Apache Software License",
             'Operating System :: OS Independent',
             'Programming Language :: Python :: 2.7',
-            'Programming Language :: Python :: 3.3',
             'Programming Language :: Python :: 3.4',
             'Programming Language :: Python :: 3.5',
+            'Programming Language :: Python :: 3.6',
             "Topic :: Software Development :: Libraries :: Python Modules",
     ])
