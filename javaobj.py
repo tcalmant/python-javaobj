@@ -127,6 +127,7 @@ if sys.version_info[0] >= 3:
         return ''.join(chr(char) for char in data)
 
     unichr = chr
+    unicode = str
 
 else:
     # Python 2 interpreter : str & unicode
@@ -983,7 +984,11 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         else:
             for _ in range(size):
                 res = self._read_value(type_char, ident)
-                log_debug("Native value: {0}".format(res), ident)
+                _res = res
+                # py2
+                if str is not unicode and isinstance(res, unicode):
+                    _res = res.encode('ascii', 'replace')
+                log_debug("Native value: {0}".format(_res), ident)
                 array.append(res)
 
         return array
@@ -1074,13 +1079,15 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             # We don't need details for arrays and objects
             field_type = field_type[0]
 
+        _res = None
         if field_type == self.TYPE_BOOLEAN:
             (val,) = self._readStruct(">B")
             res = bool(val)
         elif field_type == self.TYPE_BYTE:
             (res,) = self._readStruct(">b")
         elif field_type == self.TYPE_CHAR:
-            res = unichr(self._readStruct(">H")[0])
+            _res = self._readStruct(">H")[0]
+            res = unichr(_res)
         elif field_type == self.TYPE_SHORT:
             (res,) = self._readStruct(">h")
         elif field_type == self.TYPE_INTEGER:
@@ -1096,7 +1103,10 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         else:
             raise RuntimeError("Unknown typecode: {0}".format(field_type))
 
-        log_debug("* {0} {1}: {2}".format(field_type, name, res), ident)
+        if _res is None:
+            _res = res
+
+        log_debug("* {0} {1}: {2}".format(field_type, name, _res), ident)
         return res
 
     def _convert_char_to_type(self, type_char):
@@ -1512,7 +1522,10 @@ class JavaObjectMarshaller(JavaObjectConstants):
         else:
             log_debug("Write array of type %s" % type_char)
             for v in obj:
-                log_debug("Writing: %s" % v)
+                _v = v
+                if str is not unicode and isinstance(v, unicode):
+                    _v = v.encode('ascii', 'replace')
+                log_debug("Writing: %s" % _v)
                 self._write_value(type_char, v)
 
     def _write_value(self, field_type, value):
