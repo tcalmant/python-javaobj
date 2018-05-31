@@ -126,6 +126,8 @@ if sys.version_info[0] >= 3:
         """
         return ''.join(chr(char) for char in data)
 
+    unichr = chr
+
 else:
     # Python 2 interpreter : str & unicode
     def to_str(data, encoding="UTF-8"):
@@ -1078,10 +1080,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         elif field_type == self.TYPE_BYTE:
             (res,) = self._readStruct(">b")
         elif field_type == self.TYPE_CHAR:
-            # TYPE_CHAR is defined by the serialization specification
-            # but not used in the implementation, so this is
-            # a hypothetical code
-            res = bytes(self._readStruct(">bb")).decode("utf-16-be")
+            res = unichr(self._readStruct(">H")[0])
         elif field_type == self.TYPE_SHORT:
             (res,) = self._readStruct(">h")
         elif field_type == self.TYPE_INTEGER:
@@ -1531,6 +1530,8 @@ class JavaObjectMarshaller(JavaObjectConstants):
             self._writeStruct(">B", 1, (1 if value else 0,))
         elif field_type == self.TYPE_BYTE:
             self._writeStruct(">b", 1, (value,))
+        elif field_type == self.TYPE_CHAR:
+            self._writeStruct(">H", 1, (ord(value),))
         elif field_type == self.TYPE_SHORT:
             self._writeStruct(">h", 1, (value,))
         elif field_type == self.TYPE_INTEGER:

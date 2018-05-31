@@ -280,6 +280,13 @@ class TestJavaobj(unittest.TestCase):
 
         self._try_marshalling(jobj, pobj)
 
+    def test_char_array(self):
+        jobj = self.read_file("testCharArray.ser")
+        pobj = javaobj.loads(jobj)
+        _logger.debug(pobj)
+        self.assertEqual(pobj, ['\u0000', '\ud800', '\u0001', '\udc00', '\u0002', '\uffff', '\u0003'])
+        self._try_marshalling(jobj, pobj)
+
     def test_enums(self):
         jobj = self.read_file("objEnums.ser")
         pobj = javaobj.loads(jobj)
