@@ -13,7 +13,7 @@ http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.ht
 
 :authors: Volodymyr Buell, Thomas Calmant
 :license: Apache License 2.0
-:version: 0.2.4
+:version: 0.2.3
 :status: Alpha
 
 ..
@@ -47,16 +47,10 @@ except ImportError:
     # Python 3+
     from io import BytesIO
 
-try:
-    import ftfy.bad_codecs
-    javacodec = "utf-8-var"
-except ImportError:
-    javacodec = "utf-8"
-
 # ------------------------------------------------------------------------------
 
 # Module version
-__version_info__ = (0, 2, 4)
+__version_info__ = (0, 2, 3)
 __version__ = ".".join(str(x) for x in __version_info__)
 
 # Documentation strings format
@@ -88,7 +82,6 @@ def log_error(message, ident=0):
     _log.error(" " * (ident * 2) + str(message))
 
 # ------------------------------------------------------------------------------
-
 
 if sys.version_info[0] >= 3:
     # Python 3 interpreter : bytes & str
@@ -125,9 +118,6 @@ if sys.version_info[0] >= 3:
         Concats all bytes into a string
         """
         return ''.join(chr(char) for char in data)
-
-    unichr = chr
-    unicode = str
 
 else:
     # Python 2 interpreter : str & unicode
@@ -651,7 +641,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         """
         (length,) = self._readStruct(">{0}".format(length_fmt))
         ba = self.object_stream.read(length)
-        return to_str(ba.decode(javacodec))
+        return to_str(ba)
 
     def do_classdesc(self, parent=None, ident=0):
         """
@@ -754,11 +744,6 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         log_debug("Super Class for {0}: {1}"
                   .format(clazz.name, str(superclassdesc)), ident)
         clazz.superclass = superclassdesc
-        # j8spencer (Google, LLC) 2018-01-16: OR in superclass flags to catch
-        # any SC_WRITE_METHODs needed for objects.
-        if superclassdesc and hasattr(superclassdesc, "flags"):
-            clazz.flags |= superclassdesc.flags
-
         return clazz
 
     def do_blockdata(self, parent=None, ident=0):
@@ -989,11 +974,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         else:
             for _ in range(size):
                 res = self._read_value(type_char, ident)
-                _res = res
-                # py2
-                if str is not unicode and isinstance(res, unicode):
-                    _res = res.encode('ascii', 'replace')
-                log_debug("Native value: {0}".format(_res), ident)
+                log_debug("Native value: {0}".format(res), ident)
                 array.append(res)
 
         return array
@@ -1084,15 +1065,16 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             # We don't need details for arrays and objects
             field_type = field_type[0]
 
-        _res = None
         if field_type == self.TYPE_BOOLEAN:
             (val,) = self._readStruct(">B")
             res = bool(val)
         elif field_type == self.TYPE_BYTE:
             (res,) = self._readStruct(">b")
         elif field_type == self.TYPE_CHAR:
-            _res = self._readStruct(">H")[0]
-            res = unichr(_res)
+            # TYPE_CHAR is defined by the serialization specification
+            # but not used in the implementation, so this is
+            # a hypothetical code
+            res = bytes(self._readStruct(">bb")).decode("utf-16-be")
         elif field_type == self.TYPE_SHORT:
             (res,) = self._readStruct(">h")
         elif field_type == self.TYPE_INTEGER:
@@ -1108,10 +1090,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         else:
             raise RuntimeError("Unknown typecode: {0}".format(field_type))
 
-        if _res is None:
-            _res = res
-
-        log_debug("* {0} {1}: {2}".format(field_type, name, _res), ident)
+        log_debug("* {0} {1}: {2}".format(field_type, name, res), ident)
         return res
 
     def _convert_char_to_type(self, type_char):
@@ -1527,10 +1506,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
         else:
             log_debug("Write array of type %s" % type_char)
             for v in obj:
-                _v = v
-                if str is not unicode and isinstance(v, unicode):
-                    _v = v.encode('ascii', 'replace')
-                log_debug("Writing: %s" % _v)
+                log_debug("Writing: %s" % v)
                 self._write_value(type_char, v)
 
     def _write_value(self, field_type, value):
@@ -1548,8 +1524,6 @@ class JavaObjectMarshaller(JavaObjectConstants):
             self._writeStruct(">B", 1, (1 if value else 0,))
         elif field_type == self.TYPE_BYTE:
             self._writeStruct(">b", 1, (value,))
-        elif field_type == self.TYPE_CHAR:
-            self._writeStruct(">H", 1, (ord(value),))
         elif field_type == self.TYPE_SHORT:
             self._writeStruct(">h", 1, (value,))
         elif field_type == self.TYPE_INTEGER:
@@ -1638,6 +1612,17 @@ class DefaultObjectTransformer(object):
             """
             Loads the content of the map, written with a custom implementation
             """
+            # Group annotation elements 2 by 2
+            args = [iter(self.annotations[1:])] * 2
+            for key, value in zip(*args):
+                self[key] = value
+
+    class JavaLinkedHashMap(JavaMap):
+        def __extra_loading__(self, unmarshaller, ident=0):
+            # type: (JavaObjectUnmarshaller, int) -> None
+            """
+            Loads the content of the map, written with a custom implementation
+            """
             # Ignore the blockdata opid
             (opid,) = unmarshaller._readStruct(">B")
             if opid != unmarshaller.SC_BLOCK_DATA:
@@ -1668,7 +1653,7 @@ class DefaultObjectTransformer(object):
         "java.util.ArrayList": JavaList,
         "java.util.LinkedList": JavaList,
         "java.util.HashMap": JavaMap,
-        "java.util.LinkedHashMap": JavaMap,
+        "java.util.LinkedHashMap": JavaLinkedHashMap,
         "java.util.TreeMap": JavaMap,
     }
 
