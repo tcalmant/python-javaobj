@@ -565,7 +565,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
                 log_error("Warning!!!!: Stream still has {0} bytes left. "
                           "Enable debug mode of logging to see the hexdump."
                           .format(len(the_rest)))
-                log_debug(self._create_hexdump(the_rest))
+                log_debug("\n{0}".format(self._create_hexdump(the_rest)))
             else:
                 log_debug("Java Object unmarshalled successfully!")
 
@@ -838,8 +838,8 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
         # Create object
         for transformer in self.object_transformers:
-            java_object = transformer.create(classdesc)
-            if java_object:
+            java_object = transformer.create(classdesc, self)
+            if java_object is not None:
                 break
 
         # Store classdesc of this object
@@ -912,6 +912,11 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
             log_debug("java_object.annotations after: {0}"
                       .format(java_object.annotations), ident)
+
+        # Allow extra loading operations
+        if hasattr(java_object, "__extra_loading__"):
+            log_debug("Java object has extra loading capability.")
+            java_object.__extra_loading__(self, ident)
 
         log_debug(">>> java_object: {0}".format(java_object), ident)
         return java_object
@@ -1157,9 +1162,9 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         the_rest = self.object_stream.read()
 
         if not ignore_remaining_data and len(the_rest):
-            log_error("Warning!!!!: Stream still has {0} bytes left."
-                      .format(len(the_rest)))
-            log_error(self._create_hexdump(the_rest, position))
+            log_error(
+                "Warning!!!!: Stream still has {0} bytes left:\n{1}".format(
+                    len(the_rest), self._create_hexdump(the_rest, position)))
 
         log_error("=" * 30)
 
@@ -1606,17 +1611,58 @@ class DefaultObjectTransformer(object):
         """
         Python-Java list bridge type
         """
-        def __init__(self, *args, **kwargs):
-            list.__init__(self, *args, **kwargs)
+        def __init__(self, unmarshaller):
+            # type: (JavaObjectUnmarshaller) -> None
+            list.__init__(self)
             JavaObject.__init__(self)
+
+        def __extra_loading__(self, unmarshaller, ident=0):
+            # type: (JavaObjectUnmarshaller, int) -> None
+            """
+            Loads the content of the map, written with a custom implementation
+            """
+            # Lists have their content in there annotations
+            self.extend(self.annotations[1:])
 
     class JavaMap(dict, JavaObject):
         """
         Python-Java dictionary/map bridge type
         """
-        def __init__(self, *args, **kwargs):
-            dict.__init__(self, *args, **kwargs)
+        def __init__(self, unmarshaller):
+            # type: (JavaObjectUnmarshaller) -> None
+            dict.__init__(self)
             JavaObject.__init__(self)
+
+        def __extra_loading__(self, unmarshaller, ident=0):
+            # type: (JavaObjectUnmarshaller, int) -> None
+            """
+            Loads the content of the map, written with a custom implementation
+            """
+            # Ignore the blockdata opid
+            (opid,) = unmarshaller._readStruct(">B")
+            if opid != unmarshaller.SC_BLOCK_DATA:
+                raise ValueError("Start of block data not found")
+
+            # Read HashMap fields
+            self.buckets = unmarshaller._read_value(
+                unmarshaller.TYPE_INTEGER, ident)
+            self.size = unmarshaller._read_value(
+                unmarshaller.TYPE_INTEGER, ident)
+
+            # Read entries
+            for _ in range(self.size):
+                key = unmarshaller._read_and_exec_opcode()[1]
+                value = unmarshaller._read_and_exec_opcode()[1]
+                self[key] = value
+
+            # Ignore the end of the blockdata
+            unmarshaller._read_and_exec_opcode(
+                ident, [unmarshaller.TC_ENDBLOCKDATA])
+
+            # Ignore the trailing 0
+            (opid,) = unmarshaller._readStruct(">B")
+            if opid != 0:
+                raise ValueError("Should find 0x0, got {0:x}".format(opid))
 
     TYPE_MAPPER = {
         "java.util.ArrayList": JavaList,
@@ -1626,7 +1672,8 @@ class DefaultObjectTransformer(object):
         "java.util.TreeMap": JavaMap,
     }
 
-    def create(self, classdesc):
+    def create(self, classdesc, unmarshaller=None):
+        # type: (JavaClass, JavaObjectUnmarshaller) -> JavaObject
         """
         Transforms a deserialized Java object into a Python object
 
@@ -1643,7 +1690,7 @@ class DefaultObjectTransformer(object):
             log_debug(classdesc.name)
             log_debug("---")
 
-            java_object = mapped_type()
+            java_object = mapped_type(unmarshaller)
 
             log_debug(">>> java_object: {0}".format(java_object))
             return java_object
