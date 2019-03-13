@@ -1,5 +1,20 @@
-# Migrated from
-# https://github.com/swstephe/py2jdbc/blob/master/py2jdbc/mutf8.py
+#!/usr/bin/python
+# -- Content-Encoding: utf-8 --
+"""
+Implements the support of the Java-specific kind of UTF-8 encoding.
+
+This module is a modified version of ``py2jdbc.mutf8`` provided by
+`@guywithface <https://github.com/guywithface>`_.
+
+The project the original file comes from is available at:
+https://github.com/swstephe/py2jdbc/
+
+:authors: Scott Stephens (@swstephe), @guywithface
+"""
+
+
+NAME = "mutf8"  # not cesu-8, which uses a different zero-byte
+
 
 class DecodeMap(object):
     """
@@ -10,8 +25,9 @@ class DecodeMap(object):
     def __init__(self, count, mask, value, bits):
         """
         Initialize a DecodeMap, entry from a static dictionary for the module.
-        It automatically calculates the mask for the bits for the value, (always
-        assumed to be at the bottom of the byte).
+        It automatically calculates the mask for the bits for the value
+        (always assumed to be at the bottom of the byte).
+
         :param count: The number of bytes in this entire sequence.
         :param mask: The mask to apply to the byte at this position.
         :param value: The value of masked bits, (without shifting).
@@ -25,15 +41,16 @@ class DecodeMap(object):
 
     def apply(self, byte, value, data, i, count):
         """
-        Apply mask, compare to expected value, shift and return
-        result.  Eventually, this could become a `reduce` function.
+        Apply mask, compare to expected value, shift and return result.
+        Eventually, this could become a ``reduce`` function.
+
         :param byte: The byte to compare
         :param value: The currently accumulated value.
         :param data: The data buffer, (array of bytes).
         :param i: The position within the data buffer.
         :param count: The position of this comparison.
         :return: A new value with the bits merged in.
-        :raises: UnicodeDecodeError if maked bits don't match.
+        :raises UnicodeDecodeError: if marked bits don't match.
         """
         if byte & self.mask == self.value:
             value <<= self.bits
@@ -70,23 +87,25 @@ DECODER_MAP = {
         (0xc0, 0x80, 6),
     )
 }
+
 DECODE_MAP = dict(
-    (k, tuple(
-        DecodeMap(k, *vv) for vv in v)
-     )
+    (k, tuple(DecodeMap(k, *vv) for vv in v))
     for k, v in DECODER_MAP.items()
 )
 
 
 def decoder(data):
     """
-    This generator processes a sequence of bytes in Modified UTF-8 encoding and produces
-    a sequence of unicode string characters.  It takes bits from the byte until it matches
-    one of the known encoding serquences.
-    It uses `DecodeMap` to mask, compare and generate values.
+    This generator processes a sequence of bytes in Modified UTF-8 encoding
+    and produces a sequence of unicode string characters.
+
+    It takes bits from the byte until it matches one of the known encoding
+    sequences.
+    It uses ``DecodeMap`` to mask, compare and generate values.
+
     :param data: a string of bytes in Modified UTF-8 encoding.
     :return: a generator producing a string of unicode characters
-    :raises: `UnicodeDecodeError` if unrecognized byte in sequence is encountered.
+    :raises UnicodeDecodeError: unrecognised byte in sequence encountered.
     """
     def next_byte(_it, start, count):
         try:
@@ -140,12 +159,14 @@ def decoder(data):
 
 def decode_modified_utf8(data, errors='strict'):
     """
-    Decodes a sequence of bytes to a unicode text and length using Modified UTF-8.
-    This function is designed to be used with Python `codecs` module.
+    Decodes a sequence of bytes to a unicode text and length using
+    Modified UTF-8.
+    This function is designed to be used with Python ``codecs`` module.
+
     :param data: a string of bytes in Modified UTF-8
     :param errors: handle decoding errors
     :return: unicode text and length
-    :raises: `UnicodeDecodeError` if sequence is invalid.
+    :raises UnicodeDecodeError: sequence is invalid.
     """
     value, length = u'', 0
     it = iter(decoder(data))
@@ -164,6 +185,7 @@ def decode_modified_utf8(data, errors='strict'):
                 value += u'\uFFFD'
                 length += 1
     return value, length
+
 
 def mutf8_unichr(value):
     return chr(value)
