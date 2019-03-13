@@ -78,7 +78,9 @@ Unmarshalling of Java serialised object:
 
     import javaobj
 
-    jobj = self.read_file("obj5.ser")
+    with open("obj5.ser", "rb") as fd:
+        jobj = fd.read()
+
     pobj = javaobj.loads(jobj)
     print(pobj)
 
@@ -88,10 +90,11 @@ Or, you can use Unmarshaller object directly:
 
     import javaobj
 
-    marshaller = javaobj.JavaObjectUnmarshaller(open("objCollections.ser"))
-    pobj = marshaller.readObject()
+    with open("objCollections.ser", "rb") as fd:
+        marshaller = javaobj.JavaObjectUnmarshaller(fd)
+        pobj = marshaller.readObject()
 
-    self.assertEqual(pobj.value, 17)
-    self.assertTrue(pobj.next)
+        print(pobj.value, "should be", 17)
+        print(pobj.next, "should be", True)
 
-    pobj = marshaller.readObject()
+        pobj = marshaller.readObject()
