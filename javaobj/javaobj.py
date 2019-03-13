@@ -1,5 +1,5 @@
 #!/usr/bin/python
-# -- Content-Encoding: UTF-8 --
+# -- Content-Encoding: utf-8 --
 """
 Provides functions for reading and writing (writing is WIP currently) Java
 objects serialized or will be deserialized by ObjectOutputStream. This form of
@@ -13,12 +13,12 @@ http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.ht
 
 :authors: Volodymyr Buell, Thomas Calmant
 :license: Apache License 2.0
-:version: 0.2.3
+:version: 0.3.0
 :status: Alpha
 
 ..
 
-    Copyright 2016 Thomas Calmant
+    Copyright 2019 Thomas Calmant
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@ import os
 import struct
 import sys
 
-from modifiedutf8 import decode_modified_utf8
+from javaobj.modifiedutf8 import decode_modified_utf8
 
 try:
     # Python 2
@@ -51,8 +51,33 @@ except ImportError:
 
 # ------------------------------------------------------------------------------
 
+__all__ = (
+    "__version_info__",
+    "__version__",
+    "DefaultObjectTransformer",
+    "JavaArray",
+    "JavaByteArray",
+    "JavaClass",
+    "JavaEnum",
+    "JavaObject",
+    "JavaObjectConstants",
+    "JavaObjectMarshaller",
+    "JavaObjectUnmarshaller",
+    "JavaString",
+    "OpCodeDebug",
+    "decode_modified_utf8",
+    "dumps",
+    "load",
+    "loads",
+    "log_debug",
+    "log_error",
+    "read_to_str",
+    "to_bytes",
+    "to_str",
+)
+
 # Module version
-__version_info__ = (0, 2, 3)
+__version_info__ = (0, 3, 0)
 __version__ = ".".join(str(x) for x in __version_info__)
 
 # Documentation strings format

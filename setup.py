@@ -7,12 +7,12 @@ http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.ht
 
 :authors: Volodymyr Buell, Thomas Calmant
 :license: Apache License 2.0
-:version: 0.2.4
+:version: 0.3.0
 :status: Alpha
 
 ..
 
-    Copyright 2016 Thomas Calmant
+    Copyright 2019 Thomas Calmant
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -37,7 +37,7 @@ except ImportError:
 # ------------------------------------------------------------------------------
 
 # Module version
-__version_info__ = (0, 2, 4)
+__version_info__ = (0, 3, 0)
 __version__ = ".".join(str(x) for x in __version_info__)
 
 # Documentation strings format
@@ -55,6 +55,7 @@ def read(fname):
 
 # ------------------------------------------------------------------------------
 
+
 setup(
     name="javaobj-py3",
     version=__version__,
@@ -66,7 +67,7 @@ setup(
     description="Module for serializing and de-serializing Java objects.",
     license='Apache License 2.0',
     keywords="python java marshalling serialization",
-    py_modules=['javaobj'],
+    packages=['javaobj'],
     test_suite="tests.tests",
     long_description=read('README.rst'),
     classifiers=[
@@ -77,5 +78,6 @@ setup(
             'Programming Language :: Python :: 3.4',
             'Programming Language :: Python :: 3.5',
             'Programming Language :: Python :: 3.6',
+            'Programming Language :: Python :: 3.7',
             "Topic :: Software Development :: Libraries :: Python Modules",
     ])
