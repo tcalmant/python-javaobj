@@ -40,6 +40,8 @@ import os
 import struct
 import sys
 
+from modifiedutf8 import decode_modified_utf8
+
 try:
     # Python 2
     from StringIO import StringIO as BytesIO
@@ -111,7 +113,10 @@ if sys.version_info[0] >= 3:
         if type(data) is str:
             # Nothing to do
             return data
-        return str(data, encoding)
+        try:
+            return str(data, encoding)
+        except UnicodeDecodeError:
+            return decode_modified_utf8(data)[0]
 
     def read_to_str(data):
         """
