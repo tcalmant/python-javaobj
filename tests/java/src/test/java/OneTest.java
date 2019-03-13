@@ -197,6 +197,25 @@ public class OneTest {
 	}
 
 	@Test
+	public void testCharArray() throws IOException {
+		char[] array = new char[] {
+			'\u0000', '\ud800',
+			'\u0001', '\udc00',
+			'\u0002', '\uffff',
+			'\u0003'
+		};
+		oos.writeObject(array);
+		oos.close();
+	}
+
+	@Test
+	public void testJapan() throws IOException {
+		String stateOfJapan = "日本国";
+		oos.writeObject(stateOfJapan);
+		oos.close();
+	}
+
+	@Test
 	public void testClass() throws Exception {
 		oos.writeObject(String.class);
 		oos.flush();
