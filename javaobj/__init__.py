@@ -34,7 +34,7 @@ http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.ht
 """
 
 # Imports giving access to what the javaobj module provides
-from javaobj.javaobj import *
+from javaobj.core import *
 
 # ------------------------------------------------------------------------------
 
