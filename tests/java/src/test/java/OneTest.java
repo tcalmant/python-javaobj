@@ -6,7 +6,11 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.Vector;
 
 import javax.swing.JScrollPane;
@@ -265,6 +269,39 @@ public class OneTest {
 
 		// ts.setChild("and Child!!!!");
 		oos.writeObject(ts);
+		oos.flush();
+	}
+
+	@Test
+	public void testHashSet() throws Exception {
+		final Set<Integer> set = new HashSet<Integer>();
+		set.add(1);
+		set.add(2);
+		set.add(1);
+		set.add(42);
+		oos.writeObject(set);
+		oos.flush();
+	}
+
+	@Test
+	public void testLinkedHashSet() throws Exception {
+		final Set<Integer> set = new LinkedHashSet<Integer>();
+		set.add(1);
+		set.add(2);
+		set.add(1);
+		set.add(42);
+		oos.writeObject(set);
+		oos.flush();
+	}
+
+	@Test
+	public void testTreeSet() throws Exception {
+		final Set<Integer> set = new TreeSet<Integer>();
+		set.add(1);
+		set.add(2);
+		set.add(1);
+		set.add(42);
+		oos.writeObject(set);
 		oos.flush();
 	}
 

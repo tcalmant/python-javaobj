@@ -318,6 +318,13 @@ class JavaObject(object):
             name = self.classdesc.name
         return "<javaobj:{0}>".format(name)
 
+    def __hash__(self):
+        """
+        Each JavaObject we load must have a hash method to be accepted in sets
+        and alike. The default hash is the memory address of the object.
+        """
+        return id(self)
+
     def __eq__(self, other):
         """
         Equality test between two Java classes
@@ -1679,12 +1686,39 @@ class DefaultObjectTransformer(object):
             if opid != 0:
                 raise ValueError("Should find 0x0, got {0:x}".format(opid))
 
+    class JavaSet(set, JavaObject):
+        """
+        Python-Java set bridge type
+        """
+        def __init__(self, unmarshaller):
+            # type: (JavaObjectUnmarshaller) -> None
+            set.__init__(self)
+            JavaObject.__init__(self)
+
+        def __extra_loading__(self, unmarshaller, ident=0):
+            # type: (JavaObjectUnmarshaller, int) -> None
+            """
+            Loads the content of the map, written with a custom implementation
+            """
+            self.update(self.annotations[1:])
+
+    class JavaTreeSet(JavaSet):
+        def __extra_loading__(self, unmarshaller, ident=0):
+            # type: (JavaObjectUnmarshaller, int) -> None
+            """
+            Loads the content of the map, written with a custom implementation
+            """
+            # Annotation[1] == size of the set
+            self.update(self.annotations[2:])
+
     TYPE_MAPPER = {
         "java.util.ArrayList": JavaList,
         "java.util.LinkedList": JavaList,
         "java.util.HashMap": JavaMap,
         "java.util.LinkedHashMap": JavaLinkedHashMap,
         "java.util.TreeMap": JavaMap,
+        "java.util.HashSet": JavaSet,
+        "java.util.TreeSet": JavaTreeSet,
     }
 
     def create(self, classdesc, unmarshaller=None):

@@ -317,6 +317,15 @@ class TestJavaobj(unittest.TestCase):
 
             # self._try_marshalling(jobj, pobj)
 
+    def test_sets(self):
+        for filename in ("testHashSet.ser", "testTreeSet.ser"):
+            print("Loading", filename)
+            jobj = self.read_file(filename)
+            pobj = javaobj.loads(jobj)
+            _logger.debug(pobj)
+            self.assertIsInstance(pobj, set)
+            self.assertSetEqual({i.value for i in pobj}, {1, 2, 42})
+
     # def test_exception(self):
     #     jobj = self.read_file("objException.ser")
     #     pobj = javaobj.loads(jobj)
