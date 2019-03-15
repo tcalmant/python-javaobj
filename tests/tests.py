@@ -201,7 +201,7 @@ class TestJavaobj(unittest.TestCase):
         pobj = javaobj.loads(jobj)
         _logger.debug("Read object: %s", pobj)
 
-        self.assertEqual(pobj.aField1, 'Gabba')
+        self.assertEqual(pobj.aField1, u"Gabba")
         self.assertEqual(pobj.aField2, None)
 
         classdesc = pobj.get_class()
@@ -250,10 +250,10 @@ class TestJavaobj(unittest.TestCase):
         _logger.debug(classdesc.fields_names)
         _logger.debug(classdesc.fields_types)
 
-        self.assertEqual(pobj.childString, "Child!!")
+        self.assertEqual(pobj.childString, u"Child!!")
         self.assertEqual(pobj.bool, True)
         self.assertEqual(pobj.integer, -1)
-        self.assertEqual(pobj.superString, "Super!!")
+        self.assertEqual(pobj.superString, u"Super!!")
 
         self._try_marshalling(jobj, pobj)
 
@@ -309,9 +309,9 @@ class TestJavaobj(unittest.TestCase):
 
         self.assertEqual(classdesc.name, "ClassWithEnum")
         self.assertEqual(pobj.color.classdesc.name, "Color")
-        self.assertEqual(pobj.color.constant, "GREEN")
+        self.assertEqual(pobj.color.constant, u"GREEN")
 
-        for color, intended in zip(pobj.colors, ("GREEN", "BLUE", "RED")):
+        for color, intended in zip(pobj.colors, (u"GREEN", u"BLUE", u"RED")):
             self.assertEqual(color.classdesc.name, "Color")
             self.assertEqual(color.constant, intended)
 
@@ -319,7 +319,7 @@ class TestJavaobj(unittest.TestCase):
 
     def test_sets(self):
         for filename in ("testHashSet.ser", "testTreeSet.ser"):
-            print("Loading", filename)
+            _logger.debug("Loading file: %s", filename)
             jobj = self.read_file(filename)
             pobj = javaobj.loads(jobj)
             _logger.debug(pobj)
