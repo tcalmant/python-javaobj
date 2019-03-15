@@ -41,6 +41,7 @@ import struct
 import sys
 
 from javaobj.modifiedutf8 import decode_modified_utf8
+from javaobj.utils import log_debug, log_error, read_to_str, to_bytes, to_str
 
 try:
     # Python 2
@@ -82,97 +83,6 @@ __version__ = ".".join(str(x) for x in __version_info__)
 
 # Documentation strings format
 __docformat__ = "restructuredtext en"
-
-# ------------------------------------------------------------------------------
-
-# Setup the logger
-_log = logging.getLogger(__name__)
-
-
-def log_debug(message, ident=0):
-    """
-    Logs a message at debug level
-
-    :param message: Message to log
-    :param ident: Number of indentation spaces
-    """
-    _log.debug(" " * (ident * 2) + str(message))
-
-
-def log_error(message, ident=0):
-    """
-    Logs a message at error level
-
-    :param message: Message to log
-    :param ident: Number of indentation spaces
-    """
-    _log.error(" " * (ident * 2) + str(message))
-
-# ------------------------------------------------------------------------------
-
-if sys.version_info[0] >= 3:
-    # Python 3 interpreter : bytes & str
-    def to_bytes(data, encoding="UTF-8"):
-        """
-        Converts the given string to an array of bytes.
-        Returns the first parameter if it is already an array of bytes.
-
-        :param data: A unicode string
-        :param encoding: The encoding of data
-        :return: The corresponding array of bytes
-        """
-        if type(data) is bytes:
-            # Nothing to do
-            return data
-        return data.encode(encoding)
-
-    def to_str(data, encoding="UTF-8"):
-        """
-        Converts the given parameter to a string.
-        Returns the first parameter if it is already an instance of ``str``.
-
-        :param data: A string
-        :param encoding: The encoding of data
-        :return: The corresponding string
-        """
-        if type(data) is str:
-            # Nothing to do
-            return data
-        try:
-            return str(data, encoding)
-        except UnicodeDecodeError:
-            return decode_modified_utf8(data)[0]
-
-    def read_to_str(data):
-        """
-        Concats all bytes into a string
-        """
-        return ''.join(chr(char) for char in data)
-
-else:
-    # Python 2 interpreter : str & unicode
-    def to_str(data, encoding="UTF-8"):
-        """
-        Converts the given parameter to a string.
-        Returns the first parameter if it is already an instance of ``str``.
-
-        :param data: A string
-        :param encoding: The encoding of data
-        :return: The corresponding string
-        """
-        if type(data) is str:
-            # Nothing to do
-            return data
-        return data.encode(encoding)
-
-    # Same operation
-    to_bytes = to_str
-
-    def read_to_str(data):
-        """
-        Nothing to do in Python 2
-        """
-        return data
 
 # ------------------------------------------------------------------------------
 
