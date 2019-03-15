@@ -83,6 +83,7 @@ __all__ = (
     "read_to_str",
     "to_bytes",
     "to_str",
+    "to_unicode",
 )
 
 # Module version
