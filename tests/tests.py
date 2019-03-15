@@ -28,6 +28,9 @@ http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.ht
     limitations under the License.
 """
 
+# Print is used in tests
+from __future__ import print_function
+
 # Standard library
 import logging
 import subprocess
@@ -55,6 +58,7 @@ class TestJavaobj(unittest.TestCase):
     """
     Full test suite for javaobj
     """
+
     @classmethod
     def setUpClass(cls):
         """
@@ -62,12 +66,12 @@ class TestJavaobj(unittest.TestCase):
         data
         """
         # Compute the java directory
-        java_dir = os.path.join(os.path.dirname(__file__), 'java')
+        java_dir = os.path.join(os.path.dirname(__file__), "java")
 
         # Run Maven and go back to the working folder
         cwd = os.getcwd()
         os.chdir(java_dir)
-        subprocess.call('mvn test', shell=True)
+        subprocess.call("mvn test", shell=True)
         os.chdir(cwd)
 
     def read_file(self, filename, stream=False):
@@ -78,9 +82,8 @@ class TestJavaobj(unittest.TestCase):
         :param stream: If True, return the file stream
         :return: File content or stream
         """
-        for subfolder in ('java', ''):
-            found_file = os.path.join(
-                os.path.dirname(__file__), subfolder, filename)
+        for subfolder in ("java", ""):
+            found_file = os.path.join(os.path.dirname(__file__), subfolder, filename)
             if os.path.exists(found_file):
                 break
         else:
@@ -89,7 +92,7 @@ class TestJavaobj(unittest.TestCase):
         if stream:
             return open(found_file, "rb")
         else:
-            with open(found_file, 'rb') as filep:
+            with open(found_file, "rb") as filep:
                 return filep.read()
 
     def _try_marshalling(self, original_stream, original_object):
@@ -104,11 +107,9 @@ class TestJavaobj(unittest.TestCase):
         except:
             print("-" * 80)
             print("=" * 30, "Original", "=" * 30)
-            print(javaobj.JavaObjectUnmarshaller._create_hexdump(
-                original_stream))
+            print(javaobj.JavaObjectUnmarshaller._create_hexdump(original_stream))
             print("*" * 30, "Marshalled", "*" * 30)
-            print(javaobj.JavaObjectUnmarshaller._create_hexdump(
-                marshalled_stream))
+            print(javaobj.JavaObjectUnmarshaller._create_hexdump(marshalled_stream))
             print("-" * 80)
             raise
 
@@ -119,7 +120,7 @@ class TestJavaobj(unittest.TestCase):
         jobj = self.read_file("testChar.ser")
         pobj = javaobj.loads(jobj)
         _logger.debug("Read char object: %s", pobj)
-        self.assertEqual(pobj, '\x00C')
+        self.assertEqual(pobj, "\x00C")
         self._try_marshalling(jobj, pobj)
 
     def test_chars_rw(self):
@@ -143,7 +144,7 @@ class TestJavaobj(unittest.TestCase):
         pobj = javaobj.loads(jobj)
         _logger.debug("Read double object: %s", pobj)
 
-        self.assertEqual(pobj, '\x7f\xef\xff\xff\xff\xff\xff\xff')
+        self.assertEqual(pobj, "\x7f\xef\xff\xff\xff\xff\xff\xff")
         self._try_marshalling(jobj, pobj)
 
     def test_bytes_rw(self):
@@ -154,7 +155,7 @@ class TestJavaobj(unittest.TestCase):
         pobj = javaobj.loads(jobj)
         _logger.debug("Read bytes: %s", pobj)
 
-        self.assertEqual(pobj, 'HelloWorld')
+        self.assertEqual(pobj, "HelloWorld")
         self._try_marshalling(jobj, pobj)
 
     def test_class_with_byte_array_rw(self):
@@ -224,7 +225,7 @@ class TestJavaobj(unittest.TestCase):
         jobj = self.read_file("testClass.ser")
         pobj = javaobj.loads(jobj)
         _logger.debug("Read object: %s", pobj)
-        self.assertEqual(pobj.name, 'java.lang.String')
+        self.assertEqual(pobj.name, "java.lang.String")
         self._try_marshalling(jobj, pobj)
 
     # def test_swing_object(self):
@@ -340,17 +341,18 @@ class TestJavaobj(unittest.TestCase):
     #     self.assertEqual(classdesc.name, "MyExceptionWhenDumping")
 
     def test_sun_example(self):
-       marshaller = javaobj.JavaObjectUnmarshaller(
-           self.read_file("sunExample.ser", stream=True))
-       pobj = marshaller.readObject()
+        marshaller = javaobj.JavaObjectUnmarshaller(
+            self.read_file("sunExample.ser", stream=True)
+        )
+        pobj = marshaller.readObject()
 
-       self.assertEqual(pobj.value, 17)
-       self.assertTrue(pobj.next)
+        self.assertEqual(pobj.value, 17)
+        self.assertTrue(pobj.next)
 
-       pobj = marshaller.readObject()
+        pobj = marshaller.readObject()
 
-       self.assertEqual(pobj.value, 19)
-       self.assertFalse(pobj.next)
+        self.assertEqual(pobj.value, 19)
+        self.assertFalse(pobj.next)
 
     def test_collections(self):
         jobj = self.read_file("objCollections.ser")
@@ -373,9 +375,10 @@ class TestJavaobj(unittest.TestCase):
         _logger.info(pobj)
         # self._try_marshalling(jobj, pobj)
 
+
 # ------------------------------------------------------------------------------
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Setup logging
     logging.basicConfig(level=logging.INFO)
 
