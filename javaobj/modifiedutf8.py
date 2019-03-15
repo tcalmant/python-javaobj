@@ -22,6 +22,7 @@ class DecodeMap(object):
     If the mask and compare fails, this will raise UnicodeDecodeError so
     encode and decode will correctly handle bad characters.
     """
+
     def __init__(self, count, mask, value, bits):
         """
         Initialize a DecodeMap, entry from a static dictionary for the module.
@@ -57,40 +58,33 @@ class DecodeMap(object):
             value |= byte & self.mask2
         else:
             raise UnicodeDecodeError(
-                NAME, data, i, i + count,
-                "invalid {}-byte sequence".format(self.count)
+                NAME, data, i, i + count, "invalid {}-byte sequence".format(self.count)
             )
         return value
 
     def __repr__(self):
         return "DecodeMap({})".format(
-            ', '.join(
-                '{}=0x{:02x}'.format(n, getattr(self, n))
-                for n in ('count', 'mask', 'value', 'bits', 'mask2')
+            ", ".join(
+                "{}=0x{:02x}".format(n, getattr(self, n))
+                for n in ("count", "mask", "value", "bits", "mask2")
             )
         )
 
 
 DECODER_MAP = {
-    2: (
-        (0xc0, 0x80, 6),
-    ),
-    3: (
-        (0xc0, 0x80, 6),
-        (0xc0, 0x80, 6)
-    ),
+    2: ((0xC0, 0x80, 6),),
+    3: ((0xC0, 0x80, 6), (0xC0, 0x80, 6)),
     6: (
-        (0xf0, 0xa0, 4),
-        (0xc0, 0x80, 6),
-        (0xff, 0xed, 0),
-        (0xf0, 0xb0, 4),
-        (0xc0, 0x80, 6),
-    )
+        (0xF0, 0xA0, 4),
+        (0xC0, 0x80, 6),
+        (0xFF, 0xED, 0),
+        (0xF0, 0xB0, 4),
+        (0xC0, 0x80, 6),
+    ),
 }
 
 DECODE_MAP = dict(
-    (k, tuple(DecodeMap(k, *vv) for vv in v))
-    for k, v in DECODER_MAP.items()
+    (k, tuple(DecodeMap(k, *vv) for vv in v)) for k, v in DECODER_MAP.items()
 )
 
 
@@ -107,57 +101,54 @@ def decoder(data):
     :return: a generator producing a string of unicode characters
     :raises UnicodeDecodeError: unrecognised byte in sequence encountered.
     """
+
     def next_byte(_it, start, count):
         try:
             return next(_it)[1]
         except StopIteration:
             raise UnicodeDecodeError(
-                NAME, data, start, start + count,
-                "incomplete byte sequence"
+                NAME, data, start, start + count, "incomplete byte sequence"
             )
 
     it = iter(enumerate(data))
     for i, d in it:
-        if d == 0x00:               # 00000000
+        if d == 0x00:  # 00000000
             raise UnicodeDecodeError(
-                NAME, data, i, i + 1,
-                "embedded zero-byte not allowed"
+                NAME, data, i, i + 1, "embedded zero-byte not allowed"
             )
-        elif d & 0x80:              # 1xxxxxxx
-            if d & 0x40:            # 11xxxxxx
-                if d & 0x20:        # 111xxxxx
-                    if d & 0x10:    # 1111xxxx
+        elif d & 0x80:  # 1xxxxxxx
+            if d & 0x40:  # 11xxxxxx
+                if d & 0x20:  # 111xxxxx
+                    if d & 0x10:  # 1111xxxx
                         raise UnicodeDecodeError(
-                            NAME, data, i, i + 1,
-                            "invalid encoding character"
+                            NAME, data, i, i + 1, "invalid encoding character"
                         )
-                    elif d == 0xed:
+                    elif d == 0xED:
                         value = 0
                         for i1, dm in enumerate(DECODE_MAP[6]):
                             d1 = next_byte(it, i, i1 + 1)
                             value = dm.apply(d1, value, data, i, i1 + 1)
-                    else:           # 1110xxxx
-                        value = d & 0x0f
+                    else:  # 1110xxxx
+                        value = d & 0x0F
                         for i1, dm in enumerate(DECODE_MAP[3]):
                             d1 = next_byte(it, i, i1 + 1)
                             value = dm.apply(d1, value, data, i, i1 + 1)
-                else:               # 110xxxxx
-                    value = d & 0x1f
+                else:  # 110xxxxx
+                    value = d & 0x1F
                     for i1, dm in enumerate(DECODE_MAP[2]):
                         d1 = next_byte(it, i, i1 + 1)
                         value = dm.apply(d1, value, data, i, i1 + 1)
-            else:                   # 10xxxxxx
+            else:  # 10xxxxxx
                 raise UnicodeDecodeError(
-                    NAME, data, i, i + 1,
-                    "misplaced continuation character"
+                    NAME, data, i, i + 1, "misplaced continuation character"
                 )
-        else:                       # 0xxxxxxx
+        else:  # 0xxxxxxx
             value = d
         # noinspection PyCompatibility
         yield mutf8_unichr(value)
 
 
-def decode_modified_utf8(data, errors='strict'):
+def decode_modified_utf8(data, errors="strict"):
     """
     Decodes a sequence of bytes to a unicode text and length using
     Modified UTF-8.
@@ -168,7 +159,7 @@ def decode_modified_utf8(data, errors='strict'):
     :return: unicode text and length
     :raises UnicodeDecodeError: sequence is invalid.
     """
-    value, length = u'', 0
+    value, length = u"", 0
     it = iter(decoder(data))
     while True:
         try:
@@ -177,12 +168,12 @@ def decode_modified_utf8(data, errors='strict'):
         except StopIteration:
             break
         except UnicodeDecodeError as e:
-            if errors == 'strict':
+            if errors == "strict":
                 raise e
-            elif errors == 'ignore':
+            elif errors == "ignore":
                 pass
-            elif errors == 'replace':
-                value += u'\uFFFD'
+            elif errors == "replace":
+                value += u"\uFFFD"
                 length += 1
     return value, length
 

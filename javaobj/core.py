@@ -48,7 +48,7 @@ from javaobj.utils import (
     to_bytes,
     to_str,
     to_unicode,
-    UNICODE_TYPE
+    UNICODE_TYPE,
 )
 
 try:
@@ -107,10 +107,11 @@ def load(file_object, *transformers, **kwargs):
     :return: The deserialized object
     """
     # Read keyword argument
-    ignore_remaining_data = kwargs.get('ignore_remaining_data', False)
+    ignore_remaining_data = kwargs.get("ignore_remaining_data", False)
 
     marshaller = JavaObjectUnmarshaller(
-        file_object, kwargs.get('use_numpy_arrays', False))
+        file_object, kwargs.get("use_numpy_arrays", False)
+    )
 
     # Add custom transformers first
     for transformer in transformers:
@@ -133,11 +134,12 @@ def loads(string, *transformers, **kwargs):
     :return: The deserialized object
     """
     # Read keyword argument
-    ignore_remaining_data = kwargs.get('ignore_remaining_data', False)
+    ignore_remaining_data = kwargs.get("ignore_remaining_data", False)
 
     # Reuse the load method (avoid code duplication)
-    return load(BytesIO(string), *transformers,
-                ignore_remaining_data=ignore_remaining_data)
+    return load(
+        BytesIO(string), *transformers, ignore_remaining_data=ignore_remaining_data
+    )
 
 
 def dumps(obj, *transformers):
@@ -156,6 +158,7 @@ def dumps(obj, *transformers):
 
     return marshaller.dump(obj)
 
+
 # ------------------------------------------------------------------------------
 
 
@@ -163,6 +166,7 @@ class JavaClass(object):
     """
     Represents a class in the Java world
     """
+
     def __init__(self):
         """
         Sets up members
@@ -196,18 +200,21 @@ class JavaClass(object):
         if not isinstance(other, type(self)):
             return False
 
-        return (self.name == other.name and
-                self.serialVersionUID == other.serialVersionUID and
-                self.flags == other.flags and
-                self.fields_names == other.fields_names and
-                self.fields_types == other.fields_types and
-                self.superclass == other.superclass)
+        return (
+            self.name == other.name
+            and self.serialVersionUID == other.serialVersionUID
+            and self.flags == other.flags
+            and self.fields_names == other.fields_names
+            and self.fields_types == other.fields_types
+            and self.superclass == other.superclass
+        )
 
 
 class JavaObject(object):
     """
     Represents a deserialized non-primitive Java object
     """
+
     def __init__(self):
         """
         Sets up members
@@ -253,8 +260,9 @@ class JavaObject(object):
         if not isinstance(other, type(self)):
             return False
 
-        res = (self.classdesc == other.classdesc and
-               self.annotations == other.annotations)
+        res = (
+            self.classdesc == other.classdesc and self.annotations == other.annotations
+        )
         if not res:
             return False
 
@@ -268,6 +276,7 @@ class JavaString(UNICODE_TYPE):
     """
     Represents a Java String
     """
+
     def __hash__(self):
         return UNICODE_TYPE.__hash__(self)
 
@@ -281,6 +290,7 @@ class JavaEnum(JavaObject):
     """
     Represents a Java enumeration
     """
+
     def __init__(self, constant=None):
         super(JavaEnum, self).__init__()
         self.constant = constant
@@ -290,6 +300,7 @@ class JavaArray(list, JavaObject):
     """
     Represents a Java Array
     """
+
     def __init__(self, classdesc=None):
         list.__init__(self)
         JavaObject.__init__(self)
@@ -300,6 +311,7 @@ class JavaByteArray(JavaObject):
     """
     Represents the special case of Java Array which contains bytes
     """
+
     def __init__(self, data, classdesc=None):
         JavaObject.__init__(self)
         self._data = struct.unpack("b" * len(data), data)
@@ -317,6 +329,7 @@ class JavaByteArray(JavaObject):
     def __len__(self):
         return len(self._data)
 
+
 # ------------------------------------------------------------------------------
 
 
@@ -324,7 +337,8 @@ class JavaObjectConstants(object):
     """
     Defines the constants of the Java serialization format
     """
-    STREAM_MAGIC = 0xaced
+
+    STREAM_MAGIC = 0xACED
     STREAM_VERSION = 0x05
 
     TC_NULL = 0x70
@@ -347,22 +361,22 @@ class JavaObjectConstants(object):
 
     # classDescFlags
     SC_WRITE_METHOD = 0x01  # if SC_SERIALIZABLE
-    SC_BLOCK_DATA = 0x08    # if SC_EXTERNALIZABLE
+    SC_BLOCK_DATA = 0x08  # if SC_EXTERNALIZABLE
     SC_SERIALIZABLE = 0x02
     SC_EXTERNALIZABLE = 0x04
     SC_ENUM = 0x10
 
     # type definition chars (typecode)
-    TYPE_BYTE = 'B'     # 0x42
-    TYPE_CHAR = 'C'     # 0x43
-    TYPE_DOUBLE = 'D'   # 0x44
-    TYPE_FLOAT = 'F'    # 0x46
-    TYPE_INTEGER = 'I'  # 0x49
-    TYPE_LONG = 'J'     # 0x4A
-    TYPE_SHORT = 'S'    # 0x53
-    TYPE_BOOLEAN = 'Z'  # 0x5A
-    TYPE_OBJECT = 'L'   # 0x4C
-    TYPE_ARRAY = '['    # 0x5B
+    TYPE_BYTE = "B"  # 0x42
+    TYPE_CHAR = "C"  # 0x43
+    TYPE_DOUBLE = "D"  # 0x44
+    TYPE_FLOAT = "F"  # 0x46
+    TYPE_INTEGER = "I"  # 0x49
+    TYPE_LONG = "J"  # 0x4A
+    TYPE_SHORT = "S"  # 0x53
+    TYPE_BOOLEAN = "Z"  # 0x5A
+    TYPE_OBJECT = "L"  # 0x4C
+    TYPE_ARRAY = "["  # 0x5B
 
     # list of supported typecodes listed above
     TYPECODES_LIST = [
@@ -377,19 +391,20 @@ class JavaObjectConstants(object):
         TYPE_BOOLEAN,
         # object types
         TYPE_OBJECT,
-        TYPE_ARRAY]
+        TYPE_ARRAY,
+    ]
 
     BASE_REFERENCE_IDX = 0x7E0000
 
     NUMPY_TYPE_MAP = {
-        TYPE_BYTE: 'B',
-        TYPE_CHAR: 'b',
-        TYPE_DOUBLE: '>d',
-        TYPE_FLOAT: '>f',
-        TYPE_INTEGER: '>i',
-        TYPE_LONG: '>l',
-        TYPE_SHORT: '>h',
-        TYPE_BOOLEAN: '>B'
+        TYPE_BYTE: "B",
+        TYPE_CHAR: "b",
+        TYPE_DOUBLE: ">d",
+        TYPE_FLOAT: ">f",
+        TYPE_INTEGER: ">i",
+        TYPE_LONG: ">l",
+        TYPE_SHORT: ">h",
+        TYPE_BOOLEAN: ">B",
     }
 
 
@@ -397,18 +412,25 @@ class OpCodeDebug(object):
     """
     OP Codes definition and utility methods
     """
+
     # Type codes
-    OP_CODE = dict((getattr(JavaObjectConstants, key), key)
-                   for key in dir(JavaObjectConstants)
-                   if key.startswith("TC_"))
+    OP_CODE = dict(
+        (getattr(JavaObjectConstants, key), key)
+        for key in dir(JavaObjectConstants)
+        if key.startswith("TC_")
+    )
 
-    TYPE = dict((getattr(JavaObjectConstants, key), key)
-                for key in dir(JavaObjectConstants)
-                if key.startswith("TYPE_"))
+    TYPE = dict(
+        (getattr(JavaObjectConstants, key), key)
+        for key in dir(JavaObjectConstants)
+        if key.startswith("TYPE_")
+    )
 
-    STREAM_CONSTANT = dict((getattr(JavaObjectConstants, key), key)
-                           for key in dir(JavaObjectConstants)
-                           if key.startswith("SC_"))
+    STREAM_CONSTANT = dict(
+        (getattr(JavaObjectConstants, key), key)
+        for key in dir(JavaObjectConstants)
+        if key.startswith("SC_")
+    )
 
     @staticmethod
     def op_id(op_id):
@@ -417,8 +439,7 @@ class OpCodeDebug(object):
         :param op_id: OP Code
         :return: Name of the OP Code
         """
-        return OpCodeDebug.OP_CODE.get(
-            op_id, "<unknown OP:{0}>".format(op_id))
+        return OpCodeDebug.OP_CODE.get(op_id, "<unknown OP:{0}>".format(op_id))
 
     @staticmethod
     def type_code(type_id):
@@ -427,8 +448,7 @@ class OpCodeDebug(object):
         :param type_id: Type code
         :return: Name of the type code
         """
-        return OpCodeDebug.TYPE.get(
-            type_id, "<unknown Type:{0}>".format(type_id))
+        return OpCodeDebug.TYPE.get(type_id, "<unknown Type:{0}>".format(type_id))
 
     @staticmethod
     def flags(flags):
@@ -440,9 +460,10 @@ class OpCodeDebug(object):
         :return: The flags names as a single string
         """
         names = sorted(
-            descr for key, descr in OpCodeDebug.STREAM_CONSTANT.items()
-            if key & flags)
-        return ', '.join(names)
+            descr for key, descr in OpCodeDebug.STREAM_CONSTANT.items() if key & flags
+        )
+        return ", ".join(names)
+
 
 # ------------------------------------------------------------------------------
 
@@ -451,6 +472,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
     """
     Deserializes a Java serialization stream
     """
+
     def __init__(self, stream, use_numpy_arrays=False):
         """
         Sets up members
@@ -507,9 +529,12 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             position_bak = self.object_stream.tell()
             the_rest = self.object_stream.read()
             if not ignore_remaining_data and len(the_rest):
-                log_error("Warning!!!!: Stream still has {0} bytes left. "
-                          "Enable debug mode of logging to see the hexdump."
-                          .format(len(the_rest)))
+                log_error(
+                    "Warning!!!!: Stream still has {0} bytes left. "
+                    "Enable debug mode of logging to see the hexdump.".format(
+                        len(the_rest)
+                    )
+                )
                 log_debug("\n{0}".format(self._create_hexdump(the_rest)))
             else:
                 log_debug("Java Object unmarshalled successfully!")
@@ -536,9 +561,10 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         """
         (magic, version) = self._readStruct(">HH")
         if magic != self.STREAM_MAGIC or version != self.STREAM_VERSION:
-            raise IOError("The stream is not java serialized object. "
-                          "Invalid stream header: {0:04X}{1:04X}"
-                          .format(magic, version))
+            raise IOError(
+                "The stream is not java serialized object. "
+                "Invalid stream header: {0:04X}{1:04X}".format(magic, version)
+            )
 
     def _read_and_exec_opcode(self, ident=0, expect=None):
         """
@@ -552,20 +578,28 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         """
         position = self.object_stream.tell()
         (opid,) = self._readStruct(">B")
-        log_debug("OpCode: 0x{0:X} -- {1} (at offset 0x{2:X})"
-                  .format(opid, OpCodeDebug.op_id(opid), position), ident)
+        log_debug(
+            "OpCode: 0x{0:X} -- {1} (at offset 0x{2:X})".format(
+                opid, OpCodeDebug.op_id(opid), position
+            ),
+            ident,
+        )
 
         if expect and opid not in expect:
             raise IOError(
-                "Unexpected opcode 0x{0:X} -- {1} (at offset 0x{2:X})"
-                .format(opid, OpCodeDebug.op_id(opid), position))
+                "Unexpected opcode 0x{0:X} -- {1} (at offset 0x{2:X})".format(
+                    opid, OpCodeDebug.op_id(opid), position
+                )
+            )
 
         try:
             handler = self.opmap[opid]
         except KeyError:
             raise RuntimeError(
-                "Unknown OpCode in the stream: 0x{0:X} (at offset 0x{1:X})"
-                .format(opid, position))
+                "Unknown OpCode in the stream: 0x{0:X} (at offset 0x{1:X})".format(
+                    opid, position
+                )
+            )
         else:
             return opid, handler(ident=ident)
 
@@ -581,8 +615,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         ba = self.object_stream.read(length)
 
         if len(ba) != length:
-            raise RuntimeError("Stream has been ended unexpectedly while "
-                               "unmarshaling.")
+            raise RuntimeError("Stream has been ended unexpectedly while unmarshaling.")
 
         return struct.unpack(unpack, ba)
 
@@ -634,9 +667,12 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
         self._add_reference(clazz, ident)
 
-        log_debug("Serial: 0x{0:X} / {0:d} - classDescFlags: 0x{1:X} {2}"
-                  .format(serialVersionUID, classDescFlags,
-                          OpCodeDebug.flags(classDescFlags)), ident)
+        log_debug(
+            "Serial: 0x{0:X} / {0:d} - classDescFlags: 0x{1:X} {2}".format(
+                serialVersionUID, classDescFlags, OpCodeDebug.flags(classDescFlags)
+            ),
+            ident,
+        )
         (length,) = self._readStruct(">H")
         log_debug("Fields num: 0x{0:X}".format(length), ident)
 
@@ -651,29 +687,36 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
             if field_type == self.TYPE_ARRAY:
                 _, field_type = self._read_and_exec_opcode(
-                    ident=ident + 1,
-                    expect=(self.TC_STRING, self.TC_REFERENCE))
+                    ident=ident + 1, expect=(self.TC_STRING, self.TC_REFERENCE)
+                )
 
                 if type(field_type) is not JavaString:
-                    raise AssertionError("Field type must be a JavaString, "
-                                         "not {0}".format(type(field_type)))
+                    raise AssertionError(
+                        "Field type must be a JavaString, "
+                        "not {0}".format(type(field_type))
+                    )
 
             elif field_type == self.TYPE_OBJECT:
                 _, field_type = self._read_and_exec_opcode(
-                    ident=ident + 1,
-                    expect=(self.TC_STRING, self.TC_REFERENCE))
+                    ident=ident + 1, expect=(self.TC_STRING, self.TC_REFERENCE)
+                )
 
                 if type(field_type) is JavaClass:
                     # FIXME: ugly trick
                     field_type = JavaString(field_type.name)
 
                 if type(field_type) is not JavaString:
-                    raise AssertionError("Field type must be a JavaString, "
-                                         "not {0}".format(type(field_type)))
+                    raise AssertionError(
+                        "Field type must be a JavaString, "
+                        "not {0}".format(type(field_type))
+                    )
 
-            log_debug("< FieldName: 0x{0:X} Name:{1} Type:{2} ID:{3}"
-                      .format(typecode, field_name, field_type, fieldId),
-                      ident)
+            log_debug(
+                "< FieldName: 0x{0:X} Name:{1} Type:{2} ID:{3}".format(
+                    typecode, field_name, field_type, fieldId
+                ),
+                ident,
+            )
             assert field_name is not None
             assert field_type is not None
 
@@ -686,18 +729,23 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
         # classAnnotation
         (opid,) = self._readStruct(">B")
-        log_debug("OpCode: 0x{0:X} -- {1} (classAnnotation)"
-                  .format(opid, OpCodeDebug.op_id(opid)), ident)
+        log_debug(
+            "OpCode: 0x{0:X} -- {1} (classAnnotation)".format(
+                opid, OpCodeDebug.op_id(opid)
+            ),
+            ident,
+        )
         if opid != self.TC_ENDBLOCKDATA:
             raise NotImplementedError("classAnnotation isn't implemented yet")
 
         # superClassDesc
         log_debug("Reading Super Class of {0}".format(clazz.name), ident)
         _, superclassdesc = self._read_and_exec_opcode(
-            ident=ident + 1,
-            expect=(self.TC_CLASSDESC, self.TC_NULL, self.TC_REFERENCE))
-        log_debug("Super Class for {0}: {1}"
-                  .format(clazz.name, str(superclassdesc)), ident)
+            ident=ident + 1, expect=(self.TC_CLASSDESC, self.TC_NULL, self.TC_REFERENCE)
+        )
+        log_debug(
+            "Super Class for {0}: {1}".format(clazz.name, str(superclassdesc)), ident
+        )
         clazz.superclass = superclassdesc
         return clazz
 
@@ -748,8 +796,13 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         # (see 3rd line for classDesc:)
         _, classdesc = self._read_and_exec_opcode(
             ident=ident + 1,
-            expect=(self.TC_CLASSDESC, self.TC_PROXYCLASSDESC,
-                    self.TC_NULL, self.TC_REFERENCE))
+            expect=(
+                self.TC_CLASSDESC,
+                self.TC_PROXYCLASSDESC,
+                self.TC_NULL,
+                self.TC_REFERENCE,
+            ),
+        )
         log_debug("Classdesc: {0}".format(classdesc), ident)
         self._add_reference(classdesc, ident)
         return classdesc
@@ -765,15 +818,24 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         # TC_OBJECT classDesc newHandle classdata[]  // data for each class
         java_object = JavaObject()
         log_debug("[object]", ident)
-        log_debug("java_object.annotations just after instantiation: {0}"
-                  .format(java_object.annotations), ident)
+        log_debug(
+            "java_object.annotations just after instantiation: {0}".format(
+                java_object.annotations
+            ),
+            ident,
+        )
 
         # TODO: what to do with "(ClassDesc)prevObject".
         # (see 3rd line for classDesc:)
         opcode, classdesc = self._read_and_exec_opcode(
             ident=ident + 1,
-            expect=(self.TC_CLASSDESC, self.TC_PROXYCLASSDESC,
-                    self.TC_NULL, self.TC_REFERENCE))
+            expect=(
+                self.TC_CLASSDESC,
+                self.TC_PROXYCLASSDESC,
+                self.TC_NULL,
+                self.TC_REFERENCE,
+            ),
+        )
         # self.TC_REFERENCE hasn't shown in spec, but actually is here
 
         # Create object
@@ -790,8 +852,10 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
         # classdata[]
 
-        if classdesc.flags & self.SC_EXTERNALIZABLE \
-                and not classdesc.flags & self.SC_BLOCK_DATA:
+        if (
+            classdesc.flags & self.SC_EXTERNALIZABLE
+            and not classdesc.flags & self.SC_BLOCK_DATA
+        ):
             # TODO:
             raise NotImplementedError("externalContents isn't implemented yet")
 
@@ -806,10 +870,12 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             log_debug("Constructing class...", ident)
             while tempclass:
                 log_debug("Class: {0}".format(tempclass.name), ident + 1)
-                class_fields_str = ' - '.join(
-                    ' '.join((field_type, field_name))
-                    for field_type, field_name
-                    in zip(tempclass.fields_types, tempclass.fields_names))
+                class_fields_str = " - ".join(
+                    " ".join((field_type, field_name))
+                    for field_type, field_name in zip(
+                        tempclass.fields_types, tempclass.fields_names
+                    )
+                )
                 if class_fields_str:
                     log_debug(class_fields_str, ident + 2)
 
@@ -828,18 +894,21 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             log_debug("Prepared list of types: {0}".format(megatypes), ident)
 
             for field_name, field_type in zip(megalist, megatypes):
-                log_debug("Reading field: {0} - {1}"
-                          .format(field_type, field_name))
+                log_debug("Reading field: {0} - {1}".format(field_type, field_name))
                 res = self._read_value(field_type, ident, name=field_name)
                 java_object.__setattr__(field_name, res)
 
-        if classdesc.flags & self.SC_SERIALIZABLE \
-                and classdesc.flags & self.SC_WRITE_METHOD \
-                or classdesc.flags & self.SC_EXTERNALIZABLE \
-                and classdesc.flags & self.SC_BLOCK_DATA:
+        if (
+            classdesc.flags & self.SC_SERIALIZABLE
+            and classdesc.flags & self.SC_WRITE_METHOD
+            or classdesc.flags & self.SC_EXTERNALIZABLE
+            and classdesc.flags & self.SC_BLOCK_DATA
+        ):
             # objectAnnotation
-            log_debug("java_object.annotations before: {0}"
-                      .format(java_object.annotations), ident)
+            log_debug(
+                "java_object.annotations before: {0}".format(java_object.annotations),
+                ident,
+            )
 
             while opcode != self.TC_ENDBLOCKDATA:
                 opcode, obj = self._read_and_exec_opcode(ident=ident + 1)
@@ -850,8 +919,10 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
                 log_debug("objectAnnotation value: {0}".format(obj), ident)
 
-            log_debug("java_object.annotations after: {0}"
-                      .format(java_object.annotations), ident)
+            log_debug(
+                "java_object.annotations after: {0}".format(java_object.annotations),
+                ident,
+            )
 
         # Allow extra loading operations
         if hasattr(java_object, "__extra_loading__"):
@@ -899,8 +970,13 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         log_debug("[array]", ident)
         _, classdesc = self._read_and_exec_opcode(
             ident=ident + 1,
-            expect=(self.TC_CLASSDESC, self.TC_PROXYCLASSDESC,
-                    self.TC_NULL, self.TC_REFERENCE))
+            expect=(
+                self.TC_CLASSDESC,
+                self.TC_PROXYCLASSDESC,
+                self.TC_NULL,
+                self.TC_REFERENCE,
+            ),
+        )
 
         array = JavaArray(classdesc)
 
@@ -922,10 +998,12 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             array = JavaByteArray(self.object_stream.read(size), classdesc)
         elif self.use_numpy_arrays:
             import numpy
+
             array = numpy.fromfile(
                 self.object_stream,
                 dtype=JavaObjectConstants.NUMPY_TYPE_MAP[type_char],
-                count=size)
+                count=size,
+            )
         else:
             for _ in range(size):
                 res = self._read_value(type_char, ident)
@@ -971,12 +1049,18 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         enum = JavaEnum()
         _, classdesc = self._read_and_exec_opcode(
             ident=ident + 1,
-            expect=(self.TC_CLASSDESC, self.TC_PROXYCLASSDESC,
-                    self.TC_NULL, self.TC_REFERENCE))
+            expect=(
+                self.TC_CLASSDESC,
+                self.TC_PROXYCLASSDESC,
+                self.TC_NULL,
+                self.TC_REFERENCE,
+            ),
+        )
         enum.classdesc = classdesc
         self._add_reference(enum, ident)
         _, enumConstantName = self._read_and_exec_opcode(
-            ident=ident + 1, expect=(self.TC_STRING, self.TC_REFERENCE))
+            ident=ident + 1, expect=(self.TC_STRING, self.TC_REFERENCE)
+        )
         enum.constant = enumConstantName
         return enum
 
@@ -990,21 +1074,20 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         :param length: Length of a dump line
         :return: A dump string
         """
-        FILTER = ''.join((len(repr(chr(x))) == 3) and chr(x) or '.'
-                         for x in range(256))
+        FILTER = "".join((len(repr(chr(x))) == 3) and chr(x) or "." for x in range(256))
         pattern = "{{0:04X}}   {{1:<{0}}}  {{2}}\n".format(length * 3)
 
         # Convert raw data to str (Python 3 compatibility)
-        src = to_str(src, 'latin-1')
+        src = to_str(src, "latin-1")
 
         result = []
         for i in range(0, len(src), length):
-            s = src[i:i + length]
-            hexa = ' '.join("{0:02X}".format(ord(x)) for x in s)
+            s = src[i : i + length]
+            hexa = " ".join("{0:02X}".format(ord(x)) for x in s)
             printable = s.translate(FILTER)
             result.append(pattern.format(i + start_offset, hexa, printable))
 
-        return ''.join(result)
+        return "".join(result)
 
     def _read_value(self, field_type, ident, name=""):
         """
@@ -1063,8 +1146,9 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         if typecode in self.TYPECODES_LIST:
             return typecode
         else:
-            raise RuntimeError("Typecode {0} ({1}) isn't supported."
-                               .format(type_char, typecode))
+            raise RuntimeError(
+                "Typecode {0} ({1}) isn't supported.".format(type_char, typecode)
+            )
 
     def _add_reference(self, obj, ident=0):
         """
@@ -1077,8 +1161,9 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             "## New reference handle 0x{0:X}: {1} -> {2}".format(
                 len(self.references) + self.BASE_REFERENCE_IDX,
                 type(obj).__name__,
-                repr(obj)),
-            ident
+                repr(obj),
+            ),
+            ident,
         )
         self.references.append(obj)
 
@@ -1091,8 +1176,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         """
         log_error("==Oops state dump" + "=" * (30 - 17))
         log_error("References: {0}".format(self.references))
-        log_error("Stream seeking back at -16 byte (2nd line is an actual "
-                  "position!):")
+        log_error("Stream seeking back at -16 byte (2nd line is an actual position!):")
 
         # Do not use a keyword argument
         self.object_stream.seek(-16, os.SEEK_CUR)
@@ -1102,9 +1186,12 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         if not ignore_remaining_data and len(the_rest):
             log_error(
                 "Warning!!!!: Stream still has {0} bytes left:\n{1}".format(
-                    len(the_rest), self._create_hexdump(the_rest, position)))
+                    len(the_rest), self._create_hexdump(the_rest, position)
+                )
+            )
 
         log_error("=" * 30)
+
 
 # ------------------------------------------------------------------------------
 
@@ -1113,6 +1200,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
     """
     Serializes objects into Java serialization format
     """
+
     def __init__(self, stream=None):
         """
         Sets up members
@@ -1180,8 +1268,10 @@ class JavaObjectMarshaller(JavaObjectConstants):
             self.write_blockdata(obj)
         else:
             # Unhandled type
-            raise RuntimeError("Object serialization of type {0} is not "
-                               "supported.".format(type(obj)))
+            raise RuntimeError(
+                "Object serialization of type {0} is not "
+                "supported.".format(type(obj))
+            )
 
     def _writeStruct(self, unpack, length, args):
         """
@@ -1213,14 +1303,19 @@ class JavaObjectMarshaller(JavaObjectConstants):
                 self.references.append(obj)
                 logging.debug(
                     "*** Adding ref 0x%X for string: %s",
-                    len(self.references) - 1 + self.BASE_REFERENCE_IDX, obj)
+                    len(self.references) - 1 + self.BASE_REFERENCE_IDX,
+                    obj,
+                )
 
                 self._writeStruct(">H", 2, (len(string),))
                 self.object_stream.write(string)
             else:
                 # Write a reference to the previous type
-                logging.debug("*** Reusing ref 0x%X for string: %s",
-                              idx + self.BASE_REFERENCE_IDX, obj)
+                logging.debug(
+                    "*** Reusing ref 0x%X for string: %s",
+                    idx + self.BASE_REFERENCE_IDX,
+                    obj,
+                )
                 self.write_reference(idx)
         else:
             self._writeStruct(">H", 2, (len(string),))
@@ -1242,8 +1337,11 @@ class JavaObjectMarshaller(JavaObjectConstants):
                 self._writeString(obj, use_reference)
             else:
                 # Reuse the referenced string
-                logging.debug("*** Reusing ref 0x%X for String: %s",
-                              idx + self.BASE_REFERENCE_IDX, obj)
+                logging.debug(
+                    "*** Reusing ref 0x%X for String: %s",
+                    idx + self.BASE_REFERENCE_IDX,
+                    obj,
+                )
                 self.write_reference(idx)
         else:
             # Don't use references
@@ -1267,7 +1365,9 @@ class JavaObjectMarshaller(JavaObjectConstants):
             self.references.append(obj)
             logging.debug(
                 "*** Adding ref 0x%X for enum: %s",
-                len(self.references) - 1 + self.BASE_REFERENCE_IDX, obj)
+                len(self.references) - 1 + self.BASE_REFERENCE_IDX,
+                obj,
+            )
 
             self.write_classdesc(obj.get_class())
         else:
@@ -1327,7 +1427,9 @@ class JavaObjectMarshaller(JavaObjectConstants):
         self.references.append([])
         logging.debug(
             "*** Adding ref 0x%X for object %s",
-            len(self.references) - 1 + self.BASE_REFERENCE_IDX, obj)
+            len(self.references) - 1 + self.BASE_REFERENCE_IDX,
+            obj,
+        )
 
         all_names = collections.deque()
         all_types = collections.deque()
@@ -1343,27 +1445,37 @@ class JavaObjectMarshaller(JavaObjectConstants):
 
         for field_name, field_type in zip(all_names, all_types):
             try:
-                logging.debug("Writing field %s (%s): %s",
-                              field_name, field_type, getattr(obj, field_name))
+                logging.debug(
+                    "Writing field %s (%s): %s",
+                    field_name,
+                    field_type,
+                    getattr(obj, field_name),
+                )
                 self._write_value(field_type, getattr(obj, field_name))
             except AttributeError as ex:
-                log_error("No attribute {0} for object {1}\nDir: {2}"
-                          .format(ex, repr(obj), dir(obj)))
+                log_error(
+                    "No attribute {0} for object {1}\nDir: {2}".format(
+                        ex, repr(obj), dir(obj)
+                    )
+                )
                 raise
         del all_names, all_types
 
-        if cls.flags & self.SC_SERIALIZABLE \
-                and cls.flags & self.SC_WRITE_METHOD \
-                or cls.flags & self.SC_EXTERNALIZABLE \
-                and cls.flags & self.SC_BLOCK_DATA:
+        if (
+            cls.flags & self.SC_SERIALIZABLE
+            and cls.flags & self.SC_WRITE_METHOD
+            or cls.flags & self.SC_EXTERNALIZABLE
+            and cls.flags & self.SC_BLOCK_DATA
+        ):
             for annotation in obj.annotations:
-                log_debug("Write annotation {0} for {1}"
-                          .format(repr(annotation), repr(obj)))
+                log_debug(
+                    "Write annotation {0} for {1}".format(repr(annotation), repr(obj))
+                )
                 if annotation is None:
                     self.write_null()
                 else:
                     self.writeObject(annotation)
-            self._writeStruct('>B', 1, (self.TC_ENDBLOCKDATA,))
+            self._writeStruct(">B", 1, (self.TC_ENDBLOCKDATA,))
 
     def write_class(self, obj, parent=None):
         """
@@ -1387,17 +1499,17 @@ class JavaObjectMarshaller(JavaObjectConstants):
             self.references.append(obj)
             logging.debug(
                 "*** Adding ref 0x%X for classdesc %s",
-                len(self.references) - 1 + self.BASE_REFERENCE_IDX, obj.name)
+                len(self.references) - 1 + self.BASE_REFERENCE_IDX,
+                obj.name,
+            )
 
             self._writeStruct(">B", 1, (self.TC_CLASSDESC,))
             self._writeString(obj.name)
             self._writeStruct(">qB", 1, (obj.serialVersionUID, obj.flags))
             self._writeStruct(">H", 1, (len(obj.fields_names),))
 
-            for field_name, field_type \
-                    in zip(obj.fields_names, obj.fields_types):
-                self._writeStruct(
-                    ">B", 1, (self._convert_type_to_char(field_type),))
+            for field_name, field_type in zip(obj.fields_names, obj.fields_types):
+                self._writeStruct(">B", 1, (self._convert_type_to_char(field_type),))
                 self._writeString(field_name)
                 if field_type[0] in (self.TYPE_OBJECT, self.TYPE_ARRAY):
                     try:
@@ -1408,14 +1520,18 @@ class JavaObjectMarshaller(JavaObjectConstants):
                         logging.debug(
                             "*** Adding ref 0x%X for field type %s",
                             len(self.references) - 1 + self.BASE_REFERENCE_IDX,
-                            field_type)
+                            field_type,
+                        )
 
                         self.write_string(field_type, False)
                     else:
                         # Write a reference to the previous type
-                        logging.debug("*** Reusing ref 0x%X for %s (%s)",
-                                      idx + self.BASE_REFERENCE_IDX,
-                                      field_type, field_name)
+                        logging.debug(
+                            "*** Reusing ref 0x%X for %s (%s)",
+                            idx + self.BASE_REFERENCE_IDX,
+                            field_type,
+                            field_name,
+                        )
                         self.write_reference(idx)
 
             self._writeStruct(">B", 1, (self.TC_ENDBLOCKDATA,))
@@ -1433,7 +1549,8 @@ class JavaObjectMarshaller(JavaObjectConstants):
         :param ref_index: Local index (0-based) to the reference
         """
         self._writeStruct(
-            ">BL", 1, (self.TC_REFERENCE, ref_index + self.BASE_REFERENCE_IDX))
+            ">BL", 1, (self.TC_REFERENCE, ref_index + self.BASE_REFERENCE_IDX)
+        )
 
     def write_array(self, obj):
         """
@@ -1450,7 +1567,8 @@ class JavaObjectMarshaller(JavaObjectConstants):
         self.references.append(obj)
         logging.debug(
             "*** Adding ref 0x%X for array []",
-            len(self.references) - 1 + self.BASE_REFERENCE_IDX)
+            len(self.references) - 1 + self.BASE_REFERENCE_IDX,
+        )
 
         type_char = classdesc.name[0]
         assert type_char == self.TYPE_ARRAY
@@ -1524,13 +1642,15 @@ class JavaObjectMarshaller(JavaObjectConstants):
         if typecode in self.TYPECODES_LIST:
             return ord(typecode)
         elif len(typecode) > 1:
-            if typecode[0] == 'L':
+            if typecode[0] == "L":
                 return ord(self.TYPE_OBJECT)
-            elif typecode[0] == '[':
+            elif typecode[0] == "[":
                 return ord(self.TYPE_ARRAY)
 
-        raise RuntimeError("Typecode {0} ({1}) isn't supported."
-                           .format(type_char, typecode))
+        raise RuntimeError(
+            "Typecode {0} ({1}) isn't supported.".format(type_char, typecode)
+        )
+
 
 # ------------------------------------------------------------------------------
 
@@ -1540,10 +1660,12 @@ class DefaultObjectTransformer(object):
     Default transformer for the deserialized objects.
     Converts JavaObject objects to Python types (maps, lists, ...)
     """
+
     class JavaList(list, JavaObject):
         """
         Python-Java list bridge type
         """
+
         def __init__(self, unmarshaller):
             # type: (JavaObjectUnmarshaller) -> None
             list.__init__(self)
@@ -1561,6 +1683,7 @@ class DefaultObjectTransformer(object):
         """
         Python-Java dictionary/map bridge type
         """
+
         def __init__(self, unmarshaller):
             # type: (JavaObjectUnmarshaller) -> None
             dict.__init__(self)
@@ -1588,10 +1711,8 @@ class DefaultObjectTransformer(object):
                 raise ValueError("Start of block data not found")
 
             # Read HashMap fields
-            self.buckets = unmarshaller._read_value(
-                unmarshaller.TYPE_INTEGER, ident)
-            self.size = unmarshaller._read_value(
-                unmarshaller.TYPE_INTEGER, ident)
+            self.buckets = unmarshaller._read_value(unmarshaller.TYPE_INTEGER, ident)
+            self.size = unmarshaller._read_value(unmarshaller.TYPE_INTEGER, ident)
 
             # Read entries
             for _ in range(self.size):
@@ -1600,8 +1721,7 @@ class DefaultObjectTransformer(object):
                 self[key] = value
 
             # Ignore the end of the blockdata
-            unmarshaller._read_and_exec_opcode(
-                ident, [unmarshaller.TC_ENDBLOCKDATA])
+            unmarshaller._read_and_exec_opcode(ident, [unmarshaller.TC_ENDBLOCKDATA])
 
             # Ignore the trailing 0
             (opid,) = unmarshaller._readStruct(">B")
@@ -1612,6 +1732,7 @@ class DefaultObjectTransformer(object):
         """
         Python-Java set bridge type
         """
+
         def __init__(self, unmarshaller):
             # type: (JavaObjectUnmarshaller) -> None
             set.__init__(self)
