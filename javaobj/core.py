@@ -41,7 +41,15 @@ import struct
 import sys
 
 from javaobj.modifiedutf8 import decode_modified_utf8
-from javaobj.utils import log_debug, log_error, read_to_str, to_bytes, to_str
+from javaobj.utils import (
+    log_debug,
+    log_error,
+    read_to_str,
+    to_bytes,
+    to_str,
+    to_unicode,
+    UNICODE_TYPE
+)
 
 try:
     # Python 2
@@ -256,17 +264,17 @@ class JavaObject(object):
         return True
 
 
-class JavaString(str):
+class JavaString(UNICODE_TYPE):
     """
     Represents a Java String
     """
     def __hash__(self):
-        return str.__hash__(self)
+        return UNICODE_TYPE.__hash__(self)
 
     def __eq__(self, other):
-        if not isinstance(other, str):
+        if not isinstance(other, UNICODE_TYPE):
             return False
-        return str.__eq__(self, other)
+        return UNICODE_TYPE.__eq__(self, other)
 
 
 class JavaEnum(JavaObject):
@@ -588,7 +596,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         """
         (length,) = self._readStruct(">{0}".format(length_fmt))
         ba = self.object_stream.read(length)
-        return to_str(ba)
+        return to_unicode(ba)
 
     def do_classdesc(self, parent=None, ident=0):
         """
@@ -1065,9 +1073,13 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         :param obj: Reference to add
         :param ident: Log indentation level
         """
-        log_debug("## New reference handle 0x{0:X}: {1} -> {2}"
-                  .format(len(self.references) + self.BASE_REFERENCE_IDX,
-                          type(obj).__name__, obj), ident)
+        log_debug(
+            "## New reference handle 0x{0:X}: {1} -> {2}".format(
+                len(self.references) + self.BASE_REFERENCE_IDX,
+                type(obj).__name__,
+                repr(obj)),
+            ident
+        )
         self.references.append(obj)
 
     def _oops_dump_state(self, ignore_remaining_data=False):
