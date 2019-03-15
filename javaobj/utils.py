@@ -73,6 +73,7 @@ def log_error(message, ident=0):
 
 if sys.version_info[0] >= 3:
     UNICODE_TYPE = str
+    unicode_char = chr
 
     # Python 3 interpreter : bytes & str
     def to_bytes(data, encoding="UTF-8"):
@@ -118,6 +119,7 @@ if sys.version_info[0] >= 3:
 
 else:
     UNICODE_TYPE = unicode
+    unicode_char = unichr
 
     # Python 2 interpreter : str & unicode
     def to_str(data, encoding="UTF-8"):
