@@ -13,7 +13,17 @@ https://github.com/swstephe/py2jdbc/
 """
 
 
-NAME = "mutf8"  # not cesu-8, which uses a different zero-byte
+# Module version
+__version_info__ = (0, 3, 0)
+__version__ = ".".join(str(x) for x in __version_info__)
+
+# Documentation strings format
+__docformat__ = "restructuredtext en"
+
+# Encoding name: not cesu-8, which uses a different zero-byte
+NAME = "mutf8"
+
+# ------------------------------------------------------------------------------
 
 
 class DecodeMap(object):
