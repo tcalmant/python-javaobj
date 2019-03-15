@@ -40,6 +40,14 @@ import os
 import struct
 import sys
 
+try:
+    # Python 2
+    from StringIO import StringIO as BytesIO
+except ImportError:
+    # Python 3+
+    from io import BytesIO
+
+# Javaobj modules
 from javaobj.modifiedutf8 import decode_modified_utf8
 from javaobj.utils import (
     log_debug,
@@ -51,13 +59,6 @@ from javaobj.utils import (
     UNICODE_TYPE,
     unicode_char,
 )
-
-try:
-    # Python 2
-    from StringIO import StringIO as BytesIO
-except ImportError:
-    # Python 3+
-    from io import BytesIO
 
 # ------------------------------------------------------------------------------
 
