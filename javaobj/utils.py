@@ -56,7 +56,7 @@ def log_debug(message, ident=0):
     :param message: Message to log
     :param ident: Number of indentation spaces
     """
-    _log.debug("%s%s",  " " * (ident * 2), message)
+    _log.debug("%s%s", " " * (ident * 2), message)
 
 
 def log_error(message, ident=0):
@@ -66,12 +66,14 @@ def log_error(message, ident=0):
     :param message: Message to log
     :param ident: Number of indentation spaces
     """
-    _log.error("%s%s",  " " * (ident * 2), message)
+    _log.error("%s%s", " " * (ident * 2), message)
 
 
 # ------------------------------------------------------------------------------
 
 if sys.version_info[0] >= 3:
+    UNICODE_TYPE = str
+
     # Python 3 interpreter : bytes & str
     def to_bytes(data, encoding="UTF-8"):
         """
@@ -104,6 +106,9 @@ if sys.version_info[0] >= 3:
         except UnicodeDecodeError:
             return decode_modified_utf8(data)[0]
 
+    # Same operation
+    to_unicode = to_str
+
     def read_to_str(data):
         """
         Concats all bytes into a string
@@ -112,6 +117,8 @@ if sys.version_info[0] >= 3:
 
 
 else:
+    UNICODE_TYPE = unicode
+
     # Python 2 interpreter : str & unicode
     def to_str(data, encoding="UTF-8"):
         """
@@ -129,6 +136,24 @@ else:
 
     # Same operation
     to_bytes = to_str
+
+    # Python 2 interpreter : str & unicode
+    def to_unicode(data, encoding="UTF-8"):
+        """
+        Converts the given parameter to a string.
+        Returns the first parameter if it is already an instance of ``str``.
+
+        :param data: A string
+        :param encoding: The encoding of data
+        :return: The corresponding string
+        """
+        if type(data) is unicode:
+            # Nothing to do
+            return data
+        try:
+            return data.decode(encoding)
+        except UnicodeDecodeError:
+            return decode_modified_utf8(data)[0]
 
     def read_to_str(data):
         """
