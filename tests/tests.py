@@ -291,12 +291,12 @@ class TestJavaobj(unittest.TestCase):
         self.assertEqual(pobj, b"\xe6\x97\xa5\xe6\x9c\xac\xe5\x9b\xbd".decode("utf-8"))
         self._try_marshalling(jobj, pobj)
 
-    # def test_char_array(self):
-    #     jobj = self.read_file("testCharArray.ser")
-    #     pobj = javaobj.loads(jobj)
-    #     _logger.debug(pobj)
-    #     self.assertEqual(pobj, [u'\u0000', u'\ud800', u'\u0001', u'\udc00', u'\u0002', u'\uffff', u'\u0003'])
-    #     self._try_marshalling(jobj, pobj)
+    def test_char_array(self):
+        jobj = self.read_file("testCharArray.ser")
+        pobj = javaobj.loads(jobj)
+        _logger.debug(pobj)
+        self.assertEqual(pobj, [u'\u0000', u'\ud800', u'\u0001', u'\udc00', u'\u0002', u'\uffff', u'\u0003'])
+        self._try_marshalling(jobj, pobj)
 
     def test_enums(self):
         jobj = self.read_file("objEnums.ser")

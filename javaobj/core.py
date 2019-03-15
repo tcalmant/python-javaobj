@@ -49,6 +49,7 @@ from javaobj.utils import (
     to_str,
     to_unicode,
     UNICODE_TYPE,
+    unicode_char,
 )
 
 try:
@@ -1008,7 +1009,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         else:
             for _ in range(size):
                 res = self._read_value(type_char, ident)
-                log_debug("Native value: {0}".format(res), ident)
+                log_debug("Native value: {0}".format(repr(res)), ident)
                 array.append(res)
 
         return array
@@ -1113,7 +1114,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             # TYPE_CHAR is defined by the serialization specification
             # but not used in the implementation, so this is
             # a hypothetical code
-            res = bytes(self._readStruct(">bb")).decode("utf-16-be")
+            res = unicode_char(self._readStruct(">H")[0])
         elif field_type == self.TYPE_SHORT:
             (res,) = self._readStruct(">h")
         elif field_type == self.TYPE_INTEGER:
@@ -1129,7 +1130,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         else:
             raise RuntimeError("Unknown typecode: {0}".format(field_type))
 
-        log_debug("* {0} {1}: {2}".format(field_type, name, res), ident)
+        log_debug("* {0} {1}: {2}".format(field_type, name, repr(res)), ident)
         return res
 
     def _convert_char_to_type(self, type_char):
@@ -1602,6 +1603,8 @@ class JavaObjectMarshaller(JavaObjectConstants):
             self._writeStruct(">B", 1, (1 if value else 0,))
         elif field_type == self.TYPE_BYTE:
             self._writeStruct(">b", 1, (value,))
+        elif field_type == self.TYPE_CHAR:
+            self._writeStruct(">H", 1, (ord(value),))
         elif field_type == self.TYPE_SHORT:
             self._writeStruct(">h", 1, (value,))
         elif field_type == self.TYPE_INTEGER:
