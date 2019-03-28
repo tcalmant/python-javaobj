@@ -327,6 +327,22 @@ class TestJavaobj(unittest.TestCase):
             self.assertIsInstance(pobj, set)
             self.assertSetEqual({i.value for i in pobj}, {1, 2, 42})
 
+    def test_times(self):
+        jobj = self.read_file("testTime.ser")
+        pobj = javaobj.loads(jobj)
+        _logger.debug(pobj)
+
+        # First one is a duration of 10s
+        duration = pobj[0]
+        self.assertEquals(duration.second, 10)
+
+        # Check types
+        self.assertIsInstance(pobj, javaobj.core.JavaArray)
+        for obj in pobj:
+            self.assertIsInstance(
+                obj, javaobj.DefaultObjectTransformer.JavaTime
+            )
+
     # def test_exception(self):
     #     jobj = self.read_file("objException.ser")
     #     pobj = javaobj.loads(jobj)

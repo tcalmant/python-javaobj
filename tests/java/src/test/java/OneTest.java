@@ -6,6 +6,13 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.LinkedHashSet;
@@ -303,7 +310,21 @@ public class OneTest {
 		set.add(42);
 		oos.writeObject(set);
 		oos.flush();
-	}
+    }
+
+    @Test
+    public void testTime() throws Exception {
+        oos.writeObject(new Object[] {
+            Duration.ofSeconds(10),
+            Instant.now(),
+            LocalDate.now(),
+            LocalTime.now(),
+            LocalDateTime.now(),
+            ZoneId.systemDefault(),
+            ZonedDateTime.now(),
+        });
+        oos.flush();
+    }
 
 	@Test
 	public void testSwingObject() throws Exception {

@@ -1659,6 +1659,31 @@ class JavaObjectMarshaller(JavaObjectConstants):
 
 # ------------------------------------------------------------------------------
 
+def read(data, fmt_str):
+    """
+    Reads input bytes and extract the given structure. Returns both the read
+    elements and the remaining data
+
+    :param data: Data as bytes
+    :param fmt_str: Struct unpack format string
+    :return: A tuple (results as tuple, remaining data)
+    """
+    size = struct.calcsize(fmt_str)
+    return struct.unpack(fmt_str, data[:size]), data[size:]
+
+
+def read_string(data, length_fmt="H"):
+        """
+        Reads a serialized string
+
+        :param data: Bytes where to read the string from
+        :param length_fmt: Structure format of the string length (H or Q)
+        :return: The deserialized string
+        """
+        (length,), data = read(data, ">{0}".format(length_fmt))
+        ba, data = data[:length], data[length:]
+        return to_unicode(ba), data
+
 
 class DefaultObjectTransformer(object):
     """
@@ -1759,6 +1784,168 @@ class DefaultObjectTransformer(object):
             # Annotation[1] == size of the set
             self.update(self.annotations[2:])
 
+    class JavaTime(JavaObject):
+        """
+        Represents the classes found in the java.time package
+
+        The semantic of the fields depends on the type of time that has been
+        parsed
+        """
+        DURATION_TYPE = 1
+        INSTANT_TYPE = 2
+        LOCAL_DATE_TYPE = 3
+        LOCAL_TIME_TYPE = 4
+        LOCAL_DATE_TIME_TYPE = 5
+        ZONE_DATE_TIME_TYPE = 6
+        ZONE_REGION_TYPE = 7
+        ZONE_OFFSET_TYPE = 8
+        OFFSET_TIME_TYPE = 9
+        OFFSET_DATE_TIME_TYPE = 10
+        YEAR_TYPE = 11
+        YEAR_MONTH_TYPE = 12
+        MONTH_DAY_TYPE = 13
+        PERIOD_TYPE = 14
+
+        def __init__(self, unmarshaller):
+            # type: (JavaObjectUnmarshaller) -> None
+            JavaObject.__init__(self)
+            self.type = -1
+            self.year = None
+            self.month = None
+            self.day = None
+            self.hour = None
+            self.minute = None
+            self.second = None
+            self.nano = None
+            self.offset = None
+            self.zone = None
+
+            self.time_handlers = {
+                self.DURATION_TYPE: self.do_duration,
+                self.INSTANT_TYPE: self.do_instant,
+                self.LOCAL_DATE_TYPE: self.do_local_date,
+                self.LOCAL_DATE_TIME_TYPE: self.do_local_date_time,
+                self.LOCAL_TIME_TYPE: self.do_local_time,
+                self.ZONE_DATE_TIME_TYPE: self.do_zoned_date_time,
+                self.ZONE_OFFSET_TYPE: self.do_zone_offset,
+                self.ZONE_REGION_TYPE: self.do_zone_region,
+                self.OFFSET_TIME_TYPE: self.do_offset_time,
+                self.OFFSET_DATE_TIME_TYPE: self.do_offset_date_time,
+                self.YEAR_TYPE: self.do_year,
+                self.YEAR_MONTH_TYPE: self.do_year_month,
+                self.MONTH_DAY_TYPE: self.do_month_day,
+                self.PERIOD_TYPE: self.do_period,
+            }
+
+        def __str__(self):
+            return (
+                "JavaTime(type=0x{s.type}, "
+                "year={s.year}, month={s.month}, day={s.day}, "
+                "hour={s.hour}, minute={s.minute}, second={s.second}, "
+                "nano={s.nano}, offset={s.offset}, zone={s.zone})"
+            ).format(s=self)
+
+        def __extra_loading__(self, unmarshaller, ident=0):
+            # type: (JavaObjectUnmarshaller, int) -> None
+            """
+            Loads the content of the map, written with a custom implementation
+            """
+            # Convert back annotations to bytes
+            # latin-1 is used to ensure that bytes are kept as is
+            content = to_bytes(self.annotations[0], "latin1")
+            (self.type,), content = read(content, ">b")
+
+            try:
+                self.time_handlers[self.type](unmarshaller, content)
+            except KeyError as ex:
+                log_error("Unhandled kind of time: {}".format(ex))
+
+        def do_duration(self, unmarshaller, data):
+            (self.second, self.nano), data = read(data, ">qi")
+            return data
+
+        def do_instant(self, unmarshaller, data):
+            (self.second, self.nano), data = read(data, ">qi")
+            return data
+
+        def do_local_date(self, unmarshaller, data):
+            (self.year, self.month, self.day), data = read(data, '>ibb')
+            return data
+
+        def do_local_time(self, unmarshaller, data):
+            (hour,), data = read(data, '>b')
+            minute = 0
+            second = 0
+            nano = 0
+
+            if hour < 0:
+                hour = ~hour
+            else:
+                (minute,), data = read(data, '>b')
+                if minute < 0:
+                    minute = ~minute
+                else:
+                    (second,), data = read(data, '>b')
+                    if second < 0:
+                        second = ~second
+                    else:
+                        (nano,), data = read(data, '>i')
+
+            self.hour = hour
+            self.minute = minute
+            self.second = second
+            self.nano = nano
+            return data
+
+        def do_local_date_time(self, unmarshaller, data):
+            data = self.do_local_date(unmarshaller, data)
+            data = self.do_local_time(unmarshaller, data)
+            return data
+
+        def do_zoned_date_time(self, unmarshaller, data):
+            data = self.do_local_date_time(unmarshaller, data)
+            data = self.do_zone_offset(unmarshaller, data)
+            data = self.do_zone_region(unmarshaller, data)
+            return data
+
+        def do_zone_offset(self, unmarshaller, data):
+            (offset_byte,), data = read(data, ">b")
+            if offset_byte == 127:
+                (self.offset,), data = read(data, ">i")
+            else:
+                self.offset = offset_byte * 900
+            return data
+
+        def do_zone_region(self, unmarshaller, data):
+            self.zone, data = read_string(data)
+            return data
+
+        def do_offset_time(self, unmarshaller, data):
+            data = self.do_local_time(unmarshaller, data)
+            data = self.do_zone_offset(unmarshaller, data)
+            return data
+
+        def do_offset_date_time(self, unmarshaller, data):
+            data = self.do_local_date_time(unmarshaller, data)
+            data = self.do_zone_offset(unmarshaller, data)
+            return data
+
+        def do_year(self, unmarshaller, data):
+            (self.year,), data = read(data, ">i")
+            return data
+
+        def do_year_month(self, unmarshaller, data):
+            (self.year, self.month), data = read(data, ">ib")
+            return data
+
+        def do_month_day(self, unmarshaller, data):
+            (self.month, self.day), data = read(data, ">bb")
+            return data
+
+        def do_period(self, unmarshaller, data):
+            (self.year, self.month, self.day), data = read(data, ">iii")
+            return data
+
     TYPE_MAPPER = {
         "java.util.ArrayList": JavaList,
         "java.util.LinkedList": JavaList,
@@ -1767,6 +1954,7 @@ class DefaultObjectTransformer(object):
         "java.util.TreeMap": JavaMap,
         "java.util.HashSet": JavaSet,
         "java.util.TreeSet": JavaTreeSet,
+        "java.time.Ser": JavaTime,
     }
 
     def create(self, classdesc, unmarshaller=None):
