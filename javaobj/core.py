@@ -906,6 +906,9 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             and classdesc.flags & self.SC_WRITE_METHOD
             or classdesc.flags & self.SC_EXTERNALIZABLE
             and classdesc.flags & self.SC_BLOCK_DATA
+            or classdesc.superclass is not None
+            and classdesc.superclass.flags & self.SC_SERIALIZABLE
+            and classdesc.superclass.flags & self.SC_WRITE_METHOD
         ):
             # objectAnnotation
             log_debug(
