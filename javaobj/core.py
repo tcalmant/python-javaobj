@@ -1986,6 +1986,7 @@ class DefaultObjectTransformer(object):
         "java.time.Ser": JavaTime,
         "java.lang.Boolean": JavaBool,
         "java.lang.Integer": JavaInt,
+        "java.lang.Long": JavaInt,
     }
 
     def create(self, classdesc, unmarshaller=None):
