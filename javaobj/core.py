@@ -1709,6 +1709,35 @@ class DefaultObjectTransformer(object):
             # Lists have their content in there annotations
             self.extend(self.annotations[1:])
 
+    class JavaBool(JavaObject):
+        def __init__(self, unmarshaller):
+            JavaObject.__init__(self)
+            self.value = None
+            pass
+
+        def __str__(self):
+            return self.value.__str__()
+
+        def __repr__(self):
+            return self.value.__repr__()
+        
+        def __bool__(self):
+            return self.value
+
+    class JavaInt(JavaObject):
+        def __init__(self, unmarshaller):
+            self.value = None
+            JavaObject.__init__(self)
+
+        def __str__(self):
+            return self.value.__str__()
+
+        def __repr__(self):
+            return self.value.__repr__()
+        
+        def __int__(self):
+            return self.value
+
     class JavaMap(dict, JavaObject):
         """
         Python-Java dictionary/map bridge type
@@ -1955,6 +1984,8 @@ class DefaultObjectTransformer(object):
         "java.util.HashSet": JavaSet,
         "java.util.TreeSet": JavaTreeSet,
         "java.time.Ser": JavaTime,
+        "java.lang.Boolean": JavaBool,
+        "java.lang.Integer": JavaInt,
     }
 
     def create(self, classdesc, unmarshaller=None):
