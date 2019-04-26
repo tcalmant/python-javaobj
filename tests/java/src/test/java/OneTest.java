@@ -13,9 +13,11 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.Vector;
@@ -324,6 +326,34 @@ public class OneTest {
             ZonedDateTime.now(),
         });
         oos.flush();
+    }
+
+    /**
+     * Tests th pull request #27 by @qistoph:
+     * Add support for java.lang.Bool, Integer and Long classes
+     */
+    @Test
+    public void testBoolIntLong() throws Exception {
+        Map<String, Object> hm1 = new HashMap<String, Object>();
+        hm1.put("key1", "value1");
+        hm1.put("key2", "value2");
+        hm1.put("int", 9);
+        hm1.put("int2", new Integer(10));
+        hm1.put("bool", true);
+        hm1.put("bool2", new Boolean(true));
+
+        oos.writeObject(hm1);
+		oos.flush();
+
+        Map<String, Object> hm2 = new HashMap<String, Object>();
+        hm2.put("subMap", hm1);
+
+        ObjectOutputStream oos2 = new ObjectOutputStream(new FileOutputStream(name.getMethodName() + "-2.ser"));
+        try {
+            oos2.writeObject(hm2);
+        } finally {
+            oos2.close();
+        }
     }
 
 	@Test
