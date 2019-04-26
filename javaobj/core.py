@@ -35,6 +35,7 @@ http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.ht
 
 # Standard library
 import collections
+import functools
 import logging
 import os
 import struct
@@ -1712,32 +1713,35 @@ class DefaultObjectTransformer(object):
             # Lists have their content in there annotations
             self.extend(self.annotations[1:])
 
-    class JavaBool(JavaObject):
+    @functools.total_ordering
+    class JavaPrimitiveClass(JavaObject):
+        """
+        Parent of Java classes matching a primitive (Bool, Integer, Long, ...)
+        """
         def __init__(self, unmarshaller):
             JavaObject.__init__(self)
             self.value = None
-            pass
 
         def __str__(self):
-            return self.value.__str__()
+            return str(self.value)
 
         def __repr__(self):
-            return self.value.__repr__()
-        
+            return repr(self.value)
+
+        def __hash__(self):
+                return hash(self.value)
+
+        def __eq__(self, other):
+            return self.value == other
+
+        def __lt__(self, other):
+            return self.value < other
+
+    class JavaBool(JavaPrimitiveClass):
         def __bool__(self):
             return self.value
 
-    class JavaInt(JavaObject):
-        def __init__(self, unmarshaller):
-            self.value = None
-            JavaObject.__init__(self)
-
-        def __str__(self):
-            return self.value.__str__()
-
-        def __repr__(self):
-            return self.value.__repr__()
-        
+    class JavaInt(JavaPrimitiveClass):
         def __int__(self):
             return self.value
 
