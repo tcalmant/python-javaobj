@@ -1989,6 +1989,7 @@ class DefaultObjectTransformer(object):
         "java.util.LinkedHashMap": JavaLinkedHashMap,
         "java.util.TreeMap": JavaMap,
         "java.util.HashSet": JavaSet,
+        "java.util.LinkedHashSet": JavaSet,
         "java.util.TreeSet": JavaTreeSet,
         "java.time.Ser": JavaTime,
         "java.lang.Boolean": JavaBool,

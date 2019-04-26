@@ -361,7 +361,11 @@ class TestJavaobj(unittest.TestCase):
         """
         Tests handling of HashSet and TreeSet
         """
-        for filename in ("testHashSet.ser", "testTreeSet.ser"):
+        for filename in (
+            "testHashSet.ser",
+            "testTreeSet.ser",
+            "testLinkedHashSet.ser",
+        ):
             _logger.debug("Loading file: %s", filename)
             jobj = self.read_file(filename)
             pobj = javaobj.loads(jobj)
