@@ -39,7 +39,6 @@ import functools
 import logging
 import os
 import struct
-import sys
 
 try:
     # Python 2
@@ -1663,6 +1662,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
 
 # ------------------------------------------------------------------------------
 
+
 def read(data, fmt_str):
     """
     Reads input bytes and extract the given structure. Returns both the read
@@ -1677,16 +1677,16 @@ def read(data, fmt_str):
 
 
 def read_string(data, length_fmt="H"):
-        """
-        Reads a serialized string
+    """
+    Reads a serialized string
 
-        :param data: Bytes where to read the string from
-        :param length_fmt: Structure format of the string length (H or Q)
-        :return: The deserialized string
-        """
-        (length,), data = read(data, ">{0}".format(length_fmt))
-        ba, data = data[:length], data[length:]
-        return to_unicode(ba), data
+    :param data: Bytes where to read the string from
+    :param length_fmt: Structure format of the string length (H or Q)
+    :return: The deserialized string
+    """
+    (length,), data = read(data, ">{0}".format(length_fmt))
+    ba, data = data[:length], data[length:]
+    return to_unicode(ba), data
 
 
 class DefaultObjectTransformer(object):
@@ -1718,6 +1718,7 @@ class DefaultObjectTransformer(object):
         """
         Parent of Java classes matching a primitive (Bool, Integer, Long, ...)
         """
+
         def __init__(self, unmarshaller):
             JavaObject.__init__(self)
             self.value = None
@@ -1729,7 +1730,7 @@ class DefaultObjectTransformer(object):
             return repr(self.value)
 
         def __hash__(self):
-                return hash(self.value)
+            return hash(self.value)
 
         def __eq__(self, other):
             return self.value == other
@@ -1827,6 +1828,7 @@ class DefaultObjectTransformer(object):
         The semantic of the fields depends on the type of time that has been
         parsed
         """
+
         DURATION_TYPE = 1
         INSTANT_TYPE = 2
         LOCAL_DATE_TYPE = 3
@@ -1905,11 +1907,11 @@ class DefaultObjectTransformer(object):
             return data
 
         def do_local_date(self, unmarshaller, data):
-            (self.year, self.month, self.day), data = read(data, '>ibb')
+            (self.year, self.month, self.day), data = read(data, ">ibb")
             return data
 
         def do_local_time(self, unmarshaller, data):
-            (hour,), data = read(data, '>b')
+            (hour,), data = read(data, ">b")
             minute = 0
             second = 0
             nano = 0
@@ -1917,15 +1919,15 @@ class DefaultObjectTransformer(object):
             if hour < 0:
                 hour = ~hour
             else:
-                (minute,), data = read(data, '>b')
+                (minute,), data = read(data, ">b")
                 if minute < 0:
                     minute = ~minute
                 else:
-                    (second,), data = read(data, '>b')
+                    (second,), data = read(data, ">b")
                     if second < 0:
                         second = ~second
                     else:
-                        (nano,), data = read(data, '>i')
+                        (nano,), data = read(data, ">i")
 
             self.hour = hour
             self.minute = minute

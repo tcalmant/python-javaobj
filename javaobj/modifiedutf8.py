@@ -10,8 +10,10 @@ The project the original file comes from is available at:
 https://github.com/swstephe/py2jdbc/
 
 :authors: Scott Stephens (@swstephe), @guywithface
+:license: Apache License 2.0
+:version: 0.3.0
+:status: Alpha
 """
-
 
 # Module version
 __version_info__ = (0, 3, 0)

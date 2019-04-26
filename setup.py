@@ -53,6 +53,7 @@ def read(fname):
     with open(os.path.join(os.path.dirname(__file__), fname)) as fd:
         return fd.read()
 
+
 # ------------------------------------------------------------------------------
 
 
@@ -65,19 +66,20 @@ setup(
     maintainer_email="thomas.calmant@gmail.com",
     url="https://github.com/tcalmant/python-javaobj",
     description="Module for serializing and de-serializing Java objects.",
-    license='Apache License 2.0',
+    license="Apache License 2.0",
     keywords="python java marshalling serialization",
-    packages=['javaobj'],
+    packages=["javaobj"],
     test_suite="tests.tests",
-    long_description=read('README.rst'),
+    long_description=read("README.rst"),
     classifiers=[
-            "Development Status :: 3 - Alpha",
-            "License :: OSI Approved :: Apache Software License",
-            'Operating System :: OS Independent',
-            'Programming Language :: Python :: 2.7',
-            'Programming Language :: Python :: 3.4',
-            'Programming Language :: Python :: 3.5',
-            'Programming Language :: Python :: 3.6',
-            'Programming Language :: Python :: 3.7',
-            "Topic :: Software Development :: Libraries :: Python Modules",
-    ])
+        "Development Status :: 3 - Alpha",
+        "License :: OSI Approved :: Apache Software License",
+        "Operating System :: OS Independent",
+        "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python :: 3.4",
+        "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Topic :: Software Development :: Libraries :: Python Modules",
+    ],
+)
