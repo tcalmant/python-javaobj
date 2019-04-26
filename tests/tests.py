@@ -33,10 +33,10 @@ from __future__ import print_function
 
 # Standard library
 import logging
-import subprocess
-import unittest
 import os
+import subprocess
 import sys
+import unittest
 
 # Prepare Python path to import javaobj
 sys.path.insert(0, os.path.abspath(os.path.dirname(os.getcwd())))
@@ -83,7 +83,9 @@ class TestJavaobj(unittest.TestCase):
         :return: File content or stream
         """
         for subfolder in ("java", ""):
-            found_file = os.path.join(os.path.dirname(__file__), subfolder, filename)
+            found_file = os.path.join(
+                os.path.dirname(__file__), subfolder, filename
+            )
             if os.path.exists(found_file):
                 break
         else:
@@ -104,12 +106,18 @@ class TestJavaobj(unittest.TestCase):
         try:
             javaobj.loads(marshalled_stream)
             self.assertEqual(original_stream, marshalled_stream)
-        except:
+        except Exception:
             print("-" * 80)
             print("=" * 30, "Original", "=" * 30)
-            print(javaobj.JavaObjectUnmarshaller._create_hexdump(original_stream))
+            print(
+                javaobj.JavaObjectUnmarshaller._create_hexdump(original_stream)
+            )
             print("*" * 30, "Marshalled", "*" * 30)
-            print(javaobj.JavaObjectUnmarshaller._create_hexdump(marshalled_stream))
+            print(
+                javaobj.JavaObjectUnmarshaller._create_hexdump(
+                    marshalled_stream
+                )
+            )
             print("-" * 80)
             raise
 
@@ -288,14 +296,27 @@ class TestJavaobj(unittest.TestCase):
         pobj = javaobj.loads(jobj)
         _logger.debug(pobj)
         # Compare the UTF-8 encoded version of the name
-        self.assertEqual(pobj, b"\xe6\x97\xa5\xe6\x9c\xac\xe5\x9b\xbd".decode("utf-8"))
+        self.assertEqual(
+            pobj, b"\xe6\x97\xa5\xe6\x9c\xac\xe5\x9b\xbd".decode("utf-8")
+        )
         self._try_marshalling(jobj, pobj)
 
     def test_char_array(self):
         jobj = self.read_file("testCharArray.ser")
         pobj = javaobj.loads(jobj)
         _logger.debug(pobj)
-        self.assertEqual(pobj, [u'\u0000', u'\ud800', u'\u0001', u'\udc00', u'\u0002', u'\uffff', u'\u0003'])
+        self.assertEqual(
+            pobj,
+            [
+                u"\u0000",
+                u"\ud800",
+                u"\u0001",
+                u"\udc00",
+                u"\u0002",
+                u"\uffff",
+                u"\u0003",
+            ],
+        )
         self._try_marshalling(jobj, pobj)
 
     def test_enums(self):
@@ -416,6 +437,7 @@ class TestJavaobj(unittest.TestCase):
         parent_map = pobj2["subMap"]
         for key, value in pobj.items():
             self.assertEqual(parent_map[key], value)
+
 
 # ------------------------------------------------------------------------------
 
