@@ -452,19 +452,19 @@ class TestJavaobj(unittest.TestCase):
         _logger.debug(pobj)
 
         # Basic checking
-        self.assertEqual(pobj["key1"], "value1")
-        self.assertEqual(pobj["key2"], "value2")
-        self.assertEqual(pobj["int"], 9)
-        self.assertEqual(pobj["int2"], 10)
-        self.assertEqual(pobj["bool"], True)
-        self.assertEqual(pobj["bool2"], True)
+        self.assertEqual(pobj[u"key1"], u"value1")
+        self.assertEqual(pobj[u"key2"], u"value2")
+        self.assertEqual(pobj[u"int"], 9)
+        self.assertEqual(pobj[u"int2"], 10)
+        self.assertEqual(pobj[u"bool"], True)
+        self.assertEqual(pobj[u"bool2"], True)
 
         # Load the parent map
         jobj2 = self.read_file("testBoolIntLong-2.ser")
         pobj2 = javaobj.loads(jobj2)
         _logger.debug(pobj2)
 
-        parent_map = pobj2["subMap"]
+        parent_map = pobj2[u"subMap"]
         for key, value in pobj.items():
             self.assertEqual(parent_map[key], value)
 
