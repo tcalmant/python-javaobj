@@ -167,6 +167,9 @@ class TestJavaobj(unittest.TestCase):
         self._try_marshalling(jobj, pobj)
 
     def test_class_with_byte_array_rw(self):
+        """
+        Tests handling of classes containing a Byte Array
+        """
         jobj = self.read_file("testClassWithByteArray.ser")
         pobj = javaobj.loads(jobj)
 
@@ -250,6 +253,9 @@ class TestJavaobj(unittest.TestCase):
     #     _logger.debug(".. Fields Types: %s", classdesc.fields_types)
 
     def test_super(self):
+        """
+        Tests basic class inheritance handling
+        """
         jobj = self.read_file("objSuper.ser")
         pobj = javaobj.loads(jobj)
         _logger.debug(pobj)
@@ -267,6 +273,9 @@ class TestJavaobj(unittest.TestCase):
         self._try_marshalling(jobj, pobj)
 
     def test_arrays(self):
+        """
+        Tests handling of Java arrays
+        """
         jobj = self.read_file("objArrays.ser")
         pobj = javaobj.loads(jobj)
         _logger.debug(pobj)
@@ -290,6 +299,9 @@ class TestJavaobj(unittest.TestCase):
         self._try_marshalling(jobj, pobj)
 
     def test_japan(self):
+        """
+        Tests the UTF encoding handling with Japanese characters
+        """
         # Japan.ser contains a string using wide characters: the name of the
         # state from Japan (according to wikipedia)
         jobj = self.read_file("testJapan.ser")
@@ -302,6 +314,9 @@ class TestJavaobj(unittest.TestCase):
         self._try_marshalling(jobj, pobj)
 
     def test_char_array(self):
+        """
+        Tests the loading of a wide-char array
+        """
         jobj = self.read_file("testCharArray.ser")
         pobj = javaobj.loads(jobj)
         _logger.debug(pobj)
@@ -320,6 +335,9 @@ class TestJavaobj(unittest.TestCase):
         self._try_marshalling(jobj, pobj)
 
     def test_enums(self):
+        """
+        Tests the handling of "enum" types
+        """
         jobj = self.read_file("objEnums.ser")
         pobj = javaobj.loads(jobj)
         _logger.debug(pobj)
@@ -340,6 +358,9 @@ class TestJavaobj(unittest.TestCase):
             # self._try_marshalling(jobj, pobj)
 
     def test_sets(self):
+        """
+        Tests handling of HashSet and TreeSet
+        """
         for filename in ("testHashSet.ser", "testTreeSet.ser"):
             _logger.debug("Loading file: %s", filename)
             jobj = self.read_file(filename)
@@ -349,6 +370,9 @@ class TestJavaobj(unittest.TestCase):
             self.assertSetEqual({i.value for i in pobj}, {1, 2, 42})
 
     def test_times(self):
+        """
+        Tests the handling of java.time classes
+        """
         jobj = self.read_file("testTime.ser")
         pobj = javaobj.loads(jobj)
         _logger.debug(pobj)
@@ -392,6 +416,9 @@ class TestJavaobj(unittest.TestCase):
         self.assertFalse(pobj.next)
 
     def test_collections(self):
+        """
+        Tests the handling of ArrayList, LinkedList and HashMap
+        """
         jobj = self.read_file("objCollections.ser")
         pobj = javaobj.loads(jobj)
         _logger.debug(pobj)
@@ -407,6 +434,9 @@ class TestJavaobj(unittest.TestCase):
         # self._try_marshalling(jobj, pobj)
 
     def test_jceks_issue_5(self):
+        """
+        Tests the handling of JCEKS issue #5
+        """
         jobj = self.read_file("jceks_issue_5.ser")
         pobj = javaobj.loads(jobj)
         _logger.info(pobj)
