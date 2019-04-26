@@ -35,6 +35,7 @@ http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.ht
 
 # Standard library
 import collections
+import functools
 import logging
 import os
 import struct
@@ -906,6 +907,9 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             and classdesc.flags & self.SC_WRITE_METHOD
             or classdesc.flags & self.SC_EXTERNALIZABLE
             and classdesc.flags & self.SC_BLOCK_DATA
+            or classdesc.superclass is not None
+            and classdesc.superclass.flags & self.SC_SERIALIZABLE
+            and classdesc.superclass.flags & self.SC_WRITE_METHOD
         ):
             # objectAnnotation
             log_debug(
@@ -1709,6 +1713,38 @@ class DefaultObjectTransformer(object):
             # Lists have their content in there annotations
             self.extend(self.annotations[1:])
 
+    @functools.total_ordering
+    class JavaPrimitiveClass(JavaObject):
+        """
+        Parent of Java classes matching a primitive (Bool, Integer, Long, ...)
+        """
+        def __init__(self, unmarshaller):
+            JavaObject.__init__(self)
+            self.value = None
+
+        def __str__(self):
+            return str(self.value)
+
+        def __repr__(self):
+            return repr(self.value)
+
+        def __hash__(self):
+                return hash(self.value)
+
+        def __eq__(self, other):
+            return self.value == other
+
+        def __lt__(self, other):
+            return self.value < other
+
+    class JavaBool(JavaPrimitiveClass):
+        def __bool__(self):
+            return self.value
+
+    class JavaInt(JavaPrimitiveClass):
+        def __int__(self):
+            return self.value
+
     class JavaMap(dict, JavaObject):
         """
         Python-Java dictionary/map bridge type
@@ -1955,6 +1991,9 @@ class DefaultObjectTransformer(object):
         "java.util.HashSet": JavaSet,
         "java.util.TreeSet": JavaTreeSet,
         "java.time.Ser": JavaTime,
+        "java.lang.Boolean": JavaBool,
+        "java.lang.Integer": JavaInt,
+        "java.lang.Long": JavaInt,
     }
 
     def create(self, classdesc, unmarshaller=None):

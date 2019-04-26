@@ -391,8 +391,34 @@ class TestJavaobj(unittest.TestCase):
         _logger.info(pobj)
         # self._try_marshalling(jobj, pobj)
 
+    def test_qistoph_pr_27(self):
+        """
+        Tests support for Bool, Integer, Long classes (PR #27)
+        """
+        # Load the basic map
+        jobj = self.read_file("testBoolIntLong.ser")
+        pobj = javaobj.loads(jobj)
+        _logger.debug(pobj)
+
+        # Basic checking
+        self.assertEqual(pobj["key1"], "value1")
+        self.assertEqual(pobj["key2"], "value2")
+        self.assertEqual(pobj["int"], 9)
+        self.assertEqual(pobj["int2"], 10)
+        self.assertEqual(pobj["bool"], True)
+        self.assertEqual(pobj["bool2"], True)
+
+        # Load the parent map
+        jobj2 = self.read_file("testBoolIntLong-2.ser")
+        pobj2 = javaobj.loads(jobj2)
+        _logger.debug(pobj2)
+
+        parent_map = pobj2["subMap"]
+        for key, value in pobj.items():
+            self.assertEqual(parent_map[key], value)
 
 # ------------------------------------------------------------------------------
+
 
 if __name__ == "__main__":
     # Setup logging
