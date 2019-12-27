@@ -484,7 +484,7 @@ class JavaStreamParser:
 
                 if cd.desc_flags & constants.SC_BLOCK_DATA:
                     # Call the transformer if possible
-                    if not instance.load_from_blockdata(self.__reader):
+                    if not instance.load_from_blockdata(self, self.__reader):
                         # Can't read :/
                         raise ValueError(
                             "hit externalizable with nonzero SC_BLOCK_DATA; "

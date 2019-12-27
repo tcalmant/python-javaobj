@@ -265,7 +265,7 @@ class JavaInstance(ParsedJavaContent):
     __repr__ = __str__
 
     def load_from_blockdata(
-        self, reader: DataStreamReader, indent: int = 0
+        self, parser, reader: DataStreamReader, indent: int = 0
     ) -> bool:
         """
         Reads content stored in a block data
