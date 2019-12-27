@@ -103,10 +103,11 @@ class JavaString(ParsedJavaContent):
         self.value: str = value
         self.length: int = length
 
-    def __str__(self) -> str:
+    def __repr__(self) -> str:
         return "[String {0:x}: {1}]".format(self.handle, self.value)
 
-    __repr__ = __str__
+    def __str__(self):
+        return self.value
 
 
 class JavaField:
