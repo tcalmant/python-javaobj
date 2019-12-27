@@ -32,7 +32,7 @@ class JavaList(list, JavaInstance):
         # Lists have their content in there annotations
         for cd, annotations in instance.annotations.items():
             if cd.name in self.HANDLED_CLASSES:
-                self.extend(ann.data for ann in annotations[1:])
+                self.extend(ann for ann in annotations[1:])
                 return True
 
         return False
@@ -176,7 +176,7 @@ class JavaSet(set, JavaInstance):
         # Lists have their content in there annotations
         for cd, annotations in instance.annotations.items():
             if cd.name in self.HANDLED_CLASSES:
-                self.update(x.data for x in annotations[1:])
+                self.update(x for x in annotations[1:])
                 return True
 
         return False
@@ -198,7 +198,7 @@ class JavaTreeSet(JavaSet):
         for cd, annotations in instance.annotations.items():
             if cd.name == self.HANDLED_CLASSES:
                 # Annotation[1] == size of the set
-                self.update(x.data for x in annotations[2:])
+                self.update(x for x in annotations[2:])
                 return True
 
         return False
