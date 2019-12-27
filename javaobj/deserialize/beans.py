@@ -104,10 +104,17 @@ class JavaString(ParsedJavaContent):
         self.length: int = length
 
     def __repr__(self) -> str:
-        return "[String {0:x}: {1}]".format(self.handle, self.value)
+        return repr(self.value)
+        # "[String {0:x}: {1}]".format(self.handle, self.value)
 
     def __str__(self):
         return self.value
+
+    def __hash__(self):
+        return hash(self.value)
+
+    def __eq__(self, other):
+        return self.value == other
 
 
 class JavaField:
@@ -197,6 +204,33 @@ class JavaClassDesc(ParsedJavaContent):
 
     __repr__ = __str__
 
+    @property
+    def serialVersionUID(self):
+        """
+        Mimics the javaobj API
+        """
+        return self.serial_version_uid
+
+    @property
+    def flags(self):
+        """
+        Mimics the javaobj API
+        """
+        return self.desc_flags
+    @property
+    def fields_names(self):
+        """
+        Mimics the javaobj API
+        """
+        return [field.name for field in self.fields]
+
+    @property
+    def fields_types(self):
+        """
+        Mimics the javaobj API
+        """
+        return [field.type for field in self.fields]
+
     def is_array_class(self) -> bool:
         """
         Determines if this is an array type
@@ -265,6 +299,23 @@ class JavaInstance(ParsedJavaContent):
 
     __repr__ = __str__
 
+    def __getattr__(self, name):
+        """
+        Returns the field with the given name
+        """
+        for cd_fields in self.field_data.values():
+            for field, value in cd_fields.items():
+                if field.name == name:
+                    return value
+
+        raise AttributeError(name)
+
+    def get_class(self):
+        """
+        Returns the class of this instance
+        """
+        return self.classdesc
+
     def load_from_blockdata(
         self, parser, reader: DataStreamReader, indent: int = 0
     ) -> bool:
@@ -297,6 +348,13 @@ class JavaClass(ParsedJavaContent):
 
     __repr__ = __str__
 
+    @property
+    def name(self):
+        """
+        Mimics the javaobj API
+        """
+        return self.classdesc.name
+
 
 class JavaEnum(ParsedJavaContent):
     """
@@ -308,13 +366,20 @@ class JavaEnum(ParsedJavaContent):
     ):
         super().__init__(ContentType.ENUM)
         self.handle = handle
-        self.class_desc = class_desc
+        self.classdesc = class_desc
         self.value = value
 
     def __str__(self):
         return "[Enum 0x{0:x}: {1}]".format(self.handle, self.value)
 
     __repr__ = __str__
+
+    @property
+    def constant(self):
+        """
+        Mimics the javaobj API
+        """
+        return self.value
 
 
 class JavaArray(ParsedJavaContent):
@@ -331,7 +396,7 @@ class JavaArray(ParsedJavaContent):
     ):
         super().__init__(ContentType.ARRAY)
         self.handle = handle
-        self.class_desc = class_desc
+        self.classdesc = class_desc
         self.field_type = field_type
         self.content = content
 
