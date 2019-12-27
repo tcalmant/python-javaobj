@@ -108,9 +108,9 @@ class JavaMap(dict, JavaInstance):
         """
         # Lists have their content in there annotations
         for cd, annotations in instance.annotations.items():
-            if cd.name in self.HANDLED_CLASSES:
+            if cd.name in JavaMap.HANDLED_CLASSES:
                 # Group annotation elements 2 by 2
-                args = [x.data for x in annotations[1:]] * 2
+                args = [iter(annotations[1:])] * 2
                 for key, value in zip(*args):
                     self[key] = value
 
@@ -154,12 +154,6 @@ class JavaLinkedHashMap(JavaMap):
         if final_byte != 0:
             raise ValueError("Should find 0x0, got {0:x}".format(final_byte))
 
-        return True
-
-    def load_from_instance(self, instance, indent=0):
-        """
-        Do nothing when called
-        """
         return True
 
 
