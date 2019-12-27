@@ -382,7 +382,7 @@ class JavaEnum(ParsedJavaContent):
         return self.value
 
 
-class JavaArray(ParsedJavaContent):
+class JavaArray(ParsedJavaContent, list):
     """
     Represents a Java array
     """
@@ -394,7 +394,8 @@ class JavaArray(ParsedJavaContent):
         field_type: FieldType,
         content: List[Any],
     ):
-        super().__init__(ContentType.ARRAY)
+        list.__init__(self, content)
+        ParsedJavaContent.__init__(self, ContentType.ARRAY)
         self.handle = handle
         self.classdesc = class_desc
         self.field_type = field_type
@@ -406,6 +407,13 @@ class JavaArray(ParsedJavaContent):
         )
 
     __repr__ = __str__
+
+    @property
+    def _data(self):
+        """
+        Mimics the javaobj API
+        """
+        return tuple(self)
 
 
 class BlockData(ParsedJavaContent):
