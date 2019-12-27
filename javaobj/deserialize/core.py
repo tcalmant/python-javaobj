@@ -9,17 +9,25 @@ import logging
 import os
 import struct
 
-from .beans import *
-from .constants import *
+from . import constants
+from .beans import (
+    ParsedJavaContent,
+    BlockData,
+    JavaClassDesc,
+    JavaClass,
+    JavaArray,
+    JavaEnum,
+    JavaField,
+    JavaInstance,
+    JavaString,
+    ExceptionState,
+    ExceptionRead,
+    ClassDescType,
+    FieldType,
+)
+from .stream import DataStreamReader
+from .. import api
 from ..modifiedutf8 import decode_modified_utf8
-
-
-def load(fd: IO[bytes]) -> Any:
-    """
-    Parses the content of the given file
-    """
-    parser = JavaStreamParser(fd)
-    return parser.run()
 
 
 class JavaStreamParser:
@@ -27,69 +35,78 @@ class JavaStreamParser:
     Parses a Java stream
     """
 
-    def __init__(self, fd: IO[bytes]):
+    def __init__(
+        self, fd: IO[bytes], transformers: List[api.ObjectTransformer]
+    ):
         """
         :param fd: File-object to read from
         """
         # Input stream
         self.__fd = fd
+        self.__reader = DataStreamReader(fd)
+
+        # Object transformers
+        self.__transformers = list(transformers)
 
         # Logger
         self._log = logging.getLogger("javaobj.parser")
 
         # Handles
-        self.__handle_maps: List[Dict[int, Content]] = []
-        self.__handles: Dict[int, Content] = {}
+        self.__handle_maps: List[Dict[int, ParsedJavaContent]] = []
+        self.__handles: Dict[int, ParsedJavaContent] = {}
 
         # Initial handle value
-        self.__current_handle = BASE_REFERENCE_IDX
+        self.__current_handle = constants.BASE_REFERENCE_IDX
 
-        # Handlers
-        self.__type_code_handlers: Dict[int, Callable[[int], Content]] = {
-            TC_OBJECT: self._do_object,
-            TC_CLASS: self._do_class,
-            TC_ARRAY: self._do_array,
-            TC_STRING: self._read_new_string,
-            TC_LONGSTRING: self._read_new_string,
-            TC_ENUM: self._do_enum,
-            TC_CLASSDESC: self._do_classdesc,
-            TC_PROXYCLASSDESC: self._do_classdesc,
-            TC_REFERENCE: self._do_reference,
-            TC_NULL: self._do_null,
-            TC_EXCEPTION: self._do_exception,
-            TC_BLOCKDATA: self._do_block_data,
-            TC_BLOCKDATALONG: self._do_block_data,
+        # Definition of the type code handlers
+        # Each takes the type code as argument
+        self.__type_code_handlers: Dict[
+            int, Callable[[int], ParsedJavaContent]
+        ] = {
+            constants.TC_OBJECT: self._do_object,
+            constants.TC_CLASS: self._do_class,
+            constants.TC_ARRAY: self._do_array,
+            constants.TC_STRING: self._read_new_string,
+            constants.TC_LONGSTRING: self._read_new_string,
+            constants.TC_ENUM: self._do_enum,
+            constants.TC_CLASSDESC: self._do_classdesc,
+            constants.TC_PROXYCLASSDESC: self._do_classdesc,
+            constants.TC_REFERENCE: self._do_reference,
+            constants.TC_NULL: self._do_null,
+            constants.TC_EXCEPTION: self._do_exception,
+            constants.TC_BLOCKDATA: self._do_block_data,
+            constants.TC_BLOCKDATALONG: self._do_block_data,
         }
 
-    def run(self) -> List[Content]:
+    def run(self) -> List[ParsedJavaContent]:
         """
         Parses the input stream
         """
         # Check the magic byte
-        magic = self._read_ushort()
-        if magic != STREAM_MAGIC:
+        magic = self.__reader.read_ushort()
+        if magic != constants.STREAM_MAGIC:
             raise ValueError("Invalid file magic: 0x{0:x}".format(magic))
 
         # Check the stream version
-        version = self._read_ushort()
-        if version != STREAM_VERSION:
+        version = self.__reader.read_ushort()
+        if version != constants.STREAM_VERSION:
             raise ValueError("Invalid file version: 0x{0:x}".format(version))
 
         # Reset internal state
         self._reset()
 
         # Read content
-        contents: List[Content] = []
+        contents: List[ParsedJavaContent] = []
         while True:
             self._log.info("Reading next content")
             start = self.__fd.tell()
             try:
-                type_code = self._read_byte()
+                type_code = self.__reader.read_byte()
             except EOFError:
                 # End of file
                 break
 
-            if type_code == TC_RESET:
+            if type_code == constants.TC_RESET:
                 # Explicit reset
                 self._reset()
                 continue
@@ -118,7 +135,7 @@ class JavaStreamParser:
 
         return contents
 
-    def dump(self, content: List[Content]) -> str:
+    def dump(self, content: List[ParsedJavaContent]) -> str:
         """
         Dumps to a string the given objects
         """
@@ -144,9 +161,13 @@ class JavaStreamParser:
         Dumps an instance to a set of lines
         """
         lines: List[str] = []
-        lines.append("[instance 0x{0:x}: 0x{1:x} / {2}".format(
-            instance.handle, instance.classdesc.handle, instance.classdesc.name
-        ))
+        lines.append(
+            "[instance 0x{0:x}: 0x{1:x} / {2}".format(
+                instance.handle,
+                instance.classdesc.handle,
+                instance.classdesc.name,
+            )
+        )
 
         if instance.annotations:
             lines.append("\tobject annotations:")
@@ -159,8 +180,8 @@ class JavaStreamParser:
             lines.append("\tfield data:")
             for field, obj in instance.field_data.items():
                 line = "\t\t" + field.name + ": "
-                if isinstance(obj, Content):
-                    content: Content = obj
+                if isinstance(obj, ParsedJavaContent):
+                    content: ParsedJavaContent = obj
                     h = content.handle
                     if h == instance.handle:
                         line += "this"
@@ -176,90 +197,6 @@ class JavaStreamParser:
         lines.append("]")
         return lines
 
-    def _read(self, struct_format: str) -> List[Any]:
-        """
-        Reads from the input stream, using struct
-
-        :param struct_format: An unpack format string
-        :return: The result of struct.unpack (tuple)
-        :raise RuntimeError: End of stream reached during unpacking
-        """
-        length = struct.calcsize(struct_format)
-        bytes_array = self.__fd.read(length)
-
-        if len(bytes_array) != length:
-            raise EOFError("Stream has ended unexpectedly while parsing.")
-
-        return struct.unpack(struct_format, bytes_array)
-
-    def _read_bool(self) -> bool:
-        """
-        Shortcut to read a single `boolean` (1 byte)
-        """
-        return bool(self._read(">B")[0])
-
-    def _read_byte(self) -> int:
-        """
-        Shortcut to read a single `byte` (1 byte)
-        """
-        return self._read(">b")[0]
-
-    def _read_ubyte(self) -> int:
-        """
-        Shortcut to read an unsigned `byte` (1 byte)
-        """
-        return self._read(">B")[0]
-
-    def _read_char(self) -> chr:
-        """
-        Shortcut to read a single `char` (2 bytes)
-        """
-        return chr(self._read(">H")[0])
-
-    def _read_short(self) -> int:
-        """
-        Shortcut to read a single `short` (2 bytes)
-        """
-        return self._read(">h")[0]
-
-    def _read_ushort(self) -> int:
-        """
-        Shortcut to read an unsigned `short` (2 bytes)
-        """
-        return self._read(">H")[0]
-
-    def _read_int(self) -> int:
-        """
-        Shortcut to read a single `int` (4 bytes)
-        """
-        return self._read(">i")[0]
-
-    def _read_float(self) -> float:
-        """
-        Shortcut to read a single `float` (4 bytes)
-        """
-        return self._read(">f")[0]
-
-    def _read_long(self) -> int:
-        """
-        Shortcut to read a single `long` (8 bytes)
-        """
-        return self._read(">q")[0]
-
-    def _read_double(self) -> float:
-        """
-        Shortcut to read a single `double` (8 bytes)
-        """
-        return self._read(">d")[0]
-
-    def _read_UTF(self) -> str:
-        """
-        Reads a Java string
-        """
-        length = self._read_ushort()
-        ba = self.__fd.read(length)
-        return decode_modified_utf8(ba)[0]
-
     def _reset(self) -> None:
         """
         Resets the internal state of the parser
@@ -270,7 +207,7 @@ class JavaStreamParser:
         self.__handles.clear()
 
         # Reset handle index
-        self.__current_handle = BASE_REFERENCE_IDX
+        self.__current_handle = constants.BASE_REFERENCE_IDX
 
     def _new_handle(self) -> int:
         """
@@ -280,7 +217,7 @@ class JavaStreamParser:
         self.__current_handle += 1
         return handle
 
-    def _set_handle(self, handle: int, content: Content) -> None:
+    def _set_handle(self, handle: int, content: ParsedJavaContent) -> None:
         """
         Stores the reference to an object
         """
@@ -295,11 +232,16 @@ class JavaStreamParser:
         """
         return None
 
-    def _read_content(self, type_code: int, block_data: bool) -> Content:
+    def _read_content(
+        self, type_code: int, block_data: bool
+    ) -> ParsedJavaContent:
         """
         Parses the next content
         """
-        if not block_data and type_code in (TC_BLOCKDATA, TC_BLOCKDATALONG):
+        if not block_data and type_code in (
+            constants.TC_BLOCKDATA,
+            constants.TC_BLOCKDATALONG,
+        ):
             raise ValueError("Got a block data, but not allowed here.")
 
         try:
@@ -316,7 +258,7 @@ class JavaStreamParser:
         """
         Reads a Java String
         """
-        if type_code == TC_REFERENCE:
+        if type_code == constants.TC_REFERENCE:
             # Got a reference
             previous = self._do_reference()
             if not isinstance(previous, JavaString):
@@ -327,10 +269,10 @@ class JavaStreamParser:
         handle = self._new_handle()
 
         # Read the length
-        if type_code == TC_STRING:
-            length = self._read_ushort()
-        elif type_code == TC_LONGSTRING:
-            length = self._read_long()
+        if type_code == constants.TC_STRING:
+            length = self.__reader.read_ushort()
+        elif type_code == constants.TC_LONGSTRING:
+            length = self.__reader.read_long()
             if length < 0 or length > 2147483647:
                 raise ValueError("Invalid string length: {0}".format(length))
             elif length < 65536:
@@ -348,7 +290,7 @@ class JavaStreamParser:
         """
         Reads a class description with its type code
         """
-        type_code = self._read_byte()
+        type_code = self.__reader.read_byte()
         return self._do_classdesc(type_code)
 
     def _do_classdesc(
@@ -359,28 +301,31 @@ class JavaStreamParser:
 
         :param must_be_new: Check if the class description is really a new one
         """
-        if type_code == TC_CLASSDESC:
+        if type_code == constants.TC_CLASSDESC:
             # Do the real job
-            name = self._read_UTF()
-            serial_version_uid = self._read_long()
+            name = self.__reader.read_UTF()
+            serial_version_uid = self.__reader.read_long()
             handle = self._new_handle()
-            desc_flags = self._read_byte()
-            nb_fields = self._read_short()
+            desc_flags = self.__reader.read_byte()
+            nb_fields = self.__reader.read_short()
             if nb_fields < 0:
                 raise ValueError("Invalid field count: {0}".format(nb_fields))
 
             fields: List[JavaField] = []
             for _ in range(nb_fields):
-                field_type = self._read_byte()
-                if field_type in PRIMITIVE_TYPES:
+                field_type = self.__reader.read_byte()
+                if field_type in constants.PRIMITIVE_TYPES:
                     # Primitive type
-                    field_name = self._read_UTF()
+                    field_name = self.__reader.read_UTF()
                     fields.append(JavaField(FieldType(field_type), field_name))
-                elif field_type in (TYPE_OBJECT, TYPE_ARRAY):
+                elif field_type in (
+                    constants.TYPE_OBJECT,
+                    constants.TYPE_ARRAY,
+                ):
                     # Array or object type
-                    field_name = self._read_UTF()
+                    field_name = self.__reader.read_UTF()
                     # String type code
-                    str_type_code = self._read_byte()
+                    str_type_code = self.__reader.read_byte()
                     class_name = self._read_new_string(str_type_code)
                     fields.append(
                         JavaField(
@@ -405,12 +350,12 @@ class JavaStreamParser:
             # Store the reference to the parsed bean
             self._set_handle(handle, class_desc)
             return class_desc
-        elif type_code == TC_NULL:
+        elif type_code == constants.TC_NULL:
             # Null reference
             if must_be_new:
                 raise ValueError("Got Null instead of a new class description")
             return None
-        elif type_code == TC_REFERENCE:
+        elif type_code == constants.TC_REFERENCE:
             # Reference to an already loading class description
             if must_be_new:
                 raise ValueError(
@@ -421,11 +366,13 @@ class JavaStreamParser:
             if not isinstance(previous, JavaClassDesc):
                 raise ValueError("Referenced object is not a class description")
             return previous
-        elif type_code == TC_PROXYCLASSDESC:
+        elif type_code == constants.TC_PROXYCLASSDESC:
             # Proxy class description
             handle = self._new_handle()
-            nb_interfaces = self._read_int()
-            interfaces = [self._read_UTF() for _ in range(nb_interfaces)]
+            nb_interfaces = self.__reader.read_int()
+            interfaces = [
+                self.__reader.read_UTF() for _ in range(nb_interfaces)
+            ]
 
             class_desc = JavaClassDesc(ClassDescType.PROXYCLASS)
             class_desc.handle = handle
@@ -439,17 +386,17 @@ class JavaStreamParser:
 
         raise ValueError("Expected a valid class description starter")
 
-    def _read_class_annotations(self) -> List[Content]:
+    def _read_class_annotations(self) -> List[ParsedJavaContent]:
         """
         Reads the annotations associated to a class
         """
-        contents: List[Content] = []
+        contents: List[ParsedJavaContent] = []
         while True:
-            type_code = self._read_byte()
-            if type_code == TC_ENDBLOCKDATA:
+            type_code = self.__reader.read_byte()
+            if type_code == constants.TC_ENDBLOCKDATA:
                 # We're done here
                 return contents
-            elif type_code == TC_RESET:
+            elif type_code == constants.TC_RESET:
                 # Reset references
                 self._reset()
                 continue
@@ -459,6 +406,18 @@ class JavaStreamParser:
                 raise ExceptionRead(java_object)
 
             contents.append(java_object)
+
+    def _create_instance(self, class_desc: JavaClassDesc) -> JavaInstance:
+        """
+        Creates a JavaInstance object, by a transformer if possible
+        """
+        # Try to create the transformed object
+        for transformer in self.__transformers:
+            instance = transformer.create(class_desc)
+            if instance is not None:
+                return instance
+
+        return JavaInstance()
 
     def _do_object(self, type_code: int = 0) -> JavaInstance:
         """
@@ -474,7 +433,7 @@ class JavaStreamParser:
         )
 
         # Prepare the instance object
-        instance = JavaInstance()
+        instance = self._create_instance(class_desc)
         instance.classdesc = class_desc
         instance.handle = handle
 
@@ -495,12 +454,12 @@ class JavaStreamParser:
         instance.classdesc.get_hierarchy(classes)
 
         all_data: Dict[JavaClassDesc, Dict[JavaField, Any]] = {}
-        annotations: Dict[JavaClassDesc, List[Content]] = {}
+        annotations: Dict[JavaClassDesc, List[ParsedJavaContent]] = {}
 
         for cd in classes:
             values: Dict[JavaField, Any] = {}
-            if cd.desc_flags & SC_SERIALIZABLE:
-                if cd.desc_flags & SC_EXTERNALIZABLE:
+            if cd.desc_flags & constants.SC_SERIALIZABLE:
+                if cd.desc_flags & constants.SC_EXTERNALIZABLE:
                     raise ValueError(
                         "SC_EXTERNALIZABLE & SC_SERIALIZABLE encountered"
                     )
@@ -510,53 +469,63 @@ class JavaStreamParser:
 
                 all_data[cd] = values
 
-                if cd.desc_flags & SC_WRITE_METHOD:
-                    if cd.desc_flags & SC_ENUM:
+                if cd.desc_flags & constants.SC_WRITE_METHOD:
+                    if cd.desc_flags & constants.SC_ENUM:
                         raise ValueError(
                             "SC_ENUM & SC_WRITE_METHOD encountered!"
                         )
 
                     annotations[cd] = self._read_class_annotations()
-            elif cd.desc_flags & SC_EXTERNALIZABLE:
-                if cd.desc_flags & SC_SERIALIZABLE:
+            elif cd.desc_flags & constants.SC_EXTERNALIZABLE:
+                if cd.desc_flags & constants.SC_SERIALIZABLE:
                     raise ValueError(
                         "SC_EXTERNALIZABLE & SC_SERIALIZABLE encountered"
                     )
 
-                if cd.desc_flags & SC_BLOCK_DATA:
-                    raise ValueError(
-                        "hit externalizable with nonzero SC_BLOCK_DATA; "
-                        "can't interpret data"
-                    )
+                if cd.desc_flags & constants.SC_BLOCK_DATA:
+                    # Call the transformer if possible
+                    if not instance.load_from_blockdata(self.__reader):
+                        # Can't read :/
+                        raise ValueError(
+                            "hit externalizable with nonzero SC_BLOCK_DATA; "
+                            "can't interpret data"
+                        )
 
                 annotations[cd] = self._read_class_annotations()
 
+        # Fill the instance object
         instance.annotations = annotations
         instance.field_data = all_data
+
+        # Load transformation from the fields and annotations
+        instance.load_from_instance(instance)
 
     def _read_field_value(self, field_type: FieldType) -> Any:
         """
         Reads the value of an instance field
         """
         if field_type == FieldType.BYTE:
-            return self._read_byte()
+            return self.__reader.read_byte()
         elif field_type == FieldType.CHAR:
-            return self._read_char()
+            return self.__reader.read_char()
         elif field_type == FieldType.DOUBLE:
-            return self._read_double()
+            return self.__reader.read_double()
         elif field_type == FieldType.FLOAT:
-            return self._read_float()
+            return self.__reader.read_float()
         elif field_type == FieldType.INTEGER:
-            return self._read_int()
+            return self.__reader.read_int()
         elif field_type == FieldType.LONG:
-            return self._read_long()
+            return self.__reader.read_long()
         elif field_type == FieldType.SHORT:
-            return self._read_short()
+            return self.__reader.read_short()
         elif field_type == FieldType.BOOLEAN:
-            return self._read_bool()
+            return self.__reader.read_bool()
         elif field_type in (FieldType.OBJECT, FieldType.ARRAY):
-            sub_type_code = self._read_byte()
-            if field_type == FieldType.ARRAY and sub_type_code != TC_ARRAY:
+            sub_type_code = self.__reader.read_byte()
+            if (
+                field_type == FieldType.ARRAY
+                and sub_type_code != constants.TC_ARRAY
+            ):
                 raise ValueError("Array type listed, but type code != TC_ARRAY")
 
             content = self._read_content(sub_type_code, False)
@@ -567,11 +536,11 @@ class JavaStreamParser:
 
         raise ValueError("Can't process type: {0}".format(field_type))
 
-    def _do_reference(self, type_code: int = 0) -> Content:
+    def _do_reference(self, type_code: int = 0) -> ParsedJavaContent:
         """
         Returns an object already parsed
         """
-        handle = self._read_int()
+        handle = self.__reader.read_int()
         try:
             return self.__handles[handle]
         except KeyError:
@@ -588,7 +557,7 @@ class JavaStreamParser:
         handle = self._new_handle()
 
         # Read the enum string
-        sub_type_code = self._read_byte()
+        sub_type_code = self.__reader.read_byte()
         enum_str = self._read_new_string(sub_type_code)
         cd.enum_constants.add(enum_str.value)
 
@@ -617,12 +586,12 @@ class JavaStreamParser:
         if len(cd.name) < 2:
             raise ValueError("Invalid name in array class description")
 
-        # Content type
+        # ParsedJavaContent type
         content_type_byte = ord(cd.name[1].encode("latin1"))
         field_type = FieldType(content_type_byte)
 
         # Array size
-        size = self._read_int()
+        size = self.__reader.read_int()
         if size < 0:
             raise ValueError("Invalid array size")
 
@@ -630,15 +599,15 @@ class JavaStreamParser:
         content = [self._read_field_value(field_type) for _ in range(size)]
         return JavaArray(handle, cd, field_type, content)
 
-    def _do_exception(self, type_code: int) -> Content:
+    def _do_exception(self, type_code: int) -> ParsedJavaContent:
         """
         Read the content of a thrown exception
         """
         # Start by resetting current state
         self._reset()
 
-        type_code = self._read_byte()
-        if type_code == TC_RESET:
+        type_code = self.__reader.read_byte()
+        if type_code == constants.TC_RESET:
             raise ValueError("TC_RESET read while reading exception")
 
         content = self._read_content(type_code, False)
@@ -661,10 +630,10 @@ class JavaStreamParser:
         Reads a block data
         """
         # Parse the size
-        if type_code == TC_BLOCKDATA:
-            size = self._read_ubyte()
-        elif type_code == TC_BLOCKDATALONG:
-            size = self._read_int()
+        if type_code == constants.TC_BLOCKDATA:
+            size = self.__reader.read_ubyte()
+        elif type_code == constants.TC_BLOCKDATALONG:
+            size = self.__reader.read_int()
         else:
             raise ValueError("Invalid type code for blockdata")
 

@@ -2000,7 +2000,7 @@ class DefaultObjectTransformer(object):
     }
 
     def create(self, classdesc, unmarshaller=None):
-        # type: (JavaClass, JavaObjectUnmarshaller) -> JavaObject
+        # type: (JavaClassDesc, JavaObjectUnmarshaller) -> JavaObject
         """
         Transforms a deserialized Java object into a Python object
 

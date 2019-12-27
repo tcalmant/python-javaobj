@@ -7,7 +7,8 @@ from enum import Enum, IntEnum
 from typing import Any, Dict, List, Optional, Set
 import logging
 
-from .constants import *
+from . import constants
+from .stream import DataStreamReader
 from ..modifiedutf8 import decode_modified_utf8
 
 
@@ -40,19 +41,19 @@ class FieldType(IntEnum):
     Types of class fields
     """
 
-    BYTE = TYPE_BYTE
-    CHAR = TYPE_CHAR
-    DOUBLE = TYPE_DOUBLE
-    FLOAT = TYPE_FLOAT
-    INTEGER = TYPE_INTEGER
-    LONG = TYPE_LONG
-    SHORT = TYPE_SHORT
-    BOOLEAN = TYPE_BOOLEAN
-    ARRAY = TYPE_ARRAY
-    OBJECT = TYPE_OBJECT
+    BYTE = constants.TYPE_BYTE
+    CHAR = constants.TYPE_CHAR
+    DOUBLE = constants.TYPE_DOUBLE
+    FLOAT = constants.TYPE_FLOAT
+    INTEGER = constants.TYPE_INTEGER
+    LONG = constants.TYPE_LONG
+    SHORT = constants.TYPE_SHORT
+    BOOLEAN = constants.TYPE_BOOLEAN
+    ARRAY = constants.TYPE_ARRAY
+    OBJECT = constants.TYPE_OBJECT
 
 
-class Content:
+class ParsedJavaContent:
     """
     Generic representation of data parsed from the stream
     """
@@ -69,12 +70,12 @@ class Content:
         pass
 
 
-class ExceptionState(Content):
+class ExceptionState(ParsedJavaContent):
     """
     Representation of a failed parsing
     """
 
-    def __init__(self, exception_object: Content, data: bytes):
+    def __init__(self, exception_object: ParsedJavaContent, data: bytes):
         super().__init__(ContentType.EXCEPTIONSTATE)
         self.exception_object = exception_object
         self.stream_data = data
@@ -86,11 +87,11 @@ class ExceptionRead(Exception):
     Exception used to indicate that an exception object has been parsed
     """
 
-    def __init__(self, content: Content):
+    def __init__(self, content: ParsedJavaContent):
         self.exception_object = content
 
 
-class JavaString(Content):
+class JavaString(ParsedJavaContent):
     """
     Represents a Java string
     """
@@ -141,7 +142,7 @@ class JavaField:
                 )
 
 
-class JavaClassDesc(Content):
+class JavaClassDesc(ParsedJavaContent):
     """
     Represents the description of a class
     """
@@ -168,7 +169,7 @@ class JavaClassDesc(Content):
         self.inner_classes: List[JavaClassDesc] = []
 
         # List of annotations objects
-        self.annotations: List[Content] = []
+        self.annotations: List[ParsedJavaContent] = []
 
         # The super class of this one, if any
         self.super_class: JavaClassDesc = None
@@ -221,7 +222,9 @@ class JavaClassDesc(Content):
         """
         Checks the validity of this class description
         """
-        serial_or_extern = SC_SERIALIZABLE | SC_EXTERNALIZABLE
+        serial_or_extern = (
+            constants.SC_SERIALIZABLE | constants.SC_EXTERNALIZABLE
+        )
         if (self.desc_flags & serial_or_extern) == 0 and self.fields:
             raise ValueError(
                 "Non-serializable, non-externalizable class has fields"
@@ -230,7 +233,7 @@ class JavaClassDesc(Content):
         if self.desc_flags & serial_or_extern == serial_or_extern:
             raise ValueError("Class is both serializable and externalizable")
 
-        if self.desc_flags & SC_ENUM:
+        if self.desc_flags & constants.SC_ENUM:
             if self.fields or self.interfaces:
                 raise ValueError(
                     "Enums shouldn't implement interfaces "
@@ -243,7 +246,7 @@ class JavaClassDesc(Content):
                 )
 
 
-class JavaInstance(Content):
+class JavaInstance(ParsedJavaContent):
     """
     Represents an instance of Java object
     """
@@ -252,7 +255,7 @@ class JavaInstance(Content):
         super().__init__(ContentType.INSTANCE)
         self.classdesc: JavaClassDesc = None
         self.field_data: Dict[JavaClassDesc, Dict[JavaField, Any]] = {}
-        self.annotations: Dict[JavaClassDesc, List[Content]] = {}
+        self.annotations: Dict[JavaClassDesc, List[ParsedJavaContent]] = {}
 
     def __str__(self):
         return "[instance 0x{0:x}: type {1}]".format(
@@ -261,8 +264,24 @@ class JavaInstance(Content):
 
     __repr__ = __str__
 
+    def load_from_blockdata(
+        self, reader: DataStreamReader, indent: int = 0
+    ) -> bool:
+        """
+        Reads content stored in a block data
+        """
+        return False
 
-class JavaClass(Content):
+    def load_from_instance(
+        self, instance: "JavaInstance", indent: int = 0
+    ) -> bool:
+        """
+        Load content from a parsed instance object
+        """
+        return False
+
+
+class JavaClass(ParsedJavaContent):
     """
     Represents a stored Java class
     """
@@ -278,7 +297,7 @@ class JavaClass(Content):
     __repr__ = __str__
 
 
-class JavaEnum(Content):
+class JavaEnum(ParsedJavaContent):
     """
     Represents an enumeration value
     """
@@ -297,7 +316,7 @@ class JavaEnum(Content):
     __repr__ = __str__
 
 
-class JavaArray(Content):
+class JavaArray(ParsedJavaContent):
     """
     Represents a Java array
     """
@@ -323,7 +342,7 @@ class JavaArray(Content):
     __repr__ = __str__
 
 
-class BlockData(Content):
+class BlockData(ParsedJavaContent):
     """
     Represents a data block
     """
