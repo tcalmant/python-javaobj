@@ -89,7 +89,7 @@ class JavaPrimitiveClass(JavaInstance):
         """
         Load content from a parsed instance object
         """
-        for field, value in instance.field_data.values():
+        for field, value in instance.field_data.items():
             if field.name == "value":
                 self.value = value
                 return True
