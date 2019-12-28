@@ -28,9 +28,10 @@ from enum import Enum, IntEnum
 from typing import Any, Dict, List, Optional, Set
 import logging
 
-from .. import constants
 from .stream import DataStreamReader
+from ..constants import ClassDescFlags, TypeCode
 from ..modifiedutf8 import decode_modified_utf8
+from ..utils import UNICODE_TYPE
 
 
 class ContentType(IntEnum):
@@ -62,16 +63,16 @@ class FieldType(IntEnum):
     Types of class fields
     """
 
-    BYTE = constants.TYPE_BYTE
-    CHAR = constants.TYPE_CHAR
-    DOUBLE = constants.TYPE_DOUBLE
-    FLOAT = constants.TYPE_FLOAT
-    INTEGER = constants.TYPE_INTEGER
-    LONG = constants.TYPE_LONG
-    SHORT = constants.TYPE_SHORT
-    BOOLEAN = constants.TYPE_BOOLEAN
-    ARRAY = constants.TYPE_ARRAY
-    OBJECT = constants.TYPE_OBJECT
+    BYTE = TypeCode.TYPE_BYTE.value
+    CHAR = TypeCode.TYPE_CHAR.value
+    DOUBLE = TypeCode.TYPE_DOUBLE.value
+    FLOAT = TypeCode.TYPE_FLOAT.value
+    INTEGER = TypeCode.TYPE_INTEGER.value
+    LONG = TypeCode.TYPE_LONG.value
+    SHORT = TypeCode.TYPE_SHORT.value
+    BOOLEAN = TypeCode.TYPE_BOOLEAN.value
+    ARRAY = TypeCode.TYPE_ARRAY.value
+    OBJECT = TypeCode.TYPE_OBJECT.value
 
 
 class ParsedJavaContent:
@@ -280,7 +281,7 @@ class JavaClassDesc(ParsedJavaContent):
         Checks the validity of this class description
         """
         serial_or_extern = (
-            constants.SC_SERIALIZABLE | constants.SC_EXTERNALIZABLE
+            ClassDescFlags.SC_SERIALIZABLE | ClassDescFlags.SC_EXTERNALIZABLE
         )
         if (self.desc_flags & serial_or_extern) == 0 and self.fields:
             raise ValueError(
@@ -290,7 +291,7 @@ class JavaClassDesc(ParsedJavaContent):
         if self.desc_flags & serial_or_extern == serial_or_extern:
             raise ValueError("Class is both serializable and externalizable")
 
-        if self.desc_flags & constants.SC_ENUM:
+        if self.desc_flags & ClassDescFlags.SC_ENUM:
             if self.fields or self.interfaces:
                 raise ValueError(
                     "Enums shouldn't implement interfaces "
@@ -453,3 +454,14 @@ class BlockData(ParsedJavaContent):
         )
 
     __repr__ = __str__
+
+    def __eq__(self, other):
+        if isinstance(other, (str, UNICODE_TYPE)):
+            other_data = other.encode("latin1")
+        elif isinstance(other, bytes):
+            other_data = other
+        else:
+            # Can't compare
+            return False
+
+        return other_data == self.data
