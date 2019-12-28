@@ -237,7 +237,6 @@ class TestJavaobj(unittest.TestCase):
         self.assertEqual(pobj.integer, -1)
         self.assertEqual(pobj.superString, u"Super!!")
 
-
     def test_arrays(self):
         """
         Tests handling of Java arrays
@@ -261,7 +260,6 @@ class TestJavaobj(unittest.TestCase):
         _logger.debug(pobj.integerArr)
         _logger.debug(pobj.boolArr)
         _logger.debug(pobj.concreteArr)
-
 
     def test_japan(self):
         """
@@ -303,12 +301,11 @@ class TestJavaobj(unittest.TestCase):
         """
         jobj = self.read_file("objEnums.ser")
         pobj = javaobj.loads(jobj)
-        _logger.debug(pobj)
 
         classdesc = pobj.get_class()
         _logger.debug("classdesc: {0}".format(classdesc))
-        _logger.debug("classdesc.fields_names: {0}".format(classdesc.fields_names))
-        _logger.debug("classdesc.fields_types: {0}".format(classdesc.fields_types))
+        _logger.debug("fields_names: {0}".format(classdesc.fields_names))
+        _logger.debug("fields_types: {0}".format(classdesc.fields_types))
 
         self.assertEqual(classdesc.name, "ClassWithEnum")
         self.assertEqual(pobj.color.classdesc.name, "Color")
@@ -318,8 +315,6 @@ class TestJavaobj(unittest.TestCase):
             _logger.debug("color: {0} - {1}".format(color, type(color)))
             self.assertEqual(color.classdesc.name, "Color")
             self.assertEqual(color.constant, intended)
-
-
 
     def test_sets(self):
         """
@@ -352,9 +347,7 @@ class TestJavaobj(unittest.TestCase):
         # Check types
         self.assertIsInstance(pobj, javaobj.beans.JavaArray)
         for obj in pobj:
-            self.assertIsInstance(
-                obj, javaobj.transformers.JavaTime
-            )
+            self.assertIsInstance(obj, javaobj.transformers.JavaTime)
 
     # def test_exception(self):
     #     jobj = self.read_file("objException.ser")
@@ -397,7 +390,6 @@ class TestJavaobj(unittest.TestCase):
 
         # FIXME: referencing problems with the collection class
 
-
     def test_jceks_issue_5(self):
         """
         Tests the handling of JCEKS issue #5
@@ -405,7 +397,6 @@ class TestJavaobj(unittest.TestCase):
         jobj = self.read_file("jceks_issue_5.ser")
         pobj = javaobj.loads(jobj)
         _logger.info(pobj)
-
 
     def test_qistoph_pr_27(self):
         """
