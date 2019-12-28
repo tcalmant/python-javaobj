@@ -76,7 +76,7 @@ class TerminalCode(enum.IntEnum):
     # TC_MAX = 0x7E
 
 
-class ClassDescFlags(enum.IntFlag):
+class ClassDescFlags(enum.IntEnum):
     """
     Class description flags
     """
