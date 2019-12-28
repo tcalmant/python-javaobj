@@ -31,7 +31,7 @@ import logging
 import os
 import struct
 
-from . import constants
+from .. import constants
 from .beans import (
     ParsedJavaContent,
     BlockData,

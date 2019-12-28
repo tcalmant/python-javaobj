@@ -28,7 +28,7 @@ from enum import Enum, IntEnum
 from typing import Any, Dict, List, Optional, Set
 import logging
 
-from . import constants
+from .. import constants
 from .stream import DataStreamReader
 from ..modifiedutf8 import decode_modified_utf8
 
