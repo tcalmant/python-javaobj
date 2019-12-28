@@ -587,8 +587,9 @@ class JavaStreamParser:
         cd.enum_constants.add(enum_str.value)
 
         # Store the object
-        self._set_handle(handle, enum_str)
-        return JavaEnum(handle, cd, enum_str)
+        enum_obj = JavaEnum(handle, cd, enum_str)
+        self._set_handle(handle, enum_obj)
+        return enum_obj
 
     def _do_class(self, type_code: int) -> JavaClass:
         """
