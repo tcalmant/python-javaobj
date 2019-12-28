@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
-Definition of the object transformer API
+First version of the un-marshalling process of javaobj.
 
 :authors: Thomas Calmant
 :license: Apache License 2.0
@@ -24,29 +24,12 @@ Definition of the object transformer API
     limitations under the License.
 """
 
-from typing import Optional
-
-from .deserialize.beans import JavaClassDesc, JavaInstance
-
-
-class JavaStreamParser:
-    pass
-
-
-class ObjectTransformer:
-    """
-    Representation of an object transformer
-    """
-
-    def create(
-        self,
-        classdesc: JavaClassDesc,
-        parser: Optional[JavaStreamParser] = None,
-    ) -> Optional[JavaInstance]:
-        """
-        Transforms a parsed Java object into a Python object
-
-        :param classdesc: The description of a Java class
-        :return: The Python form of the object, or the original JavaObject
-        """
-        raise NotImplementedError
+from . import beans, core, transformers
+from .core import (
+    load,
+    loads,
+    dumps,
+    JavaObjectMarshaller,
+    JavaObjectUnmarshaller,
+)
+from .transformers import DefaultObjectTransformer

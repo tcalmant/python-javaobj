@@ -31,7 +31,7 @@ import logging
 import os
 import struct
 
-from .. import constants
+from . import api
 from .beans import (
     ParsedJavaContent,
     BlockData,
@@ -48,7 +48,13 @@ from .beans import (
     FieldType,
 )
 from .stream import DataStreamReader
-from .. import api
+from ..constants import (
+    ClassDescFlags,
+    StreamConstants,
+    TerminalCode,
+    TypeCode,
+    PRIMITIVE_TYPES,
+)
 from ..modifiedutf8 import decode_modified_utf8
 
 
@@ -78,26 +84,26 @@ class JavaStreamParser:
         self.__handles: Dict[int, ParsedJavaContent] = {}
 
         # Initial handle value
-        self.__current_handle = constants.BASE_REFERENCE_IDX
+        self.__current_handle = StreamConstants.BASE_REFERENCE_IDX
 
         # Definition of the type code handlers
         # Each takes the type code as argument
         self.__type_code_handlers: Dict[
             int, Callable[[int], ParsedJavaContent]
         ] = {
-            constants.TC_OBJECT: self._do_object,
-            constants.TC_CLASS: self._do_class,
-            constants.TC_ARRAY: self._do_array,
-            constants.TC_STRING: self._read_new_string,
-            constants.TC_LONGSTRING: self._read_new_string,
-            constants.TC_ENUM: self._do_enum,
-            constants.TC_CLASSDESC: self._do_classdesc,
-            constants.TC_PROXYCLASSDESC: self._do_classdesc,
-            constants.TC_REFERENCE: self._do_reference,
-            constants.TC_NULL: self._do_null,
-            constants.TC_EXCEPTION: self._do_exception,
-            constants.TC_BLOCKDATA: self._do_block_data,
-            constants.TC_BLOCKDATALONG: self._do_block_data,
+            TerminalCode.TC_OBJECT: self._do_object,
+            TerminalCode.TC_CLASS: self._do_class,
+            TerminalCode.TC_ARRAY: self._do_array,
+            TerminalCode.TC_STRING: self._read_new_string,
+            TerminalCode.TC_LONGSTRING: self._read_new_string,
+            TerminalCode.TC_ENUM: self._do_enum,
+            TerminalCode.TC_CLASSDESC: self._do_classdesc,
+            TerminalCode.TC_PROXYCLASSDESC: self._do_classdesc,
+            TerminalCode.TC_REFERENCE: self._do_reference,
+            TerminalCode.TC_NULL: self._do_null,
+            TerminalCode.TC_EXCEPTION: self._do_exception,
+            TerminalCode.TC_BLOCKDATA: self._do_block_data,
+            TerminalCode.TC_BLOCKDATALONG: self._do_block_data,
         }
 
     def run(self) -> List[ParsedJavaContent]:
@@ -106,12 +112,12 @@ class JavaStreamParser:
         """
         # Check the magic byte
         magic = self.__reader.read_ushort()
-        if magic != constants.STREAM_MAGIC:
+        if magic != StreamConstants.STREAM_MAGIC:
             raise ValueError("Invalid file magic: 0x{0:x}".format(magic))
 
         # Check the stream version
         version = self.__reader.read_ushort()
-        if version != constants.STREAM_VERSION:
+        if version != StreamConstants.STREAM_VERSION:
             raise ValueError("Invalid file version: 0x{0:x}".format(version))
 
         # Reset internal state
@@ -128,7 +134,7 @@ class JavaStreamParser:
                 # End of file
                 break
 
-            if type_code == constants.TC_RESET:
+            if type_code == TerminalCode.TC_RESET:
                 # Explicit reset
                 self._reset()
                 continue
@@ -229,7 +235,7 @@ class JavaStreamParser:
         self.__handles.clear()
 
         # Reset handle index
-        self.__current_handle = constants.BASE_REFERENCE_IDX
+        self.__current_handle = StreamConstants.BASE_REFERENCE_IDX
 
     def _new_handle(self) -> int:
         """
@@ -261,8 +267,8 @@ class JavaStreamParser:
         Parses the next content
         """
         if not block_data and type_code in (
-            constants.TC_BLOCKDATA,
-            constants.TC_BLOCKDATALONG,
+            TerminalCode.TC_BLOCKDATA,
+            TerminalCode.TC_BLOCKDATALONG,
         ):
             raise ValueError("Got a block data, but not allowed here.")
 
@@ -280,7 +286,7 @@ class JavaStreamParser:
         """
         Reads a Java String
         """
-        if type_code == constants.TC_REFERENCE:
+        if type_code == TerminalCode.TC_REFERENCE:
             # Got a reference
             previous = self._do_reference()
             if not isinstance(previous, JavaString):
@@ -291,9 +297,9 @@ class JavaStreamParser:
         handle = self._new_handle()
 
         # Read the length
-        if type_code == constants.TC_STRING:
+        if type_code == TerminalCode.TC_STRING:
             length = self.__reader.read_ushort()
-        elif type_code == constants.TC_LONGSTRING:
+        elif type_code == TerminalCode.TC_LONGSTRING:
             length = self.__reader.read_long()
             if length < 0 or length > 2147483647:
                 raise ValueError("Invalid string length: {0}".format(length))
@@ -323,7 +329,7 @@ class JavaStreamParser:
 
         :param must_be_new: Check if the class description is really a new one
         """
-        if type_code == constants.TC_CLASSDESC:
+        if type_code == TerminalCode.TC_CLASSDESC:
             # Do the real job
             name = self.__reader.read_UTF()
             serial_version_uid = self.__reader.read_long()
@@ -336,14 +342,11 @@ class JavaStreamParser:
             fields: List[JavaField] = []
             for _ in range(nb_fields):
                 field_type = self.__reader.read_byte()
-                if field_type in constants.PRIMITIVE_TYPES:
+                if field_type in PRIMITIVE_TYPES:
                     # Primitive type
                     field_name = self.__reader.read_UTF()
                     fields.append(JavaField(FieldType(field_type), field_name))
-                elif field_type in (
-                    constants.TYPE_OBJECT,
-                    constants.TYPE_ARRAY,
-                ):
+                elif field_type in (TypeCode.TYPE_OBJECT, TypeCode.TYPE_ARRAY,):
                     # Array or object type
                     field_name = self.__reader.read_UTF()
                     # String type code
@@ -372,12 +375,12 @@ class JavaStreamParser:
             # Store the reference to the parsed bean
             self._set_handle(handle, class_desc)
             return class_desc
-        elif type_code == constants.TC_NULL:
+        elif type_code == TerminalCode.TC_NULL:
             # Null reference
             if must_be_new:
                 raise ValueError("Got Null instead of a new class description")
             return None
-        elif type_code == constants.TC_REFERENCE:
+        elif type_code == TerminalCode.TC_REFERENCE:
             # Reference to an already loading class description
             if must_be_new:
                 raise ValueError(
@@ -388,7 +391,7 @@ class JavaStreamParser:
             if not isinstance(previous, JavaClassDesc):
                 raise ValueError("Referenced object is not a class description")
             return previous
-        elif type_code == constants.TC_PROXYCLASSDESC:
+        elif type_code == TerminalCode.TC_PROXYCLASSDESC:
             # Proxy class description
             handle = self._new_handle()
             nb_interfaces = self.__reader.read_int()
@@ -415,10 +418,10 @@ class JavaStreamParser:
         contents: List[ParsedJavaContent] = []
         while True:
             type_code = self.__reader.read_byte()
-            if type_code == constants.TC_ENDBLOCKDATA:
+            if type_code == TerminalCode.TC_ENDBLOCKDATA:
                 # We're done here
                 return contents
-            elif type_code == constants.TC_RESET:
+            elif type_code == TerminalCode.TC_RESET:
                 # Reset references
                 self._reset()
                 continue
@@ -480,8 +483,8 @@ class JavaStreamParser:
 
         for cd in classes:
             values: Dict[JavaField, Any] = {}
-            if cd.desc_flags & constants.SC_SERIALIZABLE:
-                if cd.desc_flags & constants.SC_EXTERNALIZABLE:
+            if cd.desc_flags & ClassDescFlags.SC_SERIALIZABLE:
+                if cd.desc_flags & ClassDescFlags.SC_EXTERNALIZABLE:
                     raise ValueError(
                         "SC_EXTERNALIZABLE & SC_SERIALIZABLE encountered"
                     )
@@ -491,20 +494,20 @@ class JavaStreamParser:
 
                 all_data[cd] = values
 
-                if cd.desc_flags & constants.SC_WRITE_METHOD:
-                    if cd.desc_flags & constants.SC_ENUM:
+                if cd.desc_flags & ClassDescFlags.SC_WRITE_METHOD:
+                    if cd.desc_flags & ClassDescFlags.SC_ENUM:
                         raise ValueError(
                             "SC_ENUM & SC_WRITE_METHOD encountered!"
                         )
 
                     annotations[cd] = self._read_class_annotations()
-            elif cd.desc_flags & constants.SC_EXTERNALIZABLE:
-                if cd.desc_flags & constants.SC_SERIALIZABLE:
+            elif cd.desc_flags & ClassDescFlags.SC_EXTERNALIZABLE:
+                if cd.desc_flags & ClassDescFlags.SC_SERIALIZABLE:
                     raise ValueError(
                         "SC_EXTERNALIZABLE & SC_SERIALIZABLE encountered"
                     )
 
-                if cd.desc_flags & constants.SC_BLOCK_DATA:
+                if cd.desc_flags & ClassDescFlags.SC_BLOCK_DATA:
                     # Call the transformer if possible
                     if not instance.load_from_blockdata(self, self.__reader):
                         # Can't read :/
@@ -546,7 +549,7 @@ class JavaStreamParser:
             sub_type_code = self.__reader.read_byte()
             if (
                 field_type == FieldType.ARRAY
-                and sub_type_code != constants.TC_ARRAY
+                and sub_type_code != TerminalCode.TC_ARRAY
             ):
                 raise ValueError("Array type listed, but type code != TC_ARRAY")
 
@@ -629,7 +632,7 @@ class JavaStreamParser:
         self._reset()
 
         type_code = self.__reader.read_byte()
-        if type_code == constants.TC_RESET:
+        if type_code == TerminalCode.TC_RESET:
             raise ValueError("TC_RESET read while reading exception")
 
         content = self._read_content(type_code, False)
@@ -652,9 +655,9 @@ class JavaStreamParser:
         Reads a block data
         """
         # Parse the size
-        if type_code == constants.TC_BLOCKDATA:
+        if type_code == TerminalCode.TC_BLOCKDATA:
             size = self.__reader.read_ubyte()
-        elif type_code == constants.TC_BLOCKDATALONG:
+        elif type_code == TerminalCode.TC_BLOCKDATALONG:
             size = self.__reader.read_int()
         else:
             raise ValueError("Invalid type code for blockdata")

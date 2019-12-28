@@ -27,12 +27,15 @@ Namely: logging methods, bytes/str/unicode converters
     limitations under the License.
 """
 
+from __future__ import absolute_import
+
 # Standard library
 import logging
+import struct
 import sys
 
 # Modified UTF-8 parser
-from javaobj.modifiedutf8 import decode_modified_utf8
+from .modifiedutf8 import decode_modified_utf8
 
 # ------------------------------------------------------------------------------
 
@@ -70,6 +73,69 @@ def log_error(message, ident=0):
 
 
 # ------------------------------------------------------------------------------
+
+
+def read_struct(data, fmt_str):
+    # type: (bytes, str) -> list
+    """
+    Reads input bytes and extract the given structure. Returns both the read
+    elements and the remaining data
+
+    :param data: Data as bytes
+    :param fmt_str: Struct unpack format string
+    :return: A tuple (results as tuple, remaining data)
+    """
+    size = struct.calcsize(fmt_str)
+    return struct.unpack(fmt_str, data[:size]), data[size:]
+
+
+def read_string(data, length_fmt="H"):
+    # type: (bytes, str) -> UNICODE_TYPE
+    """
+    Reads a serialized string
+
+    :param data: Bytes where to read the string from
+    :param length_fmt: Structure format of the string length (H or Q)
+    :return: The deserialized string
+    """
+    (length,), data = read_struct(data, ">{0}".format(length_fmt))
+    ba, data = data[:length], data[length:]
+    return to_unicode(ba), data
+
+
+# ------------------------------------------------------------------------------
+
+
+def hexdump(src, start_offset=0, length=16):
+    # type: (str, int, int) -> str
+    """
+    Prepares an hexadecimal dump string
+
+    :param src: A string containing binary data
+    :param start_offset: The start offset of the source
+    :param length: Length of a dump line
+    :return: A dump string
+    """
+    FILTER = "".join(
+        (len(repr(chr(x))) == 3) and chr(x) or "." for x in range(256)
+    )
+    pattern = "{{0:04X}}   {{1:<{0}}}  {{2}}\n".format(length * 3)
+
+    # Convert raw data to str (Python 3 compatibility)
+    src = to_str(src, "latin-1")
+
+    result = []
+    for i in range(0, len(src), length):
+        s = src[i : i + length]
+        hexa = " ".join("{0:02X}".format(ord(x)) for x in s)
+        printable = s.translate(FILTER)
+        result.append(pattern.format(i + start_offset, hexa, printable))
+
+    return "".join(result)
+
+
+# ------------------------------------------------------------------------------
+
 
 if sys.version_info[0] >= 3:
     UNICODE_TYPE = str
@@ -118,8 +184,8 @@ if sys.version_info[0] >= 3:
 
 
 else:
-    UNICODE_TYPE = unicode
-    unicode_char = unichr
+    UNICODE_TYPE = unicode  # pylint:disable=undefined-variable
+    unicode_char = unichr  # pylint:disable=undefined-variable
 
     # Python 2 interpreter : str & unicode
     def to_str(data, encoding="UTF-8"):
@@ -149,7 +215,7 @@ else:
         :param encoding: The encoding of data
         :return: The corresponding string
         """
-        if type(data) is unicode:
+        if type(data) is UNICODE_TYPE:
             # Nothing to do
             return data
         try:

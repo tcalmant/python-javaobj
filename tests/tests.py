@@ -42,7 +42,8 @@ import unittest
 sys.path.insert(0, os.path.abspath(os.path.dirname(os.getcwd())))
 
 # Local
-import javaobj
+import javaobj.v1 as javaobj
+from javaobj.utils import hexdump
 
 # ------------------------------------------------------------------------------
 
@@ -109,15 +110,9 @@ class TestJavaobj(unittest.TestCase):
         except Exception:
             print("-" * 80)
             print("=" * 30, "Original", "=" * 30)
-            print(
-                javaobj.JavaObjectUnmarshaller._create_hexdump(original_stream)
-            )
+            print(hexdump(original_stream))
             print("*" * 30, "Marshalled", "*" * 30)
-            print(
-                javaobj.JavaObjectUnmarshaller._create_hexdump(
-                    marshalled_stream
-                )
-            )
+            print(hexdump(marshalled_stream))
             print("-" * 80)
             raise
 
@@ -383,7 +378,7 @@ class TestJavaobj(unittest.TestCase):
 
         # First one is a duration of 10s
         duration = pobj[0]
-        self.assertEquals(duration.second, 10)
+        self.assertEqual(duration.second, 10)
 
         # Check types
         self.assertIsInstance(pobj, javaobj.core.JavaArray)

@@ -27,11 +27,11 @@ Defines the default object transformers
 from typing import List, Optional
 import functools
 
-from .core import read, read_string, to_bytes, log_error, log_debug
-from .deserialize import constants
-from .deserialize.beans import BlockData, JavaClassDesc, JavaInstance
-from .deserialize.core import JavaStreamParser
-from .deserialize.stream import DataStreamReader
+from .beans import BlockData, JavaClassDesc, JavaInstance
+from .core import JavaStreamParser
+from .stream import DataStreamReader
+from ..constants import TerminalCode
+from ..utils import to_bytes, log_error, log_debug, read_struct, read_string
 
 
 class JavaList(list, JavaInstance):
@@ -57,6 +57,7 @@ class JavaList(list, JavaInstance):
                 return True
 
         return False
+
 
 @functools.total_ordering
 class JavaPrimitiveClass(JavaInstance):
@@ -167,7 +168,7 @@ class JavaLinkedHashMap(JavaMap):
 
         # Ignore the end of the blockdata
         type_code = reader.read_byte()
-        if type_code != constants.TC_ENDBLOCKDATA:
+        if type_code != TerminalCode.TC_ENDBLOCKDATA:
             raise ValueError("Didn't find the end of block data")
 
         # Ignore the trailing 0
@@ -305,7 +306,7 @@ class JavaTime(JavaInstance):
                 # Convert back annotations to bytes
                 # latin-1 is used to ensure that bytes are kept as is
                 content = to_bytes(annotations[0].data, "latin1")
-                (self.type,), content = read(content, ">b")
+                (self.type,), content = read_struct(content, ">b")
 
                 try:
                     self.time_handlers[self.type](content)
@@ -317,19 +318,19 @@ class JavaTime(JavaInstance):
         return False
 
     def do_duration(self, data):
-        (self.second, self.nano), data = read(data, ">qi")
+        (self.second, self.nano), data = read_struct(data, ">qi")
         return data
 
     def do_instant(self, data):
-        (self.second, self.nano), data = read(data, ">qi")
+        (self.second, self.nano), data = read_struct(data, ">qi")
         return data
 
     def do_local_date(self, data):
-        (self.year, self.month, self.day), data = read(data, ">ibb")
+        (self.year, self.month, self.day), data = read_struct(data, ">ibb")
         return data
 
     def do_local_time(self, data):
-        (hour,), data = read(data, ">b")
+        (hour,), data = read_struct(data, ">b")
         minute = 0
         second = 0
         nano = 0
@@ -337,15 +338,15 @@ class JavaTime(JavaInstance):
         if hour < 0:
             hour = ~hour
         else:
-            (minute,), data = read(data, ">b")
+            (minute,), data = read_struct(data, ">b")
             if minute < 0:
                 minute = ~minute
             else:
-                (second,), data = read(data, ">b")
+                (second,), data = read_struct(data, ">b")
                 if second < 0:
                     second = ~second
                 else:
-                    (nano,), data = read(data, ">i")
+                    (nano,), data = read_struct(data, ">i")
 
         self.hour = hour
         self.minute = minute
@@ -365,9 +366,9 @@ class JavaTime(JavaInstance):
         return data
 
     def do_zone_offset(self, data):
-        (offset_byte,), data = read(data, ">b")
+        (offset_byte,), data = read_struct(data, ">b")
         if offset_byte == 127:
-            (self.offset,), data = read(data, ">i")
+            (self.offset,), data = read_struct(data, ">i")
         else:
             self.offset = offset_byte * 900
         return data
@@ -387,19 +388,19 @@ class JavaTime(JavaInstance):
         return data
 
     def do_year(self, data):
-        (self.year,), data = read(data, ">i")
+        (self.year,), data = read_struct(data, ">i")
         return data
 
     def do_year_month(self, data):
-        (self.year, self.month), data = read(data, ">ib")
+        (self.year, self.month), data = read_struct(data, ">ib")
         return data
 
     def do_month_day(self, data):
-        (self.month, self.day), data = read(data, ">bb")
+        (self.month, self.day), data = read_struct(data, ">bb")
         return data
 
     def do_period(self, data):
-        (self.year, self.month, self.day), data = read(data, ">iii")
+        (self.year, self.month, self.day), data = read_struct(data, ">iii")
         return data
 
 

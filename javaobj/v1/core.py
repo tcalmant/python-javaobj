@@ -33,6 +33,8 @@ http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.ht
     limitations under the License.
 """
 
+from __future__ import absolute_import
+
 # Standard library
 import collections
 import functools
@@ -48,8 +50,24 @@ except ImportError:
     from io import BytesIO
 
 # Javaobj modules
-from javaobj.modifiedutf8 import decode_modified_utf8
-from javaobj.utils import (
+from .beans import (
+    JavaClass,
+    JavaString,
+    JavaObject,
+    JavaByteArray,
+    JavaEnum,
+    JavaArray,
+)
+from .transformers import DefaultObjectTransformer
+from ..constants import (
+    StreamConstants,
+    ClassDescFlags,
+    TerminalCode,
+    TypeCode,
+    StreamCodeDebug,
+)
+from ..modifiedutf8 import decode_modified_utf8
+from ..utils import (
     log_debug,
     log_error,
     read_to_str,
@@ -58,6 +76,7 @@ from javaobj.utils import (
     to_unicode,
     UNICODE_TYPE,
     unicode_char,
+    hexdump,
 )
 
 # ------------------------------------------------------------------------------
@@ -65,27 +84,11 @@ from javaobj.utils import (
 __all__ = (
     "__version_info__",
     "__version__",
-    "DefaultObjectTransformer",
-    "JavaArray",
-    "JavaByteArray",
-    "JavaClass",
-    "JavaEnum",
-    "JavaObject",
-    "JavaObjectConstants",
     "JavaObjectMarshaller",
     "JavaObjectUnmarshaller",
-    "JavaString",
-    "OpCodeDebug",
-    "decode_modified_utf8",
     "dumps",
     "load",
     "loads",
-    "log_debug",
-    "log_error",
-    "read_to_str",
-    "to_bytes",
-    "to_str",
-    "to_unicode",
 )
 
 # Module version
@@ -141,7 +144,9 @@ def loads(string, *transformers, **kwargs):
 
     # Reuse the load method (avoid code duplication)
     return load(
-        BytesIO(string), *transformers, ignore_remaining_data=ignore_remaining_data
+        BytesIO(string),
+        *transformers,
+        ignore_remaining_data=ignore_remaining_data
     )
 
 
@@ -164,314 +169,22 @@ def dumps(obj, *transformers):
 
 # ------------------------------------------------------------------------------
 
-
-class JavaClass(object):
-    """
-    Represents a class in the Java world
-    """
-
-    def __init__(self):
-        """
-        Sets up members
-        """
-        self.name = None
-        self.serialVersionUID = None
-        self.flags = None
-        self.fields_names = []
-        self.fields_types = []
-        self.superclass = None
-
-    def __str__(self):
-        """
-        String representation of the Java class
-        """
-        return self.__repr__()
-
-    def __repr__(self):
-        """
-        String representation of the Java class
-        """
-        return "[{0:s}:0x{1:X}]".format(self.name, self.serialVersionUID)
-
-    def __eq__(self, other):
-        """
-        Equality test between two Java classes
-
-        :param other: Other JavaClass to test
-        :return: True if both classes share the same fields and name
-        """
-        if not isinstance(other, type(self)):
-            return False
-
-        return (
-            self.name == other.name
-            and self.serialVersionUID == other.serialVersionUID
-            and self.flags == other.flags
-            and self.fields_names == other.fields_names
-            and self.fields_types == other.fields_types
-            and self.superclass == other.superclass
-        )
-
-
-class JavaObject(object):
-    """
-    Represents a deserialized non-primitive Java object
-    """
-
-    def __init__(self):
-        """
-        Sets up members
-        """
-        self.classdesc = None
-        self.annotations = []
-
-    def get_class(self):
-        """
-        Returns the JavaClass that defines the type of this object
-        """
-        return self.classdesc
-
-    def __str__(self):
-        """
-        String representation
-        """
-        return self.__repr__()
-
-    def __repr__(self):
-        """
-        String representation
-        """
-        name = "UNKNOWN"
-        if self.classdesc:
-            name = self.classdesc.name
-        return "<javaobj:{0}>".format(name)
-
-    def __hash__(self):
-        """
-        Each JavaObject we load must have a hash method to be accepted in sets
-        and alike. The default hash is the memory address of the object.
-        """
-        return id(self)
-
-    def __eq__(self, other):
-        """
-        Equality test between two Java classes
-
-        :param other: Other JavaClass to test
-        :return: True if both classes share the same fields and name
-        """
-        if not isinstance(other, type(self)):
-            return False
-
-        res = (
-            self.classdesc == other.classdesc and self.annotations == other.annotations
-        )
-        if not res:
-            return False
-
-        for name in self.classdesc.fields_names:
-            if not getattr(self, name) == getattr(other, name):
-                return False
-        return True
-
-
-class JavaString(UNICODE_TYPE):
-    """
-    Represents a Java String
-    """
-
-    def __hash__(self):
-        return UNICODE_TYPE.__hash__(self)
-
-    def __eq__(self, other):
-        if not isinstance(other, UNICODE_TYPE):
-            return False
-        return UNICODE_TYPE.__eq__(self, other)
-
-
-class JavaEnum(JavaObject):
-    """
-    Represents a Java enumeration
-    """
-
-    def __init__(self, constant=None):
-        super(JavaEnum, self).__init__()
-        self.constant = constant
-
-
-class JavaArray(list, JavaObject):
-    """
-    Represents a Java Array
-    """
-
-    def __init__(self, classdesc=None):
-        list.__init__(self)
-        JavaObject.__init__(self)
-        self.classdesc = classdesc
-
-
-class JavaByteArray(JavaObject):
-    """
-    Represents the special case of Java Array which contains bytes
-    """
-
-    def __init__(self, data, classdesc=None):
-        JavaObject.__init__(self)
-        self._data = struct.unpack("b" * len(data), data)
-        self.classdesc = classdesc
-
-    def __str__(self):
-        return "JavaByteArray({0})".format(self._data)
-
-    def __getitem__(self, item):
-        return self._data[item]
-
-    def __iter__(self):
-        return iter(self._data)
-
-    def __len__(self):
-        return len(self._data)
-
+# Convertion of a Java type char to its NumPy equivalent
+NUMPY_TYPE_MAP = {
+    TypeCode.TYPE_BYTE: "B",
+    TypeCode.TYPE_CHAR: "b",
+    TypeCode.TYPE_DOUBLE: ">d",
+    TypeCode.TYPE_FLOAT: ">f",
+    TypeCode.TYPE_INTEGER: ">i",
+    TypeCode.TYPE_LONG: ">l",
+    TypeCode.TYPE_SHORT: ">h",
+    TypeCode.TYPE_BOOLEAN: ">B",
+}
 
 # ------------------------------------------------------------------------------
 
 
-class JavaObjectConstants(object):
-    """
-    Defines the constants of the Java serialization format
-    """
-
-    STREAM_MAGIC = 0xACED
-    STREAM_VERSION = 0x05
-
-    TC_NULL = 0x70
-    TC_REFERENCE = 0x71
-    TC_CLASSDESC = 0x72
-    TC_OBJECT = 0x73
-    TC_STRING = 0x74
-    TC_ARRAY = 0x75
-    TC_CLASS = 0x76
-    TC_BLOCKDATA = 0x77
-    TC_ENDBLOCKDATA = 0x78
-    TC_RESET = 0x79
-    TC_BLOCKDATALONG = 0x7A
-    TC_EXCEPTION = 0x7B
-    TC_LONGSTRING = 0x7C
-    TC_PROXYCLASSDESC = 0x7D
-    TC_ENUM = 0x7E
-    # Ignore TC_MAX: we don't use it and it messes with TC_ENUM
-    # TC_MAX = 0x7E
-
-    # classDescFlags
-    SC_WRITE_METHOD = 0x01  # if SC_SERIALIZABLE
-    SC_BLOCK_DATA = 0x08  # if SC_EXTERNALIZABLE
-    SC_SERIALIZABLE = 0x02
-    SC_EXTERNALIZABLE = 0x04
-    SC_ENUM = 0x10
-
-    # type definition chars (typecode)
-    TYPE_BYTE = "B"  # 0x42
-    TYPE_CHAR = "C"  # 0x43
-    TYPE_DOUBLE = "D"  # 0x44
-    TYPE_FLOAT = "F"  # 0x46
-    TYPE_INTEGER = "I"  # 0x49
-    TYPE_LONG = "J"  # 0x4A
-    TYPE_SHORT = "S"  # 0x53
-    TYPE_BOOLEAN = "Z"  # 0x5A
-    TYPE_OBJECT = "L"  # 0x4C
-    TYPE_ARRAY = "["  # 0x5B
-
-    # list of supported typecodes listed above
-    TYPECODES_LIST = [
-        # primitive types
-        TYPE_BYTE,
-        TYPE_CHAR,
-        TYPE_DOUBLE,
-        TYPE_FLOAT,
-        TYPE_INTEGER,
-        TYPE_LONG,
-        TYPE_SHORT,
-        TYPE_BOOLEAN,
-        # object types
-        TYPE_OBJECT,
-        TYPE_ARRAY,
-    ]
-
-    BASE_REFERENCE_IDX = 0x7E0000
-
-    NUMPY_TYPE_MAP = {
-        TYPE_BYTE: "B",
-        TYPE_CHAR: "b",
-        TYPE_DOUBLE: ">d",
-        TYPE_FLOAT: ">f",
-        TYPE_INTEGER: ">i",
-        TYPE_LONG: ">l",
-        TYPE_SHORT: ">h",
-        TYPE_BOOLEAN: ">B",
-    }
-
-
-class OpCodeDebug(object):
-    """
-    OP Codes definition and utility methods
-    """
-
-    # Type codes
-    OP_CODE = dict(
-        (getattr(JavaObjectConstants, key), key)
-        for key in dir(JavaObjectConstants)
-        if key.startswith("TC_")
-    )
-
-    TYPE = dict(
-        (getattr(JavaObjectConstants, key), key)
-        for key in dir(JavaObjectConstants)
-        if key.startswith("TYPE_")
-    )
-
-    STREAM_CONSTANT = dict(
-        (getattr(JavaObjectConstants, key), key)
-        for key in dir(JavaObjectConstants)
-        if key.startswith("SC_")
-    )
-
-    @staticmethod
-    def op_id(op_id):
-        """
-        Returns the name of the given OP Code
-        :param op_id: OP Code
-        :return: Name of the OP Code
-        """
-        return OpCodeDebug.OP_CODE.get(op_id, "<unknown OP:{0}>".format(op_id))
-
-    @staticmethod
-    def type_code(type_id):
-        """
-        Returns the name of the given Type Code
-        :param type_id: Type code
-        :return: Name of the type code
-        """
-        return OpCodeDebug.TYPE.get(type_id, "<unknown Type:{0}>".format(type_id))
-
-    @staticmethod
-    def flags(flags):
-        """
-        Returns the names of the class description flags found in the given
-        integer
-
-        :param flags: A class description flag entry
-        :return: The flags names as a single string
-        """
-        names = sorted(
-            descr for key, descr in OpCodeDebug.STREAM_CONSTANT.items() if key & flags
-        )
-        return ", ".join(names)
-
-
-# ------------------------------------------------------------------------------
-
-
-class JavaObjectUnmarshaller(JavaObjectConstants):
+class JavaObjectUnmarshaller:
     """
     Deserializes a Java serialization stream
     """
@@ -491,19 +204,19 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
         # Prepare the association Terminal Symbol -> Reading method
         self.opmap = {
-            self.TC_NULL: self.do_null,
-            self.TC_CLASSDESC: self.do_classdesc,
-            self.TC_OBJECT: self.do_object,
-            self.TC_STRING: self.do_string,
-            self.TC_LONGSTRING: self.do_string_long,
-            self.TC_ARRAY: self.do_array,
-            self.TC_CLASS: self.do_class,
-            self.TC_BLOCKDATA: self.do_blockdata,
-            self.TC_BLOCKDATALONG: self.do_blockdata_long,
-            self.TC_REFERENCE: self.do_reference,
-            self.TC_ENUM: self.do_enum,
+            TerminalCode.TC_NULL: self.do_null,
+            TerminalCode.TC_CLASSDESC: self.do_classdesc,
+            TerminalCode.TC_OBJECT: self.do_object,
+            TerminalCode.TC_STRING: self.do_string,
+            TerminalCode.TC_LONGSTRING: self.do_string_long,
+            TerminalCode.TC_ARRAY: self.do_array,
+            TerminalCode.TC_CLASS: self.do_class,
+            TerminalCode.TC_BLOCKDATA: self.do_blockdata,
+            TerminalCode.TC_BLOCKDATALONG: self.do_blockdata_long,
+            TerminalCode.TC_REFERENCE: self.do_reference,
+            TerminalCode.TC_ENUM: self.do_enum,
             # note that we are reusing do_null:
-            self.TC_ENDBLOCKDATA: self.do_null,
+            TerminalCode.TC_ENDBLOCKDATA: self.do_null,
         }
 
         # Set up members
@@ -538,7 +251,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
                         len(the_rest)
                     )
                 )
-                log_debug("\n{0}".format(self._create_hexdump(the_rest)))
+                log_debug("\n{0}".format(hexdump(the_rest)))
             else:
                 log_debug("Java Object unmarshalled successfully!")
 
@@ -563,7 +276,10 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         :raise IOError: Invalid magic header (not a Java stream)
         """
         (magic, version) = self._readStruct(">HH")
-        if magic != self.STREAM_MAGIC or version != self.STREAM_VERSION:
+        if (
+            magic != StreamConstants.STREAM_MAGIC
+            or version != StreamConstants.STREAM_VERSION
+        ):
             raise IOError(
                 "The stream is not java serialized object. "
                 "Invalid stream header: {0:04X}{1:04X}".format(magic, version)
@@ -583,7 +299,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         (opid,) = self._readStruct(">B")
         log_debug(
             "OpCode: 0x{0:X} -- {1} (at offset 0x{2:X})".format(
-                opid, OpCodeDebug.op_id(opid), position
+                opid, StreamCodeDebug.op_id(opid), position
             ),
             ident,
         )
@@ -591,7 +307,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         if expect and opid not in expect:
             raise IOError(
                 "Unexpected opcode 0x{0:X} -- {1} (at offset 0x{2:X})".format(
-                    opid, OpCodeDebug.op_id(opid), position
+                    opid, StreamCodeDebug.op_id(opid), position
                 )
             )
 
@@ -618,7 +334,9 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         ba = self.object_stream.read(length)
 
         if len(ba) != length:
-            raise RuntimeError("Stream has been ended unexpectedly while unmarshaling.")
+            raise RuntimeError(
+                "Stream has been ended unexpectedly while unmarshaling."
+            )
 
         return struct.unpack(unpack, ba)
 
@@ -672,7 +390,9 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 
         log_debug(
             "Serial: 0x{0:X} / {0:d} - classDescFlags: 0x{1:X} {2}".format(
-                serialVersionUID, classDescFlags, OpCodeDebug.flags(classDescFlags)
+                serialVersionUID,
+                classDescFlags,
+                StreamCodeDebug.flags(classDescFlags),
             ),
             ident,
         )
@@ -684,13 +404,14 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         for fieldId in range(length):
             (typecode,) = self._readStruct(">B")
             field_name = self._readString()
-            field_type = self._convert_char_to_type(typecode)
+            base_field_type = self._convert_char_to_type(typecode)
 
             log_debug("> Reading field {0}".format(field_name), ident)
 
-            if field_type == self.TYPE_ARRAY:
+            if base_field_type == TypeCode.TYPE_ARRAY:
                 _, field_type = self._read_and_exec_opcode(
-                    ident=ident + 1, expect=(self.TC_STRING, self.TC_REFERENCE)
+                    ident=ident + 1,
+                    expect=(TerminalCode.TC_STRING, TerminalCode.TC_REFERENCE),
                 )
 
                 if type(field_type) is not JavaString:
@@ -699,9 +420,10 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
                         "not {0}".format(type(field_type))
                     )
 
-            elif field_type == self.TYPE_OBJECT:
+            elif base_field_type == TypeCode.TYPE_OBJECT:
                 _, field_type = self._read_and_exec_opcode(
-                    ident=ident + 1, expect=(self.TC_STRING, self.TC_REFERENCE)
+                    ident=ident + 1,
+                    expect=(TerminalCode.TC_STRING, TerminalCode.TC_REFERENCE),
                 )
 
                 if type(field_type) is JavaClass:
@@ -713,6 +435,9 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
                         "Field type must be a JavaString, "
                         "not {0}".format(type(field_type))
                     )
+            else:
+                # Convert the TypeCode to its char value
+                field_type = chr(base_field_type.value)
 
             log_debug(
                 "< FieldName: 0x{0:X} Name:{1} Type:{2} ID:{3}".format(
@@ -734,20 +459,26 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         (opid,) = self._readStruct(">B")
         log_debug(
             "OpCode: 0x{0:X} -- {1} (classAnnotation)".format(
-                opid, OpCodeDebug.op_id(opid)
+                opid, StreamCodeDebug.op_id(opid)
             ),
             ident,
         )
-        if opid != self.TC_ENDBLOCKDATA:
+        if opid != TerminalCode.TC_ENDBLOCKDATA:
             raise NotImplementedError("classAnnotation isn't implemented yet")
 
         # superClassDesc
         log_debug("Reading Super Class of {0}".format(clazz.name), ident)
         _, superclassdesc = self._read_and_exec_opcode(
-            ident=ident + 1, expect=(self.TC_CLASSDESC, self.TC_NULL, self.TC_REFERENCE)
+            ident=ident + 1,
+            expect=(
+                TerminalCode.TC_CLASSDESC,
+                TerminalCode.TC_NULL,
+                TerminalCode.TC_REFERENCE,
+            ),
         )
         log_debug(
-            "Super Class for {0}: {1}".format(clazz.name, str(superclassdesc)), ident
+            "Super Class for {0}: {1}".format(clazz.name, str(superclassdesc)),
+            ident,
         )
         clazz.superclass = superclassdesc
         return clazz
@@ -800,10 +531,10 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         _, classdesc = self._read_and_exec_opcode(
             ident=ident + 1,
             expect=(
-                self.TC_CLASSDESC,
-                self.TC_PROXYCLASSDESC,
-                self.TC_NULL,
-                self.TC_REFERENCE,
+                TerminalCode.TC_CLASSDESC,
+                TerminalCode.TC_PROXYCLASSDESC,
+                TerminalCode.TC_NULL,
+                TerminalCode.TC_REFERENCE,
             ),
         )
         log_debug("Classdesc: {0}".format(classdesc), ident)
@@ -833,10 +564,10 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         opcode, classdesc = self._read_and_exec_opcode(
             ident=ident + 1,
             expect=(
-                self.TC_CLASSDESC,
-                self.TC_PROXYCLASSDESC,
-                self.TC_NULL,
-                self.TC_REFERENCE,
+                TerminalCode.TC_CLASSDESC,
+                TerminalCode.TC_PROXYCLASSDESC,
+                TerminalCode.TC_NULL,
+                TerminalCode.TC_REFERENCE,
             ),
         )
         # self.TC_REFERENCE hasn't shown in spec, but actually is here
@@ -856,13 +587,13 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         # classdata[]
 
         if (
-            classdesc.flags & self.SC_EXTERNALIZABLE
-            and not classdesc.flags & self.SC_BLOCK_DATA
+            classdesc.flags & ClassDescFlags.SC_EXTERNALIZABLE
+            and not classdesc.flags & ClassDescFlags.SC_BLOCK_DATA
         ):
             # TODO:
             raise NotImplementedError("externalContents isn't implemented yet")
 
-        if classdesc.flags & self.SC_SERIALIZABLE:
+        if classdesc.flags & ClassDescFlags.SC_SERIALIZABLE:
             # TODO: look at ObjectInputStream.readSerialData()
             # FIXME: Handle the SC_WRITE_METHOD flag
 
@@ -874,7 +605,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             while tempclass:
                 log_debug("Class: {0}".format(tempclass.name), ident + 1)
                 class_fields_str = " - ".join(
-                    " ".join((field_type, field_name))
+                    " ".join((str(field_type), field_name))
                     for field_type, field_name in zip(
                         tempclass.fields_types, tempclass.fields_names
                     )
@@ -897,36 +628,42 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
             log_debug("Prepared list of types: {0}".format(megatypes), ident)
 
             for field_name, field_type in zip(megalist, megatypes):
-                log_debug("Reading field: {0} - {1}".format(field_type, field_name))
+                log_debug(
+                    "Reading field: {0} - {1}".format(field_type, field_name)
+                )
                 res = self._read_value(field_type, ident, name=field_name)
                 java_object.__setattr__(field_name, res)
 
         if (
-            classdesc.flags & self.SC_SERIALIZABLE
-            and classdesc.flags & self.SC_WRITE_METHOD
-            or classdesc.flags & self.SC_EXTERNALIZABLE
-            and classdesc.flags & self.SC_BLOCK_DATA
+            classdesc.flags & ClassDescFlags.SC_SERIALIZABLE
+            and classdesc.flags & ClassDescFlags.SC_WRITE_METHOD
+            or classdesc.flags & ClassDescFlags.SC_EXTERNALIZABLE
+            and classdesc.flags & ClassDescFlags.SC_BLOCK_DATA
             or classdesc.superclass is not None
-            and classdesc.superclass.flags & self.SC_SERIALIZABLE
-            and classdesc.superclass.flags & self.SC_WRITE_METHOD
+            and classdesc.superclass.flags & ClassDescFlags.SC_SERIALIZABLE
+            and classdesc.superclass.flags & ClassDescFlags.SC_WRITE_METHOD
         ):
             # objectAnnotation
             log_debug(
-                "java_object.annotations before: {0}".format(java_object.annotations),
+                "java_object.annotations before: {0}".format(
+                    java_object.annotations
+                ),
                 ident,
             )
 
-            while opcode != self.TC_ENDBLOCKDATA:
+            while opcode != TerminalCode.TC_ENDBLOCKDATA:
                 opcode, obj = self._read_and_exec_opcode(ident=ident + 1)
                 # , expect=[self.TC_ENDBLOCKDATA, self.TC_BLOCKDATA,
                 # self.TC_OBJECT, self.TC_NULL, self.TC_REFERENCE])
-                if opcode != self.TC_ENDBLOCKDATA:
+                if opcode != TerminalCode.TC_ENDBLOCKDATA:
                     java_object.annotations.append(obj)
 
                 log_debug("objectAnnotation value: {0}".format(obj), ident)
 
             log_debug(
-                "java_object.annotations after: {0}".format(java_object.annotations),
+                "java_object.annotations after: {0}".format(
+                    java_object.annotations
+                ),
                 ident,
             )
 
@@ -977,10 +714,10 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         _, classdesc = self._read_and_exec_opcode(
             ident=ident + 1,
             expect=(
-                self.TC_CLASSDESC,
-                self.TC_PROXYCLASSDESC,
-                self.TC_NULL,
-                self.TC_REFERENCE,
+                TerminalCode.TC_CLASSDESC,
+                TerminalCode.TC_PROXYCLASSDESC,
+                TerminalCode.TC_NULL,
+                TerminalCode.TC_REFERENCE,
             ),
         )
 
@@ -991,28 +728,26 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         (size,) = self._readStruct(">i")
         log_debug("size: {0}".format(size), ident)
 
-        type_char = classdesc.name[0]
-        assert type_char == self.TYPE_ARRAY
-        type_char = classdesc.name[1]
+        array_type_code = TypeCode(ord(classdesc.name[0]))
+        assert array_type_code == TypeCode.TYPE_ARRAY
+        type_code = TypeCode(ord(classdesc.name[1]))
 
-        if type_char == self.TYPE_OBJECT or type_char == self.TYPE_ARRAY:
+        if type_code in (TypeCode.TYPE_OBJECT, TypeCode.TYPE_ARRAY):
             for _ in range(size):
                 _, res = self._read_and_exec_opcode(ident=ident + 1)
                 log_debug("Object value: {0}".format(res), ident)
                 array.append(res)
-        elif type_char == self.TYPE_BYTE:
+        elif type_code == TypeCode.TYPE_BYTE:
             array = JavaByteArray(self.object_stream.read(size), classdesc)
         elif self.use_numpy_arrays:
             import numpy
 
             array = numpy.fromfile(
-                self.object_stream,
-                dtype=JavaObjectConstants.NUMPY_TYPE_MAP[type_char],
-                count=size,
+                self.object_stream, dtype=NUMPY_TYPE_MAP[type_code], count=size,
             )
         else:
             for _ in range(size):
-                res = self._read_value(type_char, ident)
+                res = self._read_value(type_code, ident)
                 log_debug("Native value: {0}".format(repr(res)), ident)
                 array.append(res)
 
@@ -1028,7 +763,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         """
         (handle,) = self._readStruct(">L")
         log_debug("## Reference handle: 0x{0:X}".format(handle), ident)
-        ref = self.references[handle - self.BASE_REFERENCE_IDX]
+        ref = self.references[handle - StreamConstants.BASE_REFERENCE_IDX]
         log_debug("###-> Type: {0} - Value: {1}".format(type(ref), ref), ident)
         return ref
 
@@ -1056,80 +791,59 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         _, classdesc = self._read_and_exec_opcode(
             ident=ident + 1,
             expect=(
-                self.TC_CLASSDESC,
-                self.TC_PROXYCLASSDESC,
-                self.TC_NULL,
-                self.TC_REFERENCE,
+                TerminalCode.TC_CLASSDESC,
+                TerminalCode.TC_PROXYCLASSDESC,
+                TerminalCode.TC_NULL,
+                TerminalCode.TC_REFERENCE,
             ),
         )
         enum.classdesc = classdesc
         self._add_reference(enum, ident)
         _, enumConstantName = self._read_and_exec_opcode(
-            ident=ident + 1, expect=(self.TC_STRING, self.TC_REFERENCE)
+            ident=ident + 1,
+            expect=(TerminalCode.TC_STRING, TerminalCode.TC_REFERENCE),
         )
         enum.constant = enumConstantName
         return enum
 
-    @staticmethod
-    def _create_hexdump(src, start_offset=0, length=16):
-        """
-        Prepares an hexadecimal dump string
-
-        :param src: A string containing binary data
-        :param start_offset: The start offset of the source
-        :param length: Length of a dump line
-        :return: A dump string
-        """
-        FILTER = "".join((len(repr(chr(x))) == 3) and chr(x) or "." for x in range(256))
-        pattern = "{{0:04X}}   {{1:<{0}}}  {{2}}\n".format(length * 3)
-
-        # Convert raw data to str (Python 3 compatibility)
-        src = to_str(src, "latin-1")
-
-        result = []
-        for i in range(0, len(src), length):
-            s = src[i : i + length]
-            hexa = " ".join("{0:02X}".format(ord(x)) for x in s)
-            printable = s.translate(FILTER)
-            result.append(pattern.format(i + start_offset, hexa, printable))
-
-        return "".join(result)
-
-    def _read_value(self, field_type, ident, name=""):
+    def _read_value(self, raw_field_type, ident, name=""):
+        # type: (bytes, int, str) -> Any
         """
         Reads the next value, of the given type
 
-        :param field_type: A serialization typecode
+        :param raw_field_type: A serialization typecode
         :param ident: Log indentation
         :param name: Field name (for logs)
         :return: The read value
         :raise RuntimeError: Unknown field type
         """
-        if len(field_type) > 1:
+        if isinstance(raw_field_type, (bytes, str)):
             # We don't need details for arrays and objects
-            field_type = field_type[0]
+            field_type = TypeCode(ord(raw_field_type[0]))
+        else:
+            field_type = raw_field_type
 
-        if field_type == self.TYPE_BOOLEAN:
+        if field_type == TypeCode.TYPE_BOOLEAN:
             (val,) = self._readStruct(">B")
             res = bool(val)
-        elif field_type == self.TYPE_BYTE:
+        elif field_type == TypeCode.TYPE_BYTE:
             (res,) = self._readStruct(">b")
-        elif field_type == self.TYPE_CHAR:
+        elif field_type == TypeCode.TYPE_CHAR:
             # TYPE_CHAR is defined by the serialization specification
             # but not used in the implementation, so this is
             # a hypothetical code
             res = unicode_char(self._readStruct(">H")[0])
-        elif field_type == self.TYPE_SHORT:
+        elif field_type == TypeCode.TYPE_SHORT:
             (res,) = self._readStruct(">h")
-        elif field_type == self.TYPE_INTEGER:
+        elif field_type == TypeCode.TYPE_INTEGER:
             (res,) = self._readStruct(">i")
-        elif field_type == self.TYPE_LONG:
+        elif field_type == TypeCode.TYPE_LONG:
             (res,) = self._readStruct(">q")
-        elif field_type == self.TYPE_FLOAT:
+        elif field_type == TypeCode.TYPE_FLOAT:
             (res,) = self._readStruct(">f")
-        elif field_type == self.TYPE_DOUBLE:
+        elif field_type == TypeCode.TYPE_DOUBLE:
             (res,) = self._readStruct(">d")
-        elif field_type == self.TYPE_OBJECT or field_type == self.TYPE_ARRAY:
+        elif field_type in (TypeCode.TYPE_OBJECT, TypeCode.TYPE_ARRAY):
             _, res = self._read_and_exec_opcode(ident=ident + 1)
         else:
             raise RuntimeError("Unknown typecode: {0}".format(field_type))
@@ -1138,22 +852,25 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         return res
 
     def _convert_char_to_type(self, type_char):
+        # type: (Any) -> TypeCode
         """
         Ensures a read character is a typecode.
 
         :param type_char: Read typecode
-        :return: The typecode as a string (using chr)
+        :return: The typecode as an integer (using ord)
         :raise RuntimeError: Unknown typecode
         """
         typecode = type_char
-        if type(type_char) is int:
-            typecode = chr(type_char)
+        if type(type_char) is not int:
+            typecode = ord(type_char)
 
-        if typecode in self.TYPECODES_LIST:
-            return typecode
-        else:
+        try:
+            return TypeCode(typecode)
+        except ValueError:
             raise RuntimeError(
-                "Typecode {0} ({1}) isn't supported.".format(type_char, typecode)
+                "Typecode {0} ({1}) isn't supported.".format(
+                    type_char, typecode
+                )
             )
 
     def _add_reference(self, obj, ident=0):
@@ -1165,7 +882,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         """
         log_debug(
             "## New reference handle 0x{0:X}: {1} -> {2}".format(
-                len(self.references) + self.BASE_REFERENCE_IDX,
+                len(self.references) + StreamConstants.BASE_REFERENCE_IDX,
                 type(obj).__name__,
                 repr(obj),
             ),
@@ -1182,7 +899,9 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         """
         log_error("==Oops state dump" + "=" * (30 - 17))
         log_error("References: {0}".format(self.references))
-        log_error("Stream seeking back at -16 byte (2nd line is an actual position!):")
+        log_error(
+            "Stream seeking back at -16 byte (2nd line is an actual position!):"
+        )
 
         # Do not use a keyword argument
         self.object_stream.seek(-16, os.SEEK_CUR)
@@ -1192,7 +911,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
         if not ignore_remaining_data and len(the_rest):
             log_error(
                 "Warning!!!!: Stream still has {0} bytes left:\n{1}".format(
-                    len(the_rest), self._create_hexdump(the_rest, position)
+                    len(the_rest), hexdump(the_rest, position)
                 )
             )
 
@@ -1202,7 +921,7 @@ class JavaObjectUnmarshaller(JavaObjectConstants):
 # ------------------------------------------------------------------------------
 
 
-class JavaObjectMarshaller(JavaObjectConstants):
+class JavaObjectMarshaller:
     """
     Serializes objects into Java serialization format
     """
@@ -1241,7 +960,11 @@ class JavaObjectMarshaller(JavaObjectConstants):
         """
         Writes the Java serialization magic header in the serialization stream
         """
-        self._writeStruct(">HH", 4, (self.STREAM_MAGIC, self.STREAM_VERSION))
+        self._writeStruct(
+            ">HH",
+            4,
+            (StreamConstants.STREAM_MAGIC, StreamConstants.STREAM_VERSION),
+        )
 
     def writeObject(self, obj):
         """
@@ -1309,7 +1032,9 @@ class JavaObjectMarshaller(JavaObjectConstants):
                 self.references.append(obj)
                 logging.debug(
                     "*** Adding ref 0x%X for string: %s",
-                    len(self.references) - 1 + self.BASE_REFERENCE_IDX,
+                    len(self.references)
+                    - 1
+                    + StreamConstants.BASE_REFERENCE_IDX,
                     obj,
                 )
 
@@ -1319,7 +1044,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
                 # Write a reference to the previous type
                 logging.debug(
                     "*** Reusing ref 0x%X for string: %s",
-                    idx + self.BASE_REFERENCE_IDX,
+                    idx + StreamConstants.BASE_REFERENCE_IDX,
                     obj,
                 )
                 self.write_reference(idx)
@@ -1339,19 +1064,19 @@ class JavaObjectMarshaller(JavaObjectConstants):
                 idx = self.references.index(obj)
             except ValueError:
                 # String is not referenced: let _writeString store it
-                self._writeStruct(">B", 1, (self.TC_STRING,))
+                self._writeStruct(">B", 1, (TerminalCode.TC_STRING,))
                 self._writeString(obj, use_reference)
             else:
                 # Reuse the referenced string
                 logging.debug(
                     "*** Reusing ref 0x%X for String: %s",
-                    idx + self.BASE_REFERENCE_IDX,
+                    idx + StreamConstants.BASE_REFERENCE_IDX,
                     obj,
                 )
                 self.write_reference(idx)
         else:
             # Don't use references
-            self._writeStruct(">B", 1, (self.TC_STRING,))
+            self._writeStruct(">B", 1, (TerminalCode.TC_STRING,))
             self._writeString(obj, use_reference)
 
     def write_enum(self, obj):
@@ -1362,7 +1087,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
         """
         # FIXME: the output doesn't have the same references as the real
         # serializable form
-        self._writeStruct(">B", 1, (self.TC_ENUM,))
+        self._writeStruct(">B", 1, (TerminalCode.TC_ENUM,))
 
         try:
             idx = self.references.index(obj)
@@ -1371,7 +1096,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
             self.references.append(obj)
             logging.debug(
                 "*** Adding ref 0x%X for enum: %s",
-                len(self.references) - 1 + self.BASE_REFERENCE_IDX,
+                len(self.references) - 1 + StreamConstants.BASE_REFERENCE_IDX,
                 obj,
             )
 
@@ -1395,12 +1120,12 @@ class JavaObjectMarshaller(JavaObjectConstants):
         if length <= 256:
             # Small block data
             # TC_BLOCKDATA (unsigned byte)<size> (byte)[size]
-            self._writeStruct(">B", 1, (self.TC_BLOCKDATA,))
+            self._writeStruct(">B", 1, (TerminalCode.TC_BLOCKDATA,))
             self._writeStruct(">B", 1, (length,))
         else:
             # Large block data
             # TC_BLOCKDATALONG (unsigned int)<size> (byte)[size]
-            self._writeStruct(">B", 1, (self.TC_BLOCKDATALONG,))
+            self._writeStruct(">B", 1, (TerminalCode.TC_BLOCKDATALONG,))
             self._writeStruct(">I", 1, (length,))
 
         self.object_stream.write(obj)
@@ -1409,7 +1134,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
         """
         Writes a "null" value
         """
-        self._writeStruct(">B", 1, (self.TC_NULL,))
+        self._writeStruct(">B", 1, (TerminalCode.TC_NULL,))
 
     def write_object(self, obj, parent=None):
         """
@@ -1425,7 +1150,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
                 obj = tmp_object
                 break
 
-        self._writeStruct(">B", 1, (self.TC_OBJECT,))
+        self._writeStruct(">B", 1, (TerminalCode.TC_OBJECT,))
         cls = obj.get_class()
         self.write_classdesc(cls)
 
@@ -1433,7 +1158,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
         self.references.append([])
         logging.debug(
             "*** Adding ref 0x%X for object %s",
-            len(self.references) - 1 + self.BASE_REFERENCE_IDX,
+            len(self.references) - 1 + StreamConstants.BASE_REFERENCE_IDX,
             obj,
         )
 
@@ -1468,20 +1193,22 @@ class JavaObjectMarshaller(JavaObjectConstants):
         del all_names, all_types
 
         if (
-            cls.flags & self.SC_SERIALIZABLE
-            and cls.flags & self.SC_WRITE_METHOD
-            or cls.flags & self.SC_EXTERNALIZABLE
-            and cls.flags & self.SC_BLOCK_DATA
+            cls.flags & ClassDescFlags.SC_SERIALIZABLE
+            and cls.flags & ClassDescFlags.SC_WRITE_METHOD
+            or cls.flags & ClassDescFlags.SC_EXTERNALIZABLE
+            and cls.flags & ClassDescFlags.SC_BLOCK_DATA
         ):
             for annotation in obj.annotations:
                 log_debug(
-                    "Write annotation {0} for {1}".format(repr(annotation), repr(obj))
+                    "Write annotation {0} for {1}".format(
+                        repr(annotation), repr(obj)
+                    )
                 )
                 if annotation is None:
                     self.write_null()
                 else:
                     self.writeObject(annotation)
-            self._writeStruct(">B", 1, (self.TC_ENDBLOCKDATA,))
+            self._writeStruct(">B", 1, (TerminalCode.TC_ENDBLOCKDATA,))
 
     def write_class(self, obj, parent=None):
         """
@@ -1490,7 +1217,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
         :param obj: A JavaClass object
         :param parent:
         """
-        self._writeStruct(">B", 1, (self.TC_CLASS,))
+        self._writeStruct(">B", 1, (TerminalCode.TC_CLASS,))
         self.write_classdesc(obj)
 
     def write_classdesc(self, obj, parent=None):
@@ -1505,19 +1232,23 @@ class JavaObjectMarshaller(JavaObjectConstants):
             self.references.append(obj)
             logging.debug(
                 "*** Adding ref 0x%X for classdesc %s",
-                len(self.references) - 1 + self.BASE_REFERENCE_IDX,
+                len(self.references) - 1 + StreamConstants.BASE_REFERENCE_IDX,
                 obj.name,
             )
 
-            self._writeStruct(">B", 1, (self.TC_CLASSDESC,))
+            self._writeStruct(">B", 1, (TerminalCode.TC_CLASSDESC,))
             self._writeString(obj.name)
             self._writeStruct(">qB", 1, (obj.serialVersionUID, obj.flags))
             self._writeStruct(">H", 1, (len(obj.fields_names),))
 
-            for field_name, field_type in zip(obj.fields_names, obj.fields_types):
-                self._writeStruct(">B", 1, (self._convert_type_to_char(field_type),))
+            for field_name, field_type in zip(
+                obj.fields_names, obj.fields_types
+            ):
+                self._writeStruct(
+                    ">B", 1, (self._convert_type_to_char(field_type),)
+                )
                 self._writeString(field_name)
-                if field_type[0] in (self.TYPE_OBJECT, self.TYPE_ARRAY):
+                if field_type[0] in (TypeCode.TYPE_OBJECT, TypeCode.TYPE_ARRAY):
                     try:
                         idx = self.references.index(field_type)
                     except ValueError:
@@ -1525,7 +1256,9 @@ class JavaObjectMarshaller(JavaObjectConstants):
                         self.references.append(field_type)
                         logging.debug(
                             "*** Adding ref 0x%X for field type %s",
-                            len(self.references) - 1 + self.BASE_REFERENCE_IDX,
+                            len(self.references)
+                            - 1
+                            + StreamConstants.BASE_REFERENCE_IDX,
                             field_type,
                         )
 
@@ -1534,13 +1267,13 @@ class JavaObjectMarshaller(JavaObjectConstants):
                         # Write a reference to the previous type
                         logging.debug(
                             "*** Reusing ref 0x%X for %s (%s)",
-                            idx + self.BASE_REFERENCE_IDX,
+                            idx + StreamConstants.BASE_REFERENCE_IDX,
                             field_type,
                             field_name,
                         )
                         self.write_reference(idx)
 
-            self._writeStruct(">B", 1, (self.TC_ENDBLOCKDATA,))
+            self._writeStruct(">B", 1, (TerminalCode.TC_ENDBLOCKDATA,))
             if obj.superclass:
                 self.write_classdesc(obj.superclass)
             else:
@@ -1555,7 +1288,12 @@ class JavaObjectMarshaller(JavaObjectConstants):
         :param ref_index: Local index (0-based) to the reference
         """
         self._writeStruct(
-            ">BL", 1, (self.TC_REFERENCE, ref_index + self.BASE_REFERENCE_IDX)
+            ">BL",
+            1,
+            (
+                TerminalCode.TC_REFERENCE,
+                ref_index + StreamConstants.BASE_REFERENCE_IDX,
+            ),
         )
 
     def write_array(self, obj):
@@ -1565,7 +1303,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
         :param obj: A JavaArray object
         """
         classdesc = obj.get_class()
-        self._writeStruct(">B", 1, (self.TC_ARRAY,))
+        self._writeStruct(">B", 1, (TerminalCode.TC_ARRAY,))
         self.write_classdesc(classdesc)
         self._writeStruct(">i", 1, (len(obj),))
 
@@ -1573,53 +1311,55 @@ class JavaObjectMarshaller(JavaObjectConstants):
         self.references.append(obj)
         logging.debug(
             "*** Adding ref 0x%X for array []",
-            len(self.references) - 1 + self.BASE_REFERENCE_IDX,
+            len(self.references) - 1 + StreamConstants.BASE_REFERENCE_IDX,
         )
 
-        type_char = classdesc.name[0]
-        assert type_char == self.TYPE_ARRAY
-        type_char = classdesc.name[1]
+        array_type_code = TypeCode(ord(classdesc.name[0]))
+        assert array_type_code == TypeCode.TYPE_ARRAY
+        type_code = TypeCode(ord(classdesc.name[1]))
 
-        if type_char == self.TYPE_OBJECT:
+        if type_code == TypeCode.TYPE_OBJECT:
             for o in obj:
                 self._write_value(classdesc.name[1:], o)
-        elif type_char == self.TYPE_ARRAY:
+        elif type_code == TypeCode.TYPE_ARRAY:
             for a in obj:
                 self.write_array(a)
         else:
-            log_debug("Write array of type %s" % type_char)
+            log_debug("Write array of type %s" % type_code)
             for v in obj:
                 log_debug("Writing: %s" % v)
-                self._write_value(type_char, v)
+                self._write_value(type_code, v)
 
-    def _write_value(self, field_type, value):
+    def _write_value(self, raw_field_type, value):
         """
         Writes an item of an array
 
-        :param field_type: Value type
+        :param raw_field_type: Value type
         :param value: The value itself
         """
-        if len(field_type) > 1:
+        if isinstance(raw_field_type, (bytes, str)):
             # We don't need details for arrays and objects
-            field_type = field_type[0]
+            field_type = TypeCode(ord(raw_field_type[0]))
+        else:
+            field_type = raw_field_type
 
-        if field_type == self.TYPE_BOOLEAN:
+        if field_type == TypeCode.TYPE_BOOLEAN:
             self._writeStruct(">B", 1, (1 if value else 0,))
-        elif field_type == self.TYPE_BYTE:
+        elif field_type == TypeCode.TYPE_BYTE:
             self._writeStruct(">b", 1, (value,))
-        elif field_type == self.TYPE_CHAR:
+        elif field_type == TypeCode.TYPE_CHAR:
             self._writeStruct(">H", 1, (ord(value),))
-        elif field_type == self.TYPE_SHORT:
+        elif field_type == TypeCode.TYPE_SHORT:
             self._writeStruct(">h", 1, (value,))
-        elif field_type == self.TYPE_INTEGER:
+        elif field_type == TypeCode.TYPE_INTEGER:
             self._writeStruct(">i", 1, (value,))
-        elif field_type == self.TYPE_LONG:
+        elif field_type == TypeCode.TYPE_LONG:
             self._writeStruct(">q", 1, (value,))
-        elif field_type == self.TYPE_FLOAT:
+        elif field_type == TypeCode.TYPE_FLOAT:
             self._writeStruct(">f", 1, (value,))
-        elif field_type == self.TYPE_DOUBLE:
+        elif field_type == TypeCode.TYPE_DOUBLE:
             self._writeStruct(">d", 1, (value,))
-        elif field_type == self.TYPE_OBJECT or field_type == self.TYPE_ARRAY:
+        elif field_type in (TypeCode.TYPE_OBJECT, TypeCode.TYPE_ARRAY):
             if value is None:
                 self.write_null()
             elif isinstance(value, JavaEnum):
@@ -1630,7 +1370,7 @@ class JavaObjectMarshaller(JavaObjectConstants):
                 self.write_object(value)
             elif isinstance(value, JavaString):
                 self.write_string(value)
-            elif isinstance(value, str):
+            elif isinstance(value, (bytes, str)):
                 self.write_blockdata(value)
             else:
                 raise RuntimeError("Unknown typecode: {0}".format(field_type))
@@ -1643,381 +1383,17 @@ class JavaObjectMarshaller(JavaObjectConstants):
 
         :param type_char: A type code character
         """
-        typecode = type_char
-        if type(type_char) is int:
-            typecode = chr(type_char)
-
-        if typecode in self.TYPECODES_LIST:
-            return ord(typecode)
-        elif len(typecode) > 1:
-            if typecode[0] == "L":
-                return ord(self.TYPE_OBJECT)
-            elif typecode[0] == "[":
-                return ord(self.TYPE_ARRAY)
+        if isinstance(type_char, TypeCode):
+            return type_char.value
+        elif type(type_char) is int:
+            return type_char
+        elif isinstance(type_char, (bytes, str)):
+            # Conversion to TypeCode will raise an error if the type
+            # is invalid
+            return TypeCode(ord(type_char[0])).value
 
         raise RuntimeError(
-            "Typecode {0} ({1}) isn't supported.".format(type_char, typecode)
+            "Typecode {0} ({1}) isn't supported.".format(
+                type_char, ord(type_char)
+            )
         )
-
-
-# ------------------------------------------------------------------------------
-
-
-def read(data, fmt_str):
-    """
-    Reads input bytes and extract the given structure. Returns both the read
-    elements and the remaining data
-
-    :param data: Data as bytes
-    :param fmt_str: Struct unpack format string
-    :return: A tuple (results as tuple, remaining data)
-    """
-    size = struct.calcsize(fmt_str)
-    return struct.unpack(fmt_str, data[:size]), data[size:]
-
-
-def read_string(data, length_fmt="H"):
-    """
-    Reads a serialized string
-
-    :param data: Bytes where to read the string from
-    :param length_fmt: Structure format of the string length (H or Q)
-    :return: The deserialized string
-    """
-    (length,), data = read(data, ">{0}".format(length_fmt))
-    ba, data = data[:length], data[length:]
-    return to_unicode(ba), data
-
-
-class DefaultObjectTransformer(object):
-    """
-    Default transformer for the deserialized objects.
-    Converts JavaObject objects to Python types (maps, lists, ...)
-    """
-
-    class JavaList(list, JavaObject):
-        """
-        Python-Java list bridge type
-        """
-
-        def __init__(self, unmarshaller):
-            # type: (JavaObjectUnmarshaller) -> None
-            list.__init__(self)
-            JavaObject.__init__(self)
-
-        def __extra_loading__(self, unmarshaller, ident=0):
-            # type: (JavaObjectUnmarshaller, int) -> None
-            """
-            Loads the content of the map, written with a custom implementation
-            """
-            # Lists have their content in there annotations
-            self.extend(self.annotations[1:])
-
-    @functools.total_ordering
-    class JavaPrimitiveClass(JavaObject):
-        """
-        Parent of Java classes matching a primitive (Bool, Integer, Long, ...)
-        """
-
-        def __init__(self, unmarshaller):
-            JavaObject.__init__(self)
-            self.value = None
-
-        def __str__(self):
-            return str(self.value)
-
-        def __repr__(self):
-            return repr(self.value)
-
-        def __hash__(self):
-            return hash(self.value)
-
-        def __eq__(self, other):
-            return self.value == other
-
-        def __lt__(self, other):
-            return self.value < other
-
-    class JavaBool(JavaPrimitiveClass):
-        def __bool__(self):
-            return self.value
-
-    class JavaInt(JavaPrimitiveClass):
-        def __int__(self):
-            return self.value
-
-    class JavaMap(dict, JavaObject):
-        """
-        Python-Java dictionary/map bridge type
-        """
-
-        def __init__(self, unmarshaller):
-            # type: (JavaObjectUnmarshaller) -> None
-            dict.__init__(self)
-            JavaObject.__init__(self)
-
-        def __extra_loading__(self, unmarshaller, ident=0):
-            # type: (JavaObjectUnmarshaller, int) -> None
-            """
-            Loads the content of the map, written with a custom implementation
-            """
-            # Group annotation elements 2 by 2
-            args = [iter(self.annotations[1:])] * 2
-            for key, value in zip(*args):
-                self[key] = value
-
-    class JavaLinkedHashMap(JavaMap):
-        def __extra_loading__(self, unmarshaller, ident=0):
-            # type: (JavaObjectUnmarshaller, int) -> None
-            """
-            Loads the content of the map, written with a custom implementation
-            """
-            # Ignore the blockdata opid
-            (opid,) = unmarshaller._readStruct(">B")
-            if opid != unmarshaller.SC_BLOCK_DATA:
-                raise ValueError("Start of block data not found")
-
-            # Read HashMap fields
-            self.buckets = unmarshaller._read_value(unmarshaller.TYPE_INTEGER, ident)
-            self.size = unmarshaller._read_value(unmarshaller.TYPE_INTEGER, ident)
-
-            # Read entries
-            for _ in range(self.size):
-                key = unmarshaller._read_and_exec_opcode()[1]
-                value = unmarshaller._read_and_exec_opcode()[1]
-                self[key] = value
-
-            # Ignore the end of the blockdata
-            unmarshaller._read_and_exec_opcode(ident, [unmarshaller.TC_ENDBLOCKDATA])
-
-            # Ignore the trailing 0
-            (opid,) = unmarshaller._readStruct(">B")
-            if opid != 0:
-                raise ValueError("Should find 0x0, got {0:x}".format(opid))
-
-    class JavaSet(set, JavaObject):
-        """
-        Python-Java set bridge type
-        """
-
-        def __init__(self, unmarshaller):
-            # type: (JavaObjectUnmarshaller) -> None
-            set.__init__(self)
-            JavaObject.__init__(self)
-
-        def __extra_loading__(self, unmarshaller, ident=0):
-            # type: (JavaObjectUnmarshaller, int) -> None
-            """
-            Loads the content of the map, written with a custom implementation
-            """
-            self.update(self.annotations[1:])
-
-    class JavaTreeSet(JavaSet):
-        def __extra_loading__(self, unmarshaller, ident=0):
-            # type: (JavaObjectUnmarshaller, int) -> None
-            """
-            Loads the content of the map, written with a custom implementation
-            """
-            # Annotation[1] == size of the set
-            self.update(self.annotations[2:])
-
-    class JavaTime(JavaObject):
-        """
-        Represents the classes found in the java.time package
-
-        The semantic of the fields depends on the type of time that has been
-        parsed
-        """
-
-        DURATION_TYPE = 1
-        INSTANT_TYPE = 2
-        LOCAL_DATE_TYPE = 3
-        LOCAL_TIME_TYPE = 4
-        LOCAL_DATE_TIME_TYPE = 5
-        ZONE_DATE_TIME_TYPE = 6
-        ZONE_REGION_TYPE = 7
-        ZONE_OFFSET_TYPE = 8
-        OFFSET_TIME_TYPE = 9
-        OFFSET_DATE_TIME_TYPE = 10
-        YEAR_TYPE = 11
-        YEAR_MONTH_TYPE = 12
-        MONTH_DAY_TYPE = 13
-        PERIOD_TYPE = 14
-
-        def __init__(self, unmarshaller):
-            # type: (JavaObjectUnmarshaller) -> None
-            JavaObject.__init__(self)
-            self.type = -1
-            self.year = None
-            self.month = None
-            self.day = None
-            self.hour = None
-            self.minute = None
-            self.second = None
-            self.nano = None
-            self.offset = None
-            self.zone = None
-
-            self.time_handlers = {
-                self.DURATION_TYPE: self.do_duration,
-                self.INSTANT_TYPE: self.do_instant,
-                self.LOCAL_DATE_TYPE: self.do_local_date,
-                self.LOCAL_DATE_TIME_TYPE: self.do_local_date_time,
-                self.LOCAL_TIME_TYPE: self.do_local_time,
-                self.ZONE_DATE_TIME_TYPE: self.do_zoned_date_time,
-                self.ZONE_OFFSET_TYPE: self.do_zone_offset,
-                self.ZONE_REGION_TYPE: self.do_zone_region,
-                self.OFFSET_TIME_TYPE: self.do_offset_time,
-                self.OFFSET_DATE_TIME_TYPE: self.do_offset_date_time,
-                self.YEAR_TYPE: self.do_year,
-                self.YEAR_MONTH_TYPE: self.do_year_month,
-                self.MONTH_DAY_TYPE: self.do_month_day,
-                self.PERIOD_TYPE: self.do_period,
-            }
-
-        def __str__(self):
-            return (
-                "JavaTime(type=0x{s.type}, "
-                "year={s.year}, month={s.month}, day={s.day}, "
-                "hour={s.hour}, minute={s.minute}, second={s.second}, "
-                "nano={s.nano}, offset={s.offset}, zone={s.zone})"
-            ).format(s=self)
-
-        def __extra_loading__(self, unmarshaller, ident=0):
-            # type: (JavaObjectUnmarshaller, int) -> None
-            """
-            Loads the content of the map, written with a custom implementation
-            """
-            # Convert back annotations to bytes
-            # latin-1 is used to ensure that bytes are kept as is
-            content = to_bytes(self.annotations[0], "latin1")
-            (self.type,), content = read(content, ">b")
-
-            try:
-                self.time_handlers[self.type](unmarshaller, content)
-            except KeyError as ex:
-                log_error("Unhandled kind of time: {}".format(ex))
-
-        def do_duration(self, unmarshaller, data):
-            (self.second, self.nano), data = read(data, ">qi")
-            return data
-
-        def do_instant(self, unmarshaller, data):
-            (self.second, self.nano), data = read(data, ">qi")
-            return data
-
-        def do_local_date(self, unmarshaller, data):
-            (self.year, self.month, self.day), data = read(data, ">ibb")
-            return data
-
-        def do_local_time(self, unmarshaller, data):
-            (hour,), data = read(data, ">b")
-            minute = 0
-            second = 0
-            nano = 0
-
-            if hour < 0:
-                hour = ~hour
-            else:
-                (minute,), data = read(data, ">b")
-                if minute < 0:
-                    minute = ~minute
-                else:
-                    (second,), data = read(data, ">b")
-                    if second < 0:
-                        second = ~second
-                    else:
-                        (nano,), data = read(data, ">i")
-
-            self.hour = hour
-            self.minute = minute
-            self.second = second
-            self.nano = nano
-            return data
-
-        def do_local_date_time(self, unmarshaller, data):
-            data = self.do_local_date(unmarshaller, data)
-            data = self.do_local_time(unmarshaller, data)
-            return data
-
-        def do_zoned_date_time(self, unmarshaller, data):
-            data = self.do_local_date_time(unmarshaller, data)
-            data = self.do_zone_offset(unmarshaller, data)
-            data = self.do_zone_region(unmarshaller, data)
-            return data
-
-        def do_zone_offset(self, unmarshaller, data):
-            (offset_byte,), data = read(data, ">b")
-            if offset_byte == 127:
-                (self.offset,), data = read(data, ">i")
-            else:
-                self.offset = offset_byte * 900
-            return data
-
-        def do_zone_region(self, unmarshaller, data):
-            self.zone, data = read_string(data)
-            return data
-
-        def do_offset_time(self, unmarshaller, data):
-            data = self.do_local_time(unmarshaller, data)
-            data = self.do_zone_offset(unmarshaller, data)
-            return data
-
-        def do_offset_date_time(self, unmarshaller, data):
-            data = self.do_local_date_time(unmarshaller, data)
-            data = self.do_zone_offset(unmarshaller, data)
-            return data
-
-        def do_year(self, unmarshaller, data):
-            (self.year,), data = read(data, ">i")
-            return data
-
-        def do_year_month(self, unmarshaller, data):
-            (self.year, self.month), data = read(data, ">ib")
-            return data
-
-        def do_month_day(self, unmarshaller, data):
-            (self.month, self.day), data = read(data, ">bb")
-            return data
-
-        def do_period(self, unmarshaller, data):
-            (self.year, self.month, self.day), data = read(data, ">iii")
-            return data
-
-    TYPE_MAPPER = {
-        "java.util.ArrayList": JavaList,
-        "java.util.LinkedList": JavaList,
-        "java.util.HashMap": JavaMap,
-        "java.util.LinkedHashMap": JavaLinkedHashMap,
-        "java.util.TreeMap": JavaMap,
-        "java.util.HashSet": JavaSet,
-        "java.util.LinkedHashSet": JavaSet,
-        "java.util.TreeSet": JavaTreeSet,
-        "java.time.Ser": JavaTime,
-        "java.lang.Boolean": JavaBool,
-        "java.lang.Integer": JavaInt,
-        "java.lang.Long": JavaInt,
-    }
-
-    def create(self, classdesc, unmarshaller=None):
-        # type: (JavaClassDesc, JavaObjectUnmarshaller) -> JavaObject
-        """
-        Transforms a deserialized Java object into a Python object
-
-        :param classdesc: The description of a Java class
-        :return: The Python form of the object, or the original JavaObject
-        """
-        try:
-            mapped_type = self.TYPE_MAPPER[classdesc.name]
-        except KeyError:
-            # Return a JavaObject by default
-            return JavaObject()
-        else:
-            log_debug("---")
-            log_debug(classdesc.name)
-            log_debug("---")
-
-            java_object = mapped_type(unmarshaller)
-
-            log_debug(">>> java_object: {0}".format(java_object))
-            return java_object
