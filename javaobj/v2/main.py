@@ -34,12 +34,15 @@ def load(file_object: IO[bytes], *transformers: ObjectTransformer, **kwargs):
     parser = JavaStreamParser(file_object, all_transformers)
     contents = parser.run()
 
-    if len(contents) == 1:
+    if len(contents) == 0:
+        # Nothing was parsed, but no error
+        return None
+    elif len(contents) == 1:
         # Return the only object as is
         return contents[0]
-
-    # Returns all objects if they are more than one
-    return contents
+    else:
+        # Returns all objects if they are more than one
+        return contents
 
 
 def loads(data: bytes, *transformers: ObjectTransformer, **kwargs):
