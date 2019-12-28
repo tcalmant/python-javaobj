@@ -105,7 +105,7 @@ class JavaStreamParser:
         }  # type: Dict[int, Callable[[int], ParsedJavaContent]]
 
     def run(self):
-        # type: () -> List[ParsedJavaContent]:
+        # type: () -> List[ParsedJavaContent]
         """
         Parses the input stream
         """
@@ -317,7 +317,7 @@ class JavaStreamParser:
         self._set_handle(handle, java_str)
         return java_str
 
-    def _read_classdesc(self) -> JavaClassDesc:
+    def _read_classdesc(self):
         # type: () -> JavaClassDesc
         """
         Reads a class description with its type code

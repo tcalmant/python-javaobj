@@ -98,7 +98,7 @@ class ParsedJavaContent:
         """
         return "\t" * indent + str(self)
 
-    def validate(self) -> None:
+    def validate(self):
         """
         Validity check on the object
         """
