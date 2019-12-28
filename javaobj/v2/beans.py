@@ -85,6 +85,18 @@ class ParsedJavaContent:
         self.is_exception: bool = False
         self.handle: int = 0
 
+    def __str__(self):
+        return "[ParseJavaObject 0x{0:x} - {1}]".format(self.handle, self.type)
+
+    __repr__ = __str__
+
+    def dump(self, indent=0):
+        # type: (int) -> str
+        """
+        Base implementation of a parsed object
+        """
+        return "\t" * indent + str(self)
+
     def validate(self) -> None:
         """
         Validity check on the object
@@ -102,6 +114,13 @@ class ExceptionState(ParsedJavaContent):
         self.exception_object = exception_object
         self.stream_data = data
         self.handle = exception_object.handle
+
+    def dump(self, indent=0):
+        # type: (int) -> str
+        """
+        Returns a dump representation of the exception
+        """
+        return "\t" * indent + "[ExceptionState {0:x}]".format(self.handle)
 
 
 class ExceptionRead(Exception):
@@ -127,10 +146,18 @@ class JavaString(ParsedJavaContent):
 
     def __repr__(self) -> str:
         return repr(self.value)
-        # "[String {0:x}: {1}]".format(self.handle, self.value)
 
     def __str__(self):
         return self.value
+
+    def dump(self, indent=0):
+        # type: (int) -> str
+        """
+        Returns a dump representation of the string
+        """
+        return "\t" * indent + "[String {0:x}: {1}]".format(
+            self.handle, repr(self.value)
+        )
 
     def __hash__(self):
         return hash(self.value)
@@ -225,6 +252,15 @@ class JavaClassDesc(ParsedJavaContent):
         )
 
     __repr__ = __str__
+
+    def dump(self, indent=0):
+        # type: (int) -> str
+        """
+        Returns a dump representation of the exception
+        """
+        return "\t" * indent + "[classdesc 0x{0:x}: name {1}, uid {2}]".format(
+            self.handle, self.name, self.serial_version_uid
+        )
 
     @property
     def serialVersionUID(self):
@@ -321,6 +357,52 @@ class JavaInstance(ParsedJavaContent):
         )
 
     __repr__ = __str__
+
+    def dump(self, indent=0):
+        # type: (int) -> str
+        """
+        Returns a dump representation of the exception
+        """
+        prefix = "\t" * indent
+        sub_prefix = "\t" * (indent + 1)
+
+        dump = [
+            prefix
+            + "[instance 0x{0:x}: {1:x} / {2}]".format(
+                self.handle, self.classdesc.handle, self.classdesc.name
+            )
+        ]
+
+        for cd, annotations in self.annotations.items():
+            dump.append(
+                "{0}{1} -- {2} annotations".format(
+                    prefix, cd.name, len(annotations)
+                )
+            )
+            for ann in annotations:
+                dump.append(sub_prefix + repr(ann))
+
+        for cd, fields in self.field_data.items():
+            dump.append(
+                "{0}{1} -- {2} fields".format(prefix, cd.name, len(fields))
+            )
+            for field, value in fields.items():
+                if isinstance(value, ParsedJavaContent):
+                    if self.handle != 0 and value.handle == self.handle:
+                        value_str = "this"
+                    else:
+                        value_str = "\n" + value.dump(indent + 2)
+                else:
+                    value_str = repr(value)
+
+                dump.append(
+                    "{0}{1} {2}: {3}".format(
+                        sub_prefix, field.type.name, field.name, value_str
+                    )
+                )
+
+        dump.append(prefix + "[/instance 0x{0:x}]".format(self.handle))
+        return "\n".join(dump)
 
     def __getattr__(self, name):
         """
@@ -422,14 +504,33 @@ class JavaArray(ParsedJavaContent, list):
         self.handle = handle
         self.classdesc = class_desc
         self.field_type = field_type
-        self.content = content
+        self.data = content
 
     def __str__(self):
-        return "[array 0x{0:x}: {1} items]".format(
-            self.handle, len(self.content)
-        )
+        return "[{0}]".format(", ".join(repr(x) for x in self))
 
     __repr__ = __str__
+
+    def dump(self, indent=0):
+        # type: (int) -> str
+        """
+        Returns a dump representation of the array
+        """
+        prefix = "\t" * indent
+        sub_prefix = "\t" * (indent + 1)
+        dump = [
+            prefix + "[array 0x{0:x}: {1} items]".format(self.handle, len(self))
+        ]
+        for x in self:
+            if isinstance(x, ParsedJavaContent):
+                if self.handle != 0 and x.handle == self.handle:
+                    dump.append("this,")
+                else:
+                    dump.append(x.dump(indent + 1) + ",")
+            else:
+                dump.append(sub_prefix + repr(x) + ",")
+        dump.append(prefix + "[/array 0x{0:x}]".format(self.handle))
+        return "\n".join(dump)
 
     @property
     def _data(self):
@@ -453,7 +554,8 @@ class BlockData(ParsedJavaContent):
             self.handle, len(self.data)
         )
 
-    __repr__ = __str__
+    def __repr__(self):
+        return repr(self.data)
 
     def __eq__(self, other):
         if isinstance(other, (str, UNICODE_TYPE)):
