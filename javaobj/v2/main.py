@@ -6,10 +6,9 @@ Mimics the core API with the new deserializer
 from io import BytesIO
 from typing import IO, Iterable
 
-from javaobj.api import ObjectTransformer
-from javaobj.core import JavaObjectMarshaller
-from javaobj.deserialize.core import JavaStreamParser
-from javaobj.transformers import DefaultObjectTransformer
+from .api import ObjectTransformer
+from .core import JavaStreamParser
+from .transformers import DefaultObjectTransformer
 
 # ------------------------------------------------------------------------------
 
@@ -55,20 +54,3 @@ def loads(data: bytes, *transformers: ObjectTransformer, **kwargs):
     :return: The deserialized object
     """
     return load(BytesIO(data), *transformers, **kwargs)
-
-
-def dumps(obj, *transformers: ObjectTransformer):
-    """
-    Serializes Java primitive data and objects unmarshaled by load(s) before
-    into string.
-
-    :param obj: A Python primitive object, or one loaded using load(s)
-    :param transformers: Custom transformers to use
-    :return: The serialized data as a string
-    """
-    marshaller = JavaObjectMarshaller()
-    # Add custom transformers
-    for transformer in transformers:
-        marshaller.add_transformer(transformer)
-
-    return marshaller.dump(obj)
