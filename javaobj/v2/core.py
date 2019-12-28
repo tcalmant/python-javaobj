@@ -63,11 +63,11 @@ class JavaStreamParser:
     Parses a Java stream
     """
 
-    def __init__(
-        self, fd: IO[bytes], transformers: List[api.ObjectTransformer]
-    ):
+    def __init__(self, fd, transformers):
+        # type: (IO[bytes], List[api.ObjectTransformer]) -> None
         """
         :param fd: File-object to read from
+        :param transformers: Custom object transformers
         """
         # Input stream
         self.__fd = fd
@@ -80,17 +80,15 @@ class JavaStreamParser:
         self._log = logging.getLogger("javaobj.parser")
 
         # Handles
-        self.__handle_maps: List[Dict[int, ParsedJavaContent]] = []
-        self.__handles: Dict[int, ParsedJavaContent] = {}
+        self.__handle_maps = []  # type: List[Dict[int, ParsedJavaContent]]
+        self.__handles = {}  # type: Dict[int, ParsedJavaContent]
 
         # Initial handle value
         self.__current_handle = StreamConstants.BASE_REFERENCE_IDX
 
         # Definition of the type code handlers
         # Each takes the type code as argument
-        self.__type_code_handlers: Dict[
-            int, Callable[[int], ParsedJavaContent]
-        ] = {
+        self.__type_code_handlers = {
             TerminalCode.TC_OBJECT: self._do_object,
             TerminalCode.TC_CLASS: self._do_class,
             TerminalCode.TC_ARRAY: self._do_array,
@@ -104,9 +102,10 @@ class JavaStreamParser:
             TerminalCode.TC_EXCEPTION: self._do_exception,
             TerminalCode.TC_BLOCKDATA: self._do_block_data,
             TerminalCode.TC_BLOCKDATALONG: self._do_block_data,
-        }
+        }  # type: Dict[int, Callable[[int], ParsedJavaContent]]
 
-    def run(self) -> List[ParsedJavaContent]:
+    def run(self):
+        # type: () -> List[ParsedJavaContent]:
         """
         Parses the input stream
         """
@@ -124,7 +123,7 @@ class JavaStreamParser:
         self._reset()
 
         # Read content
-        contents: List[ParsedJavaContent] = []
+        contents = []  # type: List[ParsedJavaContent]
         while True:
             self._log.info("Reading next content")
             start = self.__fd.tell()
@@ -163,11 +162,12 @@ class JavaStreamParser:
 
         return contents
 
-    def dump(self, content: List[ParsedJavaContent]) -> str:
+    def dump(self, content):
+        # type: (List[ParsedJavaContent]) -> str
         """
         Dumps to a string the given objects
         """
-        lines: List[str] = []
+        lines = []  # type: List[str]
 
         # Stream content
         lines.append("//// BEGIN stream content output")
@@ -178,17 +178,18 @@ class JavaStreamParser:
         lines.append("//// BEGIN instance dump")
         for c in self.__handles.values():
             if isinstance(c, JavaInstance):
-                instance: JavaInstance = c
+                instance = c  # type: JavaInstance
                 lines.extend(self._dump_instance(instance))
         lines.append("//// END instance dump")
         lines.append("")
         return "\n".join(lines)
 
-    def _dump_instance(self, instance: JavaInstance) -> List[str]:
+    def _dump_instance(self, instance):
+        # type: (JavaInstance) -> List[str]
         """
         Dumps an instance to a set of lines
         """
-        lines: List[str] = []
+        lines = []  # type: List[str]
         lines.append(
             "[instance 0x{0:x}: 0x{1:x} / {2}".format(
                 instance.handle,
@@ -209,7 +210,7 @@ class JavaStreamParser:
             for field, obj in instance.field_data.items():
                 line = "\t\t" + field.name + ": "
                 if isinstance(obj, ParsedJavaContent):
-                    content: ParsedJavaContent = obj
+                    content = obj  # type: ParsedJavaContent
                     h = content.handle
                     if h == instance.handle:
                         line += "this"
@@ -225,7 +226,7 @@ class JavaStreamParser:
         lines.append("]")
         return lines
 
-    def _reset(self) -> None:
+    def _reset(self):
         """
         Resets the internal state of the parser
         """
@@ -237,7 +238,8 @@ class JavaStreamParser:
         # Reset handle index
         self.__current_handle = StreamConstants.BASE_REFERENCE_IDX
 
-    def _new_handle(self) -> int:
+    def _new_handle(self):
+        # type: () -> int
         """
         Returns a new handle value
         """
@@ -245,7 +247,8 @@ class JavaStreamParser:
         self.__current_handle += 1
         return handle
 
-    def _set_handle(self, handle: int, content: ParsedJavaContent) -> None:
+    def _set_handle(self, handle, content):
+        # type: (int, ParsedJavaContent) -> None
         """
         Stores the reference to an object
         """
@@ -254,15 +257,14 @@ class JavaStreamParser:
 
         self.__handles[handle] = content
 
-    def _do_null(self, _) -> None:
+    def _do_null(self, _):
         """
         The easiest one
         """
         return None
 
-    def _read_content(
-        self, type_code: int, block_data: bool
-    ) -> ParsedJavaContent:
+    def _read_content(self, type_code, block_data):
+        # type: (int, bool) -> ParsedJavaContent
         """
         Parses the next content
         """
@@ -282,7 +284,8 @@ class JavaStreamParser:
             except ExceptionRead as ex:
                 return ex.exception_object
 
-    def _read_new_string(self, type_code: int) -> JavaString:
+    def _read_new_string(self, type_code):
+        # type: (int) -> JavaString
         """
         Reads a Java String
         """
@@ -315,15 +318,15 @@ class JavaStreamParser:
         return java_str
 
     def _read_classdesc(self) -> JavaClassDesc:
+        # type: () -> JavaClassDesc
         """
         Reads a class description with its type code
         """
         type_code = self.__reader.read_byte()
         return self._do_classdesc(type_code)
 
-    def _do_classdesc(
-        self, type_code: int, must_be_new: bool = False
-    ) -> JavaClassDesc:
+    def _do_classdesc(self, type_code, must_be_new=False):
+        # type: (int, bool) -> JavaClassDesc
         """
         Parses a class description
 
@@ -339,7 +342,7 @@ class JavaStreamParser:
             if nb_fields < 0:
                 raise ValueError("Invalid field count: {0}".format(nb_fields))
 
-            fields: List[JavaField] = []
+            fields = []  # type: List[JavaField]
             for _ in range(nb_fields):
                 field_type = self.__reader.read_byte()
                 if field_type in PRIMITIVE_TYPES:
@@ -411,11 +414,12 @@ class JavaStreamParser:
 
         raise ValueError("Expected a valid class description starter")
 
-    def _read_class_annotations(self) -> List[ParsedJavaContent]:
+    def _read_class_annotations(self):
+        # type: () -> List[ParsedJavaContent]
         """
         Reads the annotations associated to a class
         """
-        contents: List[ParsedJavaContent] = []
+        contents = []  # type: List[ParsedJavaContent]
         while True:
             type_code = self.__reader.read_byte()
             if type_code == TerminalCode.TC_ENDBLOCKDATA:
@@ -432,7 +436,8 @@ class JavaStreamParser:
 
             contents.append(java_object)
 
-    def _create_instance(self, class_desc: JavaClassDesc) -> JavaInstance:
+    def _create_instance(self, class_desc):
+        # type: (JavaClassDesc) -> JavaInstance
         """
         Creates a JavaInstance object, by a transformer if possible
         """
@@ -444,7 +449,8 @@ class JavaStreamParser:
 
         return JavaInstance()
 
-    def _do_object(self, type_code: int = 0) -> JavaInstance:
+    def _do_object(self, type_code=0):
+        # type: (int) -> JavaInstance
         """
         Parses an object
         """
@@ -470,19 +476,20 @@ class JavaStreamParser:
         self._log.debug("Done reading object handle %x", handle)
         return instance
 
-    def _read_class_data(self, instance: JavaInstance) -> None:
+    def _read_class_data(self, instance):
+        # type: (JavaInstance) -> None
         """
         Reads the content of an instance
         """
         # Read the class hierarchy
-        classes: List[JavaClassDesc] = []
+        classes = []  # type: List[JavaClassDesc]
         instance.classdesc.get_hierarchy(classes)
 
-        all_data: Dict[JavaClassDesc, Dict[JavaField, Any]] = {}
-        annotations: Dict[JavaClassDesc, List[ParsedJavaContent]] = {}
+        all_data = {}  # type: Dict[JavaClassDesc, Dict[JavaField, Any]]
+        annotations = {}  # type: Dict[JavaClassDesc, List[ParsedJavaContent]]
 
         for cd in classes:
-            values: Dict[JavaField, Any] = {}
+            values = {}  # type: Dict[JavaField, Any]
             if cd.desc_flags & ClassDescFlags.SC_SERIALIZABLE:
                 if cd.desc_flags & ClassDescFlags.SC_EXTERNALIZABLE:
                     raise ValueError(
@@ -525,7 +532,8 @@ class JavaStreamParser:
         # Load transformation from the fields and annotations
         instance.load_from_instance(instance)
 
-    def _read_field_value(self, field_type: FieldType) -> Any:
+    def _read_field_value(self, field_type):
+        # type: (FieldType) -> Any
         """
         Reads the value of an instance field
         """
@@ -561,7 +569,8 @@ class JavaStreamParser:
 
         raise ValueError("Can't process type: {0}".format(field_type))
 
-    def _do_reference(self, type_code: int = 0) -> ParsedJavaContent:
+    def _do_reference(self, type_code=0):
+        # type: (int) -> ParsedJavaContent
         """
         Returns an object already parsed
         """
@@ -571,7 +580,8 @@ class JavaStreamParser:
         except KeyError:
             raise ValueError("Invalid reference handle: {0:x}".format(handle))
 
-    def _do_enum(self, type_code: int) -> JavaEnum:
+    def _do_enum(self, type_code):
+        # type: (int) -> JavaEnum
         """
         Parses an enumeration
         """
@@ -591,7 +601,8 @@ class JavaStreamParser:
         self._set_handle(handle, enum_obj)
         return enum_obj
 
-    def _do_class(self, type_code: int) -> JavaClass:
+    def _do_class(self, type_code):
+        # type: (int) -> JavaClass
         """
         Parses a class
         """
@@ -603,7 +614,8 @@ class JavaStreamParser:
         self._set_handle(handle, class_obj)
         return class_obj
 
-    def _do_array(self, type_code: int) -> JavaArray:
+    def _do_array(self, type_code):
+        # type: (int) -> JavaArray
         """
         Parses an array
         """
@@ -625,7 +637,8 @@ class JavaStreamParser:
         content = [self._read_field_value(field_type) for _ in range(size)]
         return JavaArray(handle, cd, field_type, content)
 
-    def _do_exception(self, type_code: int) -> ParsedJavaContent:
+    def _do_exception(self, type_code):
+        # type: (int) -> ParsedJavaContent
         """
         Read the content of a thrown exception
         """
@@ -651,7 +664,8 @@ class JavaStreamParser:
         self._reset()
         return content
 
-    def _do_block_data(self, type_code: int) -> BlockData:
+    def _do_block_data(self, type_code):
+        # type: (int) -> BlockData
         """
         Reads a block data
         """

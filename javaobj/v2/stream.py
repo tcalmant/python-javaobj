@@ -35,13 +35,15 @@ class DataStreamReader:
     Reads the given file object with object input stream-like methods
     """
 
-    def __init__(self, fd: IO[bytes]):
+    def __init__(self, fd):
+        # type: (IO[bytes]) -> None
         """
         :param fd: The input stream
         """
         self.__fd = fd
 
-    def read(self, struct_format: str) -> List[Any]:
+    def read(self, struct_format):
+        # type: (str) -> List[Any]
         """
         Reads from the input stream, using struct
 
@@ -57,67 +59,78 @@ class DataStreamReader:
 
         return struct.unpack(struct_format, bytes_array)
 
-    def read_bool(self) -> bool:
+    def read_bool(self):
+        # type: () -> bool
         """
         Shortcut to read a single `boolean` (1 byte)
         """
         return bool(self.read(">B")[0])
 
-    def read_byte(self) -> int:
+    def read_byte(self):
+        # type: () -> int
         """
         Shortcut to read a single `byte` (1 byte)
         """
         return self.read(">b")[0]
 
-    def read_ubyte(self) -> int:
+    def read_ubyte(self):
+        # type: () -> int
         """
         Shortcut to read an unsigned `byte` (1 byte)
         """
         return self.read(">B")[0]
 
-    def read_char(self) -> chr:
+    def read_char(self):
+        # type: () -> chr
         """
         Shortcut to read a single `char` (2 bytes)
         """
         return chr(self.read(">H")[0])
 
-    def read_short(self) -> int:
+    def read_short(self):
+        # type: () -> int
         """
         Shortcut to read a single `short` (2 bytes)
         """
         return self.read(">h")[0]
 
-    def read_ushort(self) -> int:
+    def read_ushort(self):
+        # type: () -> int
         """
         Shortcut to read an unsigned `short` (2 bytes)
         """
         return self.read(">H")[0]
 
-    def read_int(self) -> int:
+    def read_int(self):
+        # type: () -> int
         """
         Shortcut to read a single `int` (4 bytes)
         """
         return self.read(">i")[0]
 
-    def read_float(self) -> float:
+    def read_float(self):
+        # type: () -> float
         """
         Shortcut to read a single `float` (4 bytes)
         """
         return self.read(">f")[0]
 
-    def read_long(self) -> int:
+    def read_long(self):
+        # type: () -> int
         """
         Shortcut to read a single `long` (8 bytes)
         """
         return self.read(">q")[0]
 
-    def read_double(self) -> float:
+    def read_double(self):
+        # type: () -> float
         """
         Shortcut to read a single `double` (8 bytes)
         """
         return self.read(">d")[0]
 
-    def read_UTF(self) -> str:
+    def read_UTF(self):
+        # type: () -> str
         """
         Reads a Java string
         """

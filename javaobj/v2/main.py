@@ -4,7 +4,7 @@ Mimics the core API with the new deserializer
 """
 
 from io import BytesIO
-from typing import IO, Iterable
+from typing import Any, IO, Iterable
 
 from .api import ObjectTransformer
 from .core import JavaStreamParser
@@ -13,7 +13,8 @@ from .transformers import DefaultObjectTransformer
 # ------------------------------------------------------------------------------
 
 
-def load(file_object: IO[bytes], *transformers: ObjectTransformer, **kwargs):
+def load(file_object, *transformers, **kwargs):
+    # type: (IO[bytes], ObjectTransformer) -> Any
     """
     Deserializes Java primitive data and objects serialized using
     ObjectOutputStream from a file-like object.
@@ -45,7 +46,8 @@ def load(file_object: IO[bytes], *transformers: ObjectTransformer, **kwargs):
         return contents
 
 
-def loads(data: bytes, *transformers: ObjectTransformer, **kwargs):
+def loads(data, *transformers, **kwargs):
+    # type: (bytes, ObjectTransformer) -> Any
     """
     Deserializes Java objects and primitive data serialized using
     ObjectOutputStream from bytes.

@@ -80,10 +80,11 @@ class ParsedJavaContent:
     Generic representation of data parsed from the stream
     """
 
-    def __init__(self, content_type: ContentType):
-        self.type: ContentType = content_type
-        self.is_exception: bool = False
-        self.handle: int = 0
+    def __init__(self, content_type):
+        # type: (ContentType) -> None
+        self.type = content_type  # type: ContentType
+        self.is_exception = False  # type: bool
+        self.handle = 0  # type: int
 
     def __str__(self):
         return "[ParseJavaObject 0x{0:x} - {1}]".format(self.handle, self.type)
@@ -109,7 +110,8 @@ class ExceptionState(ParsedJavaContent):
     Representation of a failed parsing
     """
 
-    def __init__(self, exception_object: ParsedJavaContent, data: bytes):
+    def __init__(self, exception_object, data):
+        # type: (ParsedJavaContent, bytes) -> None
         super().__init__(ContentType.EXCEPTIONSTATE)
         self.exception_object = exception_object
         self.stream_data = data
@@ -128,7 +130,8 @@ class ExceptionRead(Exception):
     Exception used to indicate that an exception object has been parsed
     """
 
-    def __init__(self, content: ParsedJavaContent):
+    def __init__(self, content):
+        # type: (ParsedJavaContent) -> None
         self.exception_object = content
 
 
@@ -137,14 +140,15 @@ class JavaString(ParsedJavaContent):
     Represents a Java string
     """
 
-    def __init__(self, handle: int, data: bytes):
+    def __init__(self, handle, data):
+        # type: (int, bytes) -> None
         super().__init__(ContentType.STRING)
         self.handle = handle
         value, length = decode_modified_utf8(data)
-        self.value: str = value
-        self.length: int = length
+        self.value = value  # type: str
+        self.length = length  # type: int
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return repr(self.value)
 
     def __str__(self):
@@ -171,21 +175,18 @@ class JavaField:
     Represents a field in a Java class description
     """
 
-    def __init__(
-        self,
-        field_type: FieldType,
-        name: str,
-        class_name: Optional[JavaString] = None,
-    ):
+    def __init__(self, field_type, name, class_name=None):
+        # type: (FieldType, str, Optional[JavaString]) -> None
         self.type = field_type
         self.name = name
-        self.class_name: JavaString = class_name
+        self.class_name = class_name  # type: JavaString
         self.is_inner_class_reference = False
 
         if self.class_name:
             self.validate(self.class_name.value)
 
-    def validate(self, java_type: str) -> None:
+    def validate(self, java_type):
+        # type: (str) -> None
         """
         Validates the type given as parameter
         """
@@ -204,47 +205,48 @@ class JavaClassDesc(ParsedJavaContent):
     Represents the description of a class
     """
 
-    def __init__(self, class_desc_type: ClassDescType):
+    def __init__(self, class_desc_type):
+        # type: (ClassDescType) -> None
         super().__init__(ContentType.CLASSDESC)
 
         # Type of class description
-        self.class_type: ClassDescType = class_desc_type
+        self.class_type = class_desc_type  # type: ClassDescType
 
         # Class name
-        self.name: Optional[str] = None
+        self.name = None  # type: Optional[str]
 
         # Serial version UID
-        self.serial_version_uid: int = 0
+        self.serial_version_uid = 0  # type: int
 
         # Description flags byte
-        self.desc_flags: int = 0
+        self.desc_flags = 0  # type: int
 
         # Fields in the class
-        self.fields: List[JavaField] = []
+        self.fields = []  # type: List[JavaField]
 
         # Inner classes
-        self.inner_classes: List[JavaClassDesc] = []
+        self.inner_classes = []  # type: List[JavaClassDesc]
 
         # List of annotations objects
-        self.annotations: List[ParsedJavaContent] = []
+        self.annotations = []  # type: List[ParsedJavaContent]
 
         # The super class of this one, if any
-        self.super_class: JavaClassDesc = None
+        self.super_class = None  # type: Optional[JavaClassDesc]
 
         # List of the interfaces of the class
-        self.interfaces: List[str] = []
+        self.interfaces = []  # type: List[str]
 
         # Set of enum constants
-        self.enum_constants: Set[str] = set()
+        self.enum_constants = set()  # type: Set[str]
 
         # Flag to indicate if this is an inner class
-        self.is_inner_class: bool = False
+        self.is_inner_class = False  # type: bool
 
         # Flag to indicate if this is a local inner class
-        self.is_local_inner_class: bool = False
+        self.is_local_inner_class = False  # type: bool
 
         # Flag to indicate if this is a static member class
-        self.is_static_member_class: bool = False
+        self.is_static_member_class = False  # type: bool
 
     def __str__(self):
         return "[classdesc 0x{0:x}: name {1}, uid {2}]".format(
@@ -290,13 +292,15 @@ class JavaClassDesc(ParsedJavaContent):
         """
         return [field.type for field in self.fields]
 
-    def is_array_class(self) -> bool:
+    def is_array_class(self):
+        # type: () -> bool
         """
         Determines if this is an array type
         """
         return self.name.startswith("[") if self.name else False
 
-    def get_hierarchy(self, classes: List["JavaClassDesc"]) -> None:
+    def get_hierarchy(self, classes):
+        # type: (List["JavaClassDesc"]) -> None
         """
         Generates a list of class descriptions in this class's hierarchy, in
         the order described by the Object Stream Serialization Protocol.
@@ -347,9 +351,9 @@ class JavaInstance(ParsedJavaContent):
 
     def __init__(self):
         super().__init__(ContentType.INSTANCE)
-        self.classdesc: JavaClassDesc = None
-        self.field_data: Dict[JavaClassDesc, Dict[JavaField, Any]] = {}
-        self.annotations: Dict[JavaClassDesc, List[ParsedJavaContent]] = {}
+        self.classdesc = None  # type: JavaClassDesc
+        self.field_data = {}  # type: Dict[JavaClassDesc, Dict[JavaField, Any]]
+        self.annotations = {}  # type: Dict[JavaClassDesc, List[ParsedJavaContent]]
 
     def __str__(self):
         return "[instance 0x{0:x}: type {1}]".format(
@@ -421,17 +425,13 @@ class JavaInstance(ParsedJavaContent):
         """
         return self.classdesc
 
-    def load_from_blockdata(
-        self, parser, reader: DataStreamReader, indent: int = 0
-    ) -> bool:
+    def load_from_blockdata(self, parser, reader, indent=0):
         """
         Reads content stored in a block data
         """
         return False
 
-    def load_from_instance(
-        self, instance: "JavaInstance", indent: int = 0
-    ) -> bool:
+    def load_from_instance(self, instance, indent=0):
         """
         Load content from a parsed instance object
         """
@@ -443,7 +443,8 @@ class JavaClass(ParsedJavaContent):
     Represents a stored Java class
     """
 
-    def __init__(self, handle: int, class_desc: JavaClassDesc):
+    def __init__(self, handle, class_desc):
+        # type: (int, JavaClassDesc) -> None
         super().__init__(ContentType.CLASS)
         self.handle = handle
         self.classdesc = class_desc
@@ -466,9 +467,8 @@ class JavaEnum(ParsedJavaContent):
     Represents an enumeration value
     """
 
-    def __init__(
-        self, handle: int, class_desc: JavaClassDesc, value: JavaString
-    ):
+    def __init__(self, handle, class_desc, value):
+        # type: (int, JavaClassDesc, JavaString) -> None
         super().__init__(ContentType.ENUM)
         self.handle = handle
         self.classdesc = class_desc
@@ -492,13 +492,8 @@ class JavaArray(ParsedJavaContent, list):
     Represents a Java array
     """
 
-    def __init__(
-        self,
-        handle: int,
-        class_desc: JavaClassDesc,
-        field_type: FieldType,
-        content: List[Any],
-    ):
+    def __init__(self, handle, class_desc, field_type, content):
+        # type: (int, JavaClassDesc, FieldType, List[Any]) -> None
         list.__init__(self, content)
         ParsedJavaContent.__init__(self, ContentType.ARRAY)
         self.handle = handle
@@ -545,7 +540,8 @@ class BlockData(ParsedJavaContent):
     Represents a data block
     """
 
-    def __init__(self, data: bytes):
+    def __init__(self, data):
+        # type: (bytes) -> None
         super().__init__(ContentType.BLOCKDATA)
         self.data = data
 

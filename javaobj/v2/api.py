@@ -38,11 +38,8 @@ class ObjectTransformer:
     Representation of an object transformer
     """
 
-    def create(
-        self,
-        classdesc: JavaClassDesc,
-        parser: Optional[JavaStreamParser] = None,
-    ) -> Optional[JavaInstance]:
+    def create(self, classdesc, parser=None):
+        # type: (JavaClassDesc, Optional[JavaStreamParser]) -> Optional[JavaInstance]
         """
         Transforms a parsed Java object into a Python object
 
