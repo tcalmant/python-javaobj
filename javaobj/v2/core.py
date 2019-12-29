@@ -25,6 +25,8 @@ See: https://github.com/frohoff/jdeserialize
     limitations under the License.
 """
 
+from __future__ import absolute_import
+
 from enum import Enum
 from typing import Any, Callable, Dict, IO, List, Optional
 import logging

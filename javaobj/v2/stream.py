@@ -28,6 +28,7 @@ from typing import Any, IO, List
 import struct
 
 from ..modifiedutf8 import decode_modified_utf8
+from ..utils import unicode_char
 
 
 class DataStreamReader:
@@ -85,7 +86,7 @@ class DataStreamReader:
         """
         Shortcut to read a single `char` (2 bytes)
         """
-        return chr(self.read(">H")[0])
+        return unicode_char(self.read(">H")[0])
 
     def read_short(self):
         # type: () -> int

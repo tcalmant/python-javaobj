@@ -24,13 +24,15 @@ Definition of the beans used to represent the parsed objects
     limitations under the License.
 """
 
+from __future__ import absolute_import
+
 from enum import Enum, IntEnum
 from typing import Any, Dict, List, Optional, Set
 import logging
 
 from .stream import DataStreamReader
 from ..constants import ClassDescFlags, TypeCode
-from ..modifiedutf8 import decode_modified_utf8
+from ..modifiedutf8 import decode_modified_utf8, byte_to_int
 from ..utils import UNICODE_TYPE
 
 
@@ -75,7 +77,7 @@ class FieldType(IntEnum):
     OBJECT = TypeCode.TYPE_OBJECT.value
 
 
-class ParsedJavaContent:
+class ParsedJavaContent(object):
     """
     Generic representation of data parsed from the stream
     """
@@ -112,7 +114,7 @@ class ExceptionState(ParsedJavaContent):
 
     def __init__(self, exception_object, data):
         # type: (ParsedJavaContent, bytes) -> None
-        super().__init__(ContentType.EXCEPTIONSTATE)
+        super(ExceptionState, self).__init__(ContentType.EXCEPTIONSTATE)
         self.exception_object = exception_object
         self.stream_data = data
         self.handle = exception_object.handle
@@ -142,7 +144,7 @@ class JavaString(ParsedJavaContent):
 
     def __init__(self, handle, data):
         # type: (int, bytes) -> None
-        super().__init__(ContentType.STRING)
+        super(JavaString, self).__init__(ContentType.STRING)
         self.handle = handle
         value, length = decode_modified_utf8(data)
         self.value = value  # type: str
@@ -207,7 +209,7 @@ class JavaClassDesc(ParsedJavaContent):
 
     def __init__(self, class_desc_type):
         # type: (ClassDescType) -> None
-        super().__init__(ContentType.CLASSDESC)
+        super(JavaClassDesc, self).__init__(ContentType.CLASSDESC)
 
         # Type of class description
         self.class_type = class_desc_type  # type: ClassDescType
@@ -350,10 +352,12 @@ class JavaInstance(ParsedJavaContent):
     """
 
     def __init__(self):
-        super().__init__(ContentType.INSTANCE)
+        super(JavaInstance, self).__init__(ContentType.INSTANCE)
         self.classdesc = None  # type: JavaClassDesc
         self.field_data = {}  # type: Dict[JavaClassDesc, Dict[JavaField, Any]]
-        self.annotations = {}  # type: Dict[JavaClassDesc, List[ParsedJavaContent]]
+        self.annotations = (
+            {}
+        )  # type: Dict[JavaClassDesc, List[ParsedJavaContent]]
 
     def __str__(self):
         return "[instance 0x{0:x}: type {1}]".format(
@@ -445,7 +449,7 @@ class JavaClass(ParsedJavaContent):
 
     def __init__(self, handle, class_desc):
         # type: (int, JavaClassDesc) -> None
-        super().__init__(ContentType.CLASS)
+        super(JavaClass, self).__init__(ContentType.CLASS)
         self.handle = handle
         self.classdesc = class_desc
 
@@ -469,7 +473,7 @@ class JavaEnum(ParsedJavaContent):
 
     def __init__(self, handle, class_desc, value):
         # type: (int, JavaClassDesc, JavaString) -> None
-        super().__init__(ContentType.ENUM)
+        super(JavaEnum, self).__init__(ContentType.ENUM)
         self.handle = handle
         self.classdesc = class_desc
         self.value = value
@@ -542,7 +546,7 @@ class BlockData(ParsedJavaContent):
 
     def __init__(self, data):
         # type: (bytes) -> None
-        super().__init__(ContentType.BLOCKDATA)
+        super(BlockData, self).__init__(ContentType.BLOCKDATA)
         self.data = data
 
     def __str__(self):
@@ -555,11 +559,11 @@ class BlockData(ParsedJavaContent):
 
     def __eq__(self, other):
         if isinstance(other, (str, UNICODE_TYPE)):
-            other_data = other.encode("latin1")
+            other_data = tuple(byte_to_int(x) for x in other)
         elif isinstance(other, bytes):
-            other_data = other
+            other_data = tuple(byte_to_int(x) for x in other)
         else:
             # Can't compare
             return False
 
-        return other_data == self.data
+        return other_data == tuple(byte_to_int(x) for x in self.data)
