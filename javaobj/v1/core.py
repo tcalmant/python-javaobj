@@ -1394,13 +1394,13 @@ class JavaObjectMarshaller:
             return type_char.value
         elif type(type_char) is int:
             return type_char
-        elif isinstance(type_char, (bytes, str)):
+        elif isinstance(type_char, (BYTES_TYPE, UNICODE_TYPE)):
             # Conversion to TypeCode will raise an error if the type
             # is invalid
             return TypeCode(ord(type_char[0])).value
 
         raise RuntimeError(
             "Typecode {0} ({1}) isn't supported.".format(
-                type_char, ord(type_char)
+                type_char, ord(type_char[0])
             )
         )
