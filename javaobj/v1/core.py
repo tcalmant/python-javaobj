@@ -74,6 +74,7 @@ from ..utils import (
     to_bytes,
     to_str,
     to_unicode,
+    BYTES_TYPE,
     UNICODE_TYPE,
     unicode_char,
     hexdump,
@@ -817,11 +818,11 @@ class JavaObjectUnmarshaller:
         :return: The read value
         :raise RuntimeError: Unknown field type
         """
-        if isinstance(raw_field_type, (bytes, str)):
+        if isinstance(raw_field_type, (TypeCode, int)):
+            field_type = raw_field_type
+        else:
             # We don't need details for arrays and objects
             field_type = TypeCode(ord(raw_field_type[0]))
-        else:
-            field_type = raw_field_type
 
         if field_type == TypeCode.TYPE_BOOLEAN:
             (val,) = self._readStruct(">B")
@@ -1343,11 +1344,11 @@ class JavaObjectMarshaller:
         :param raw_field_type: Value type
         :param value: The value itself
         """
-        if isinstance(raw_field_type, (bytes, str)):
+        if isinstance(raw_field_type, (TypeCode, int)):
+            field_type = raw_field_type
+        else:
             # We don't need details for arrays and objects
             field_type = TypeCode(ord(raw_field_type[0]))
-        else:
-            field_type = raw_field_type
 
         if field_type == TypeCode.TYPE_BOOLEAN:
             self._writeStruct(">B", 1, (1 if value else 0,))
@@ -1376,7 +1377,7 @@ class JavaObjectMarshaller:
                 self.write_object(value)
             elif isinstance(value, JavaString):
                 self.write_string(value)
-            elif isinstance(value, (bytes, str)):
+            elif isinstance(value, (BYTES_TYPE, UNICODE_TYPE)):
                 self.write_blockdata(value)
             else:
                 raise RuntimeError("Unknown typecode: {0}".format(field_type))

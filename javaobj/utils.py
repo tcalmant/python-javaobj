@@ -138,6 +138,7 @@ def hexdump(src, start_offset=0, length=16):
 
 
 if sys.version_info[0] >= 3:
+    BYTES_TYPE = bytes
     UNICODE_TYPE = str
     unicode_char = chr
 
@@ -187,6 +188,7 @@ if sys.version_info[0] >= 3:
 
 
 else:
+    BYTES_TYPE = str
     UNICODE_TYPE = unicode  # pylint:disable=undefined-variable
     unicode_char = unichr  # pylint:disable=undefined-variable
     bytes_char = chr
