@@ -382,7 +382,7 @@ class TestJavaobj(unittest.TestCase):
         self.assertEqual(duration.second, 10)
 
         # Check types
-        self.assertIsInstance(pobj, javaobj.core.JavaArray)
+        self.assertIsInstance(pobj, javaobj.beans.JavaArray)
         for obj in pobj:
             self.assertIsInstance(
                 obj, javaobj.DefaultObjectTransformer.JavaTime
