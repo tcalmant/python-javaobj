@@ -38,10 +38,13 @@ class ObjectTransformer:
     Representation of an object transformer
     """
 
-    def create(self, classdesc, parser=None):
-        # type: (JavaClassDesc, Optional[JavaStreamParser]) -> Optional[JavaInstance]
+    def create_instance(self, classdesc):
+        # type: (JavaClassDesc) -> Optional[JavaInstance]
         """
-        Transforms a parsed Java object into a Python object
+        Transforms a parsed Java object into a Python object.
+
+        The result must be a JavaInstance bean, or None if the transformer
+        doesn't support this kind of instance.
 
         :param classdesc: The description of a Java class
         :return: The Python form of the object, or the original JavaObject

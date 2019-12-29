@@ -445,7 +445,7 @@ class JavaStreamParser:
         """
         # Try to create the transformed object
         for transformer in self.__transformers:
-            instance = transformer.create(class_desc)
+            instance = transformer.create_instance(class_desc)
             if instance is not None:
                 return instance
 

@@ -431,8 +431,8 @@ class DefaultObjectTransformer:
                 for class_name in transformer_class.HANDLED_CLASSES:
                     self._type_mapper[class_name] = transformer_class
 
-    def create(self, classdesc):
-        # type: (JavaClassDesc) -> JavaInstance
+    def create_instance(self, classdesc):
+        # type: (JavaClassDesc) -> Optional[JavaInstance]
         """
         Transforms a parsed Java object into a Python object
 
