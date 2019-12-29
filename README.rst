@@ -34,6 +34,17 @@ This project is a fork of *python-javaobj* by Volodymyr Buell, originally from
 
 This fork intends to work both on Python 2.7 and Python 3.4+.
 
+Compatibility warning: New version of the parser
+------------------------------------------------
+
+Since version 0.4.0, two implementations of the parser are available:
+
+* `v1`: the *classic* implementation of `javaobj`, with a work in progress
+  implementation of a writer.
+* `v2`: the *new* implementation, a port of `jdeserialize` with support of the
+  object transformer (with a new API) and the numpy arrays.
+
+
 Compatibility Warning: object transformer
 -----------------------------------------
 
@@ -66,11 +77,12 @@ Requirements
 ============
 
 * Python >= 2.7 or Python >= 3.4
+* `enum34` and `typing` when using Python <= 3.4 (installable with `pip`)
 * Maven 2+ (for building test data of serialized objects.
   You can skip it if you do not plan to run ``tests.py``)
 
-Usage
-=====
+Usage (V1 implementation)
+=========================
 
 Unmarshalling of Java serialised object:
 
@@ -98,3 +110,29 @@ Or, you can use Unmarshaller object directly:
         print(pobj.next, "should be", True)
 
         pobj = marshaller.readObject()
+
+
+The objects and methods provided by `javaobj` module are shortcuts to the
+`javaobj.v1` package
+
+
+Usage (V2 implementation)
+=========================
+
+Unmarshalling of Java serialised object:
+
+.. code-block:: python
+
+    import javaobj.v2 as javaobj
+
+    with open("obj5.ser", "rb") as fd:
+        jobj = fd.read()
+
+    pobj = javaobj.loads(jobj)
+    print(pobj)
+
+
+Object Transformer
+-------------------
+
+WIP
