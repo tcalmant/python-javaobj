@@ -636,7 +636,13 @@ class JavaStreamParser:
             raise ValueError("Invalid array size")
 
         # Array content
-        content = [self._read_field_value(field_type) for _ in range(size)]
+        for transformer in self.__transformers:
+            content = transformer.load_array(self.__reader, field_type, size)
+            if content is not None:
+                break
+        else:
+            content = [self._read_field_value(field_type) for _ in range(size)]
+
         return JavaArray(handle, cd, field_type, content)
 
     def _do_exception(self, type_code):

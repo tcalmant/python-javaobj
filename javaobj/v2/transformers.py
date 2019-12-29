@@ -24,13 +24,23 @@ Defines the default object transformers
     limitations under the License.
 """
 
+# Standard library
 from typing import List, Optional
 import functools
 
-from .beans import BlockData, JavaClassDesc, JavaInstance
+# Numpy (optional)
+try:
+    import numpy
+except ImportError:
+    numpy = None
+
+
+# Javaobj
+from .api import ObjectTransformer
+from .beans import JavaClassDesc, JavaInstance
 from .core import JavaStreamParser
 from .stream import DataStreamReader
-from ..constants import TerminalCode
+from ..constants import TerminalCode, TypeCode
 from ..utils import to_bytes, log_error, log_debug, read_struct, read_string
 
 
@@ -405,7 +415,7 @@ class JavaTime(JavaInstance):
         return data
 
 
-class DefaultObjectTransformer:
+class DefaultObjectTransformer(ObjectTransformer):
 
     KNOWN_TRANSFORMERS = (
         JavaBool,
@@ -454,3 +464,39 @@ class DefaultObjectTransformer:
 
             log_debug(">>> java_object: {0}".format(java_object))
             return java_object
+
+
+class NumpyArrayTransformer(ObjectTransformer):
+    """
+    Loads arrays as numpy arrays if possible
+    """
+
+    # Convertion of a Java type char to its NumPy equivalent
+    NUMPY_TYPE_MAP = {
+        TypeCode.TYPE_BYTE: "B",
+        TypeCode.TYPE_CHAR: "b",
+        TypeCode.TYPE_DOUBLE: ">d",
+        TypeCode.TYPE_FLOAT: ">f",
+        TypeCode.TYPE_INTEGER: ">i",
+        TypeCode.TYPE_LONG: ">l",
+        TypeCode.TYPE_SHORT: ">h",
+        TypeCode.TYPE_BOOLEAN: ">B",
+    }
+
+    def load_array(self, reader, field_type, size):
+        # type: (DataStreamReader, TypeCode, int) -> Optional[list]
+        """
+        Loads a Java array, if possible
+        """
+        if numpy is not None:
+            try:
+                dtype = self.NUMPY_TYPE_MAP[field_type]
+            except KeyError:
+                # Unhandled data type
+                return None
+            else:
+                return numpy.fromfile(
+                    reader.file_descriptor, dtype=dtype, count=size,
+                )
+
+        return None

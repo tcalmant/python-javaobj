@@ -26,11 +26,10 @@ Definition of the beans used to represent the parsed objects
 
 from __future__ import absolute_import
 
-from enum import Enum, IntEnum
+from enum import IntEnum
 from typing import Any, Dict, List, Optional, Set
 import logging
 
-from .stream import DataStreamReader
 from ..constants import ClassDescFlags, TypeCode
 from ..modifiedutf8 import decode_modified_utf8, byte_to_int
 from ..utils import UNICODE_TYPE
@@ -518,7 +517,9 @@ class JavaArray(ParsedJavaContent, list):
         prefix = "\t" * indent
         sub_prefix = "\t" * (indent + 1)
         dump = [
-            prefix + "[array 0x{0:x}: {1} items]".format(self.handle, len(self))
+            "{0}[array 0x{1:x}: {2} items - stored as {3}]".format(
+                prefix, self.handle, len(self), type(self.data).__name__
+            )
         ]
         for x in self:
             if isinstance(x, ParsedJavaContent):

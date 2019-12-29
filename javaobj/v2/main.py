@@ -8,7 +8,7 @@ from typing import Any, IO, Iterable
 
 from .api import ObjectTransformer
 from .core import JavaStreamParser
-from .transformers import DefaultObjectTransformer
+from .transformers import DefaultObjectTransformer, NumpyArrayTransformer
 
 # ------------------------------------------------------------------------------
 
@@ -30,6 +30,10 @@ def load(file_object, *transformers, **kwargs):
             break
     else:
         all_transformers.append(DefaultObjectTransformer())
+
+    if kwargs.get("use_numpy_arrays", False):
+        # Use the numpy array transformer if requested
+        all_transformers.append(NumpyArrayTransformer())
 
     # Parse the object(s)
     parser = JavaStreamParser(file_object, all_transformers)
