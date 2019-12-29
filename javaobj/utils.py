@@ -141,6 +141,9 @@ if sys.version_info[0] >= 3:
     UNICODE_TYPE = str
     unicode_char = chr
 
+    def bytes_char(c):
+        return bytes((c,))
+
     # Python 3 interpreter : bytes & str
     def to_bytes(data, encoding="UTF-8"):
         """
@@ -186,6 +189,7 @@ if sys.version_info[0] >= 3:
 else:
     UNICODE_TYPE = unicode  # pylint:disable=undefined-variable
     unicode_char = unichr  # pylint:disable=undefined-variable
+    bytes_char = chr
 
     # Python 2 interpreter : str & unicode
     def to_str(data, encoding="UTF-8"):

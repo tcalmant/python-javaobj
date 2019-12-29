@@ -15,6 +15,11 @@ https://github.com/swstephe/py2jdbc/
 :status: Alpha
 """
 
+from __future__ import unicode_literals
+
+import sys
+
+
 # Module version
 __version_info__ = (0, 3, 0)
 __version__ = ".".join(str(x) for x in __version_info__)
@@ -24,6 +29,36 @@ __docformat__ = "restructuredtext en"
 
 # Encoding name: not cesu-8, which uses a different zero-byte
 NAME = "mutf8"
+
+# ------------------------------------------------------------------------------
+
+if sys.version_info[0] >= 3:
+    unicode_char = chr
+
+    def byte_to_int(data):
+        # type: (bytes) -> int
+        """
+        Converts the first byte of the given data to an integer
+        """
+        if isinstance(data, int):
+            return data
+        elif isinstance(data, bytes):
+            return data[0]
+
+
+else:
+    unicode_char = unichr  # pylint:disable=undefined-variable
+
+    def byte_to_int(data):
+        # type: (bytes) -> int
+        """
+        Converts the first byte of the given data to an integer
+        """
+        if isinstance(data, int):
+            return data
+        elif isinstance(data, str):
+            return ord(data[0])
+
 
 # ------------------------------------------------------------------------------
 
@@ -70,7 +105,11 @@ class DecodeMap(object):
             value |= byte & self.mask2
         else:
             raise UnicodeDecodeError(
-                NAME, data, i, i + count, "invalid {}-byte sequence".format(self.count)
+                NAME,
+                data,
+                i,
+                i + count,
+                "invalid {}-byte sequence".format(self.count),
             )
         return value
 
@@ -171,8 +210,8 @@ def decode_modified_utf8(data, errors="strict"):
     :return: unicode text and length
     :raises UnicodeDecodeError: sequence is invalid.
     """
-    value, length = u"", 0
-    it = iter(decoder(data))
+    value, length = "", 0
+    it = iter(decoder(byte_to_int(d) for d in data))
     while True:
         try:
             value += next(it)
@@ -185,10 +224,10 @@ def decode_modified_utf8(data, errors="strict"):
             elif errors == "ignore":
                 pass
             elif errors == "replace":
-                value += u"\uFFFD"
+                value += "\uFFFD"
                 length += 1
     return value, length
 
 
 def mutf8_unichr(value):
-    return chr(value)
+    return unicode_char(value)
