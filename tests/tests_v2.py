@@ -43,6 +43,7 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(os.getcwd())))
 
 # Local
 import javaobj.v2 as javaobj
+from javaobj.utils import bytes_char
 
 # ------------------------------------------------------------------------------
 
@@ -104,14 +105,14 @@ class TestJavaobj(unittest.TestCase):
         jobj = self.read_file("testChar.ser")
         pobj = javaobj.loads(jobj)
         _logger.debug("Read char object: %s", pobj)
-        self.assertEqual(pobj, "\x00C")
+        self.assertEqual(pobj, b"\x00C")
 
     def test_chars_rw(self):
         """
         Reads testChars.ser and checks the serialization process
         """
         # Expected string as a UTF-16 string
-        expected = "python-javaobj".encode("utf-16-be").decode("latin1")
+        expected = "python-javaobj".encode("utf-16-be")
 
         jobj = self.read_file("testChars.ser")
         pobj = javaobj.loads(jobj)
@@ -126,7 +127,7 @@ class TestJavaobj(unittest.TestCase):
         pobj = javaobj.loads(jobj)
         _logger.debug("Read double object: %s", pobj)
 
-        self.assertEqual(pobj, "\x7f\xef\xff\xff\xff\xff\xff\xff")
+        self.assertEqual(pobj, b"\x7f\xef\xff\xff\xff\xff\xff\xff")
 
     def test_bytes_rw(self):
         """
@@ -136,7 +137,7 @@ class TestJavaobj(unittest.TestCase):
         pobj = javaobj.loads(jobj)
         _logger.debug("Read bytes: %s", pobj)
 
-        self.assertEqual(pobj, "HelloWorld")
+        self.assertEqual(pobj, b"HelloWorld")
 
     def test_class_with_byte_array_rw(self):
         """
@@ -160,7 +161,7 @@ class TestJavaobj(unittest.TestCase):
         pobj = javaobj.loads(jobj)
         _logger.debug("Read boolean object: %s", pobj)
 
-        self.assertEqual(pobj, chr(0))
+        self.assertEqual(pobj, bytes_char(0))
 
     def test_byte(self):
         """
@@ -172,7 +173,7 @@ class TestJavaobj(unittest.TestCase):
         pobj = javaobj.loads(jobj)
         _logger.debug("Read Byte: %r", pobj)
 
-        self.assertEqual(pobj, chr(127))
+        self.assertEqual(pobj, bytes_char(127))
 
     def test_fields(self):
         """
