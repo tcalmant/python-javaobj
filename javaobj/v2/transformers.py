@@ -89,10 +89,11 @@ class JavaPrimitiveClass(JavaInstance):
         """
         Load content from a parsed instance object
         """
-        for field, value in instance.field_data.items():
-            if field.name == "value":
-                self.value = value
-                return True
+        for fields in instance.field_data.values():
+            for field, value in fields.items():
+                if field.name == "value":
+                    self.value = value
+                    return True
 
         return False
 
@@ -106,7 +107,7 @@ class JavaBool(JavaPrimitiveClass):
 
 class JavaInt(JavaPrimitiveClass):
 
-    HANDLED_CLASSES = ("java.util.Integer", "java.util.Long")
+    HANDLED_CLASSES = ("java.lang.Integer", "java.lang.Long")
 
     def __int__(self):
         return self.value
