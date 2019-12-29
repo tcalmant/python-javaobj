@@ -43,6 +43,14 @@ class DataStreamReader:
         """
         self.__fd = fd
 
+    @property
+    def file_descriptor(self):
+        # type: () -> IO[bytes]
+        """
+        The underlying file descriptor
+        """
+        return self.__fd
+
     def read(self, struct_format):
         # type: (str) -> List[Any]
         """
