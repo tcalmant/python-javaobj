@@ -437,7 +437,7 @@ class JavaObjectUnmarshaller:
                     )
             else:
                 # Convert the TypeCode to its char value
-                field_type = chr(base_field_type.value)
+                field_type = JavaString(str(chr(base_field_type.value)))
 
             log_debug(
                 "< FieldName: 0x{0:X} Name:{1} Type:{2} ID:{3}".format(
@@ -848,7 +848,10 @@ class JavaObjectUnmarshaller:
         else:
             raise RuntimeError("Unknown typecode: {0}".format(field_type))
 
-        log_debug("* {0} {1}: {2}".format(field_type, name, repr(res)), ident)
+        log_debug(
+            "* {0} {1}: {2}".format(chr(field_type.value), name, repr(res)),
+            ident,
+        )
         return res
 
     def _convert_char_to_type(self, type_char):
@@ -1248,7 +1251,10 @@ class JavaObjectMarshaller:
                     ">B", 1, (self._convert_type_to_char(field_type),)
                 )
                 self._writeString(field_name)
-                if field_type[0] in (TypeCode.TYPE_OBJECT, TypeCode.TYPE_ARRAY):
+                if ord(field_type[0]) in (
+                    TypeCode.TYPE_OBJECT,
+                    TypeCode.TYPE_ARRAY,
+                ):
                     try:
                         idx = self.references.index(field_type)
                     except ValueError:
@@ -1325,7 +1331,7 @@ class JavaObjectMarshaller:
             for a in obj:
                 self.write_array(a)
         else:
-            log_debug("Write array of type %s" % type_code)
+            log_debug("Write array of type {0}".format(chr(type_code.value)))
             for v in obj:
                 log_debug("Writing: %s" % v)
                 self._write_value(type_code, v)
