@@ -55,9 +55,9 @@ _logger = logging.getLogger("javaobj.tests")
 # ------------------------------------------------------------------------------
 
 
-class TestJavaobj(unittest.TestCase):
+class TestJavaobjV1(unittest.TestCase):
     """
-    Full test suite for javaobj
+    Full test suite for javaobj V1 parser
     """
 
     @classmethod
