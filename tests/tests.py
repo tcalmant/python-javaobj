@@ -102,6 +102,7 @@ class TestJavaobj(unittest.TestCase):
         """
         Tries to marshall an object and compares it to the original stream
         """
+        _logger.debug("Try Marshalling")
         marshalled_stream = javaobj.dumps(original_object)
         # Reloading the new dump allows to compare the decoding sequence
         try:
