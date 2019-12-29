@@ -37,3 +37,6 @@ nosetests.xml
 .idea/
 .vscode/
 .*cache/
+
+# Log files
+*.log
