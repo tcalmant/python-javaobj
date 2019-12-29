@@ -108,14 +108,11 @@ def loads(string, *transformers, **kwargs):
                                   trailing bytes are remaining
     :return: The deserialized object
     """
-    # Read keyword argument
-    ignore_remaining_data = kwargs.get("ignore_remaining_data", False)
-
     # Reuse the load method (avoid code duplication)
     return load(
         BytesIO(string),
         *transformers,
-        ignore_remaining_data=ignore_remaining_data
+        **kwargs
     )
 
 
