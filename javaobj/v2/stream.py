@@ -24,11 +24,24 @@ Utility module to handle streams like in Java
     limitations under the License.
 """
 
+from __future__ import absolute_import
+
 from typing import Any, IO, List
 import struct
 
 from ..modifiedutf8 import decode_modified_utf8
 from ..utils import unicode_char
+
+# ------------------------------------------------------------------------------
+
+# Module version
+__version_info__ = (0, 4, 0)
+__version__ = ".".join(str(x) for x in __version_info__)
+
+# Documentation strings format
+__docformat__ = "restructuredtext en"
+
+# ------------------------------------------------------------------------------
 
 
 class DataStreamReader:

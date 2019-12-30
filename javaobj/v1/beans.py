@@ -5,7 +5,7 @@ Definition of the beans of the v1 parser
 
 :authors: Volodymyr Buell, Thomas Calmant
 :license: Apache License 2.0
-:version: 0.3.0
+:version: 0.4.0
 :status: Alpha
 
 ..
@@ -32,6 +32,8 @@ import struct
 
 from ..utils import UNICODE_TYPE
 
+# ------------------------------------------------------------------------------
+
 __all__ = (
     "JavaArray",
     "JavaByteArray",
@@ -40,6 +42,15 @@ __all__ = (
     "JavaObject",
     "JavaString",
 )
+
+# Module version
+__version_info__ = (0, 4, 0)
+__version__ = ".".join(str(x) for x in __version_info__)
+
+# Documentation strings format
+__docformat__ = "restructuredtext en"
+
+# ------------------------------------------------------------------------------
 
 
 class JavaClass(object):

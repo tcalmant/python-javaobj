@@ -5,7 +5,7 @@ Implementation of the object transformers in v1 parser
 
 :authors: Volodymyr Buell, Thomas Calmant
 :license: Apache License 2.0
-:version: 0.3.0
+:version: 0.4.0
 :status: Alpha
 
 ..

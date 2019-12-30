@@ -37,3 +37,12 @@ The writing mode should be handled by the "classic" javaobj code.
 
 from . import api, beans, core, main, stream, transformers
 from .main import load, loads
+
+# ------------------------------------------------------------------------------
+
+# Module version
+__version_info__ = (0, 4, 0)
+__version__ = ".".join(str(x) for x in __version_info__)
+
+# Documentation strings format
+__docformat__ = "restructuredtext en"

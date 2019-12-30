@@ -3,6 +3,8 @@
 Mimics the core API with the new deserializer
 """
 
+from __future__ import absolute_import
+
 from typing import Any, IO, Iterable
 
 try:
@@ -15,6 +17,15 @@ except ImportError:
 from .api import ObjectTransformer
 from .core import JavaStreamParser
 from .transformers import DefaultObjectTransformer, NumpyArrayTransformer
+
+# ------------------------------------------------------------------------------
+
+# Module version
+__version_info__ = (0, 4, 0)
+__version__ = ".".join(str(x) for x in __version_info__)
+
+# Documentation strings format
+__docformat__ = "restructuredtext en"
 
 # ------------------------------------------------------------------------------
 

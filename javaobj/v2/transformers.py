@@ -43,6 +43,17 @@ from .stream import DataStreamReader
 from ..constants import TerminalCode, TypeCode
 from ..utils import to_bytes, log_error, log_debug, read_struct, read_string
 
+# ------------------------------------------------------------------------------
+
+# Module version
+__version_info__ = (0, 4, 0)
+__version__ = ".".join(str(x) for x in __version_info__)
+
+# Documentation strings format
+__docformat__ = "restructuredtext en"
+
+# ------------------------------------------------------------------------------
+
 
 class JavaList(list, JavaInstance):
     """

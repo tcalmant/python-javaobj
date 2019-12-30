@@ -26,6 +26,7 @@ Definition of the constants used in the deserialization process
 
 import enum
 
+# ------------------------------------------------------------------------------
 
 __all__ = (
     "PRIMITIVE_TYPES",
@@ -35,6 +36,15 @@ __all__ = (
     "TypeCode",
     "StreamCodeDebug",
 )
+
+# Module version
+__version_info__ = (0, 4, 0)
+__version__ = ".".join(str(x) for x in __version_info__)
+
+# Documentation strings format
+__docformat__ = "restructuredtext en"
+
+# ------------------------------------------------------------------------------
 
 
 class StreamConstants(enum.IntEnum):
