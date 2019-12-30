@@ -68,7 +68,7 @@ setup(
     description="Module for serializing and de-serializing Java objects.",
     license="Apache License 2.0",
     keywords="python java marshalling serialization",
-    packages=["javaobj"],
+    packages=["javaobj", "javaobj.v1", "javaobj.v2"],
     test_suite="tests.tests",
     long_description=read("README.rst"),
     classifiers=[
