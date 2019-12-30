@@ -183,17 +183,36 @@ the ``javaobj.v2.transformer`` module to see the whole implementation.
            dict.__init__(self)
            JavaInstance.__init__(self)
 
-       def load_from_instance(self, instance, indent=0):
-           # type: (JavaInstance, int) -> bool
-           """
-           Load content from a parsed instance object
+      def load_from_blockdata(self, parser, reader, indent=0):
+        """
+        Reads content stored in a block data.
 
-           :param instance: The currently loaded instance
+        This method is called only if the class description has both the
+        ``SC_EXTERNALIZABLE`` and ``SC_BLOCK_DATA`` flags set.
+
+        The stream parsing will stop and fail if this method returns False.
+
+        :param parser: The JavaStreamParser in use
+        :param reader: The underlying data stream reader
+        :param indent: Indentation to use in logs
+        :return: True on success, False on error
+        """
+        # This kind of class is not supposed to have the SC_BLOCK_DATA flag set
+        return False
+
+       def load_from_instance(self, indent=0):
+           # type: (int) -> bool
+           """
+           Load content from the parsed instance object.
+
+           This method is called after the block data (if any), the fields and
+           the annotations have been loaded.
+
            :param indent: Indentation to use while logging
-           :return: True on success
+           :return: True on success (currently ignored)
            """
            # Maps have their content in their annotations
-           for cd, annotations in instance.annotations.items():
+           for cd, annotations in self.annotations.items():
                # Annotations are associated to their definition class
                if cd.name == "java.util.HashMap":
                    # We are in the annotation created by the handled class
@@ -210,6 +229,10 @@ the ``javaobj.v2.transformer`` module to see the whole implementation.
            return False
 
    class MapObjectTransformer(javaobj.v2.api.ObjectTransformer):
+       """
+       Creates a JavaInstance object with custom loading methods for the
+       classes it can handle
+       """
        def create_instance(self, classdesc):
            # type: (JavaClassDesc) -> Optional[JavaInstance]
            """
@@ -219,8 +242,8 @@ the ``javaobj.v2.transformer`` module to see the whole implementation.
            :return: The Python form of the object, or the original JavaObject
            """
            if classdesc.name == "java.util.HashMap":
-               # We can handle it
+               # We can handle this class description
                return JavaMap()
            else:
-               # Return None if not handled
+               # Return None if the class is not handled
                return None

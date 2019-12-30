@@ -55,13 +55,13 @@ class JavaList(list, JavaInstance):
         list.__init__(self)
         JavaInstance.__init__(self)
 
-    def load_from_instance(self, instance, indent=0):
-        # type: (JavaInstance, int) -> bool
+    def load_from_instance(self, indent=0):
+        # type: (int) -> bool
         """
         Load content from a parsed instance object
         """
         # Lists have their content in there annotations
-        for cd, annotations in instance.annotations.items():
+        for cd, annotations in self.annotations.items():
             if cd.name in self.HANDLED_CLASSES:
                 self.extend(ann for ann in annotations[1:])
                 return True
@@ -94,12 +94,12 @@ class JavaPrimitiveClass(JavaInstance):
     def __lt__(self, other):
         return self.value < other
 
-    def load_from_instance(self, instance, indent=0):
-        # type: (JavaInstance, int) -> bool
+    def load_from_instance(self, indent=0):
+        # type: (int) -> bool
         """
         Load content from a parsed instance object
         """
-        for fields in instance.field_data.values():
+        for fields in self.field_data.values():
             for field, value in fields.items():
                 if field.name == "value":
                     self.value = value
@@ -134,13 +134,13 @@ class JavaMap(dict, JavaInstance):
         dict.__init__(self)
         JavaInstance.__init__(self)
 
-    def load_from_instance(self, instance, indent=0):
-        # type: (JavaInstance, int) -> bool
+    def load_from_instance(self, indent=0):
+        # type: (int) -> bool
         """
         Load content from a parsed instance object
         """
         # Maps have their content in there annotations
-        for cd, annotations in instance.annotations.items():
+        for cd, annotations in self.annotations.items():
             if cd.name in JavaMap.HANDLED_CLASSES:
                 # Group annotation elements 2 by 2
                 args = [iter(annotations[1:])] * 2
@@ -201,13 +201,13 @@ class JavaSet(set, JavaInstance):
         set.__init__(self)
         JavaInstance.__init__(self)
 
-    def load_from_instance(self, instance, indent=0):
-        # type: (JavaInstance, int) -> bool
+    def load_from_instance(self, indent=0):
+        # type: (int) -> bool
         """
         Load content from a parsed instance object
         """
         # Lists have their content in there annotations
-        for cd, annotations in instance.annotations.items():
+        for cd, annotations in self.annotations.items():
             if cd.name in self.HANDLED_CLASSES:
                 self.update(x for x in annotations[1:])
                 return True
@@ -222,13 +222,13 @@ class JavaTreeSet(JavaSet):
 
     HANDLED_CLASSES = "java.util.TreeSet"
 
-    def load_from_instance(self, instance, indent=0):
-        # type: (JavaInstance, int) -> bool
+    def load_from_instance(self, indent=0):
+        # type: (int) -> bool
         """
         Load content from a parsed instance object
         """
         # Lists have their content in there annotations
-        for cd, annotations in instance.annotations.items():
+        for cd, annotations in self.annotations.items():
             if cd.name == self.HANDLED_CLASSES:
                 # Annotation[1] == size of the set
                 self.update(x for x in annotations[2:])
@@ -300,19 +300,19 @@ class JavaTime(JavaInstance):
             "nano={s.nano}, offset={s.offset}, zone={s.zone})"
         ).format(s=self)
 
-    def load_from_blockdata(self, reader, indent=0):
+    def load_from_blockdata(self, parser, reader, indent=0):
         """
         Ignore the SC_BLOCK_DATA flag
         """
         return True
 
-    def load_from_instance(self, instance, indent=0):
-        # type: (JavaInstance, int) -> bool
+    def load_from_instance(self, indent=0):
+        # type: (int) -> bool
         """
         Load content from a parsed instance object
         """
         # Lists have their content in there annotations
-        for cd, annotations in instance.annotations.items():
+        for cd, annotations in self.annotations.items():
             if cd.name == self.HANDLED_CLASSES:
                 # Convert back annotations to bytes
                 # latin-1 is used to ensure that bytes are kept as is

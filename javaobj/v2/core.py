@@ -532,7 +532,7 @@ class JavaStreamParser:
         instance.field_data = all_data
 
         # Load transformation from the fields and annotations
-        instance.load_from_instance(instance)
+        instance.load_from_instance()
 
     def _read_field_value(self, field_type):
         # type: (FieldType) -> Any

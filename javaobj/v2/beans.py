@@ -430,13 +430,28 @@ class JavaInstance(ParsedJavaContent):
 
     def load_from_blockdata(self, parser, reader, indent=0):
         """
-        Reads content stored in a block data
+        Reads content stored in a block data.
+
+        This method is called only if the class description has both the
+        ``SC_EXTERNALIZABLE`` and ``SC_BLOCK_DATA`` flags set.
+
+        The stream parsing will stop and fail if this method returns False.
+
+        :param parser: The JavaStreamParser in use
+        :param reader: The underlying data stream reader
+        :param indent: Indentation to use in logs
+        :return: True on success, False on error
         """
         return False
 
-    def load_from_instance(self, instance, indent=0):
+    def load_from_instance(self, indent=0):
+        # type: (int) -> bool
         """
-        Load content from a parsed instance object
+        Updates the content of this instance from its parsed fields and
+        annotations
+
+        :param indent: Indentation to use in logs
+        :return: True on success, False on error (currently ignored)
         """
         return False
 
