@@ -40,3 +40,8 @@ nosetests.xml
 
 # Log files
 *.log
+
+# Folders and scripts used to reproduce issues
+/issue*/
+/repro*.py
+/test*.py
