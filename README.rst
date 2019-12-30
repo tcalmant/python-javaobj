@@ -39,10 +39,12 @@ Compatibility warning: New version of the parser
 
 Since version 0.4.0, two implementations of the parser are available:
 
-* `v1`: the *classic* implementation of `javaobj`, with a work in progress
+* ``v1``: the *classic* implementation of ``javaobj``, with a work in progress
   implementation of a writer.
-* `v2`: the *new* implementation, a port of `jdeserialize` with support of the
-  object transformer (with a new API) and the numpy arrays.
+* ``v2``: the *new* implementation, which is a port of the Java project
+  [``jdeserialize``](https://github.com/frohoff/jdeserialize/),
+  with support of the object transformer (with a new API) and of the ``numpy``
+  arrays loading.
 
 
 Compatibility Warning: object transformer
@@ -88,51 +90,136 @@ Unmarshalling of Java serialised object:
 
 .. code-block:: python
 
-    import javaobj
+   import javaobj
 
-    with open("obj5.ser", "rb") as fd:
-        jobj = fd.read()
+   with open("obj5.ser", "rb") as fd:
+       jobj = fd.read()
 
-    pobj = javaobj.loads(jobj)
-    print(pobj)
+   pobj = javaobj.loads(jobj)
+   print(pobj)
 
-Or, you can use Unmarshaller object directly:
+Or, you can use ``JavaObjectUnmarshaller`` object directly:
 
 .. code-block:: python
 
-    import javaobj
+   import javaobj
 
-    with open("objCollections.ser", "rb") as fd:
-        marshaller = javaobj.JavaObjectUnmarshaller(fd)
-        pobj = marshaller.readObject()
+   with open("objCollections.ser", "rb") as fd:
+       marshaller = javaobj.JavaObjectUnmarshaller(fd)
+       pobj = marshaller.readObject()
 
-        print(pobj.value, "should be", 17)
-        print(pobj.next, "should be", True)
+       print(pobj.value, "should be", 17)
+       print(pobj.next, "should be", True)
 
-        pobj = marshaller.readObject()
+       pobj = marshaller.readObject()
 
 
-The objects and methods provided by `javaobj` module are shortcuts to the
-`javaobj.v1` package
+**Note:** The objects and methods provided by ``javaobj`` module are shortcuts
+to the ``javaobj.v1`` package, for Compatibility purpose.
+It is **recommended** to explicitly import methods and classes from the ``v1``
+(or ``v2``) package when writing new code, in order to be sure that your code
+won't need import updates in the future.
 
 
 Usage (V2 implementation)
 =========================
 
-Unmarshalling of Java serialised object:
+The following methods are provided by the ``javaobj.v2`` package:
+
+* ``load(fd, *transformers, use_numpy_arrays=False)``:
+  Parses the content of the given file descriptor, opened in binary mode (`rb`).
+  The method accepts a list of custom object transformers. The default object
+  transformer is always added to the list.
+
+  The ``use_numpy_arrays`` flag indicates that the arrays of primitive type
+  elements must be loaded using ``numpy`` (if available) instead of using the
+  standard parsing technic.
+
+* ``loads(bytes, *transformers, use_numpy_arrays=False)``:
+  This the a shortcut to the ``load()`` method, providing it the binary data
+  using a ``BytesIO`` object.
+
+**Note:** The V2 parser doesn't have the marshalling capability.
+
+Sample usage:
 
 .. code-block:: python
 
-    import javaobj.v2 as javaobj
+   import javaobj.v2 as javaobj
 
-    with open("obj5.ser", "rb") as fd:
-        jobj = fd.read()
+   with open("obj5.ser", "rb") as fd:
+       pobj = javaobj.load(fd)
 
-    pobj = javaobj.loads(jobj)
-    print(pobj)
+   print(pobj.dump())
 
 
 Object Transformer
 -------------------
 
-WIP
+An object transformer can be called during the parsing of a Java object
+instance or while loading an array.
+
+The Java object instance parsing works in two main steps:
+
+1. The transformer is called to create an instance of a bean that inherits
+   ``JavaInstance``.
+2. The latter bean is then called:
+  * When the object is written with a custom block data
+  * After the fields and annotations have been parsed, to update the content of
+    the Python bean.
+
+Here is an example for a Java ``HashMap`` object. You can look at the code of
+the ``javaobj.v2.transformer`` module to see the whole implementation.
+
+.. code-block:: python
+
+   class JavaMap(dict, javaobj.v2.beans.JavaInstance):
+       """
+       Inherits from dict for Python usage, JavaInstance for parsing purpose
+       """
+       def __init__(self):
+           # Don't forget to call both constructors
+           dict.__init__(self)
+           JavaInstance.__init__(self)
+
+       def load_from_instance(self, instance, indent=0):
+           # type: (JavaInstance, int) -> bool
+           """
+           Load content from a parsed instance object
+
+           :param instance: The currently loaded instance
+           :param indent: Indentation to use while logging
+           :return: True on success
+           """
+           # Maps have their content in their annotations
+           for cd, annotations in instance.annotations.items():
+               # Annotations are associated to their definition class
+               if cd.name == "java.util.HashMap":
+                   # We are in the annotation created by the handled class
+                   # Group annotation elements 2 by 2
+                   # (storage is: key, value, key, value, ...)
+                   args = [iter(annotations[1:])] * 2
+                   for key, value in zip(*args):
+                       self[key] = value
+
+                   # Job done
+                   return True
+
+           # Couldn't load the data
+           return False
+
+   class MapObjectTransformer(javaobj.v2.api.ObjectTransformer):
+       def create_instance(self, classdesc):
+           # type: (JavaClassDesc) -> Optional[JavaInstance]
+           """
+           Transforms a parsed Java object into a Python object
+
+           :param classdesc: The description of a Java class
+           :return: The Python form of the object, or the original JavaObject
+           """
+           if classdesc.name == "java.util.HashMap":
+               # We can handle it
+               return JavaMap()
+           else:
+               # Return None if not handled
+               return None
