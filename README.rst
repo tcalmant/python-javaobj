@@ -34,8 +34,14 @@ This project is a fork of *python-javaobj* by Volodymyr Buell, originally from
 
 This fork intends to work both on Python 2.7 and Python 3.4+.
 
-Compatibility warning: New version of the parser
-------------------------------------------------
+Compatibility Warnings
+======================
+
+New implementation of the parser
+--------------------------------
+
+:Implementations: ``v1``, ``v2``
+:Version: `0.4.0`+
 
 Since version 0.4.0, two implementations of the parser are available:
 
@@ -46,9 +52,18 @@ Since version 0.4.0, two implementations of the parser are available:
   with support of the object transformer (with a new API) and of the ``numpy``
   arrays loading.
 
+You can use the ``v1`` parser to ensure that the behaviour of your scripts
+doesn't change and to keep the ability to write down files.
 
-Compatibility Warning: object transformer
------------------------------------------
+You can use the ``v2`` parser for new developments
+*which won't require marshalling* and as a *fallback* if the ``v1``
+fails to parse a file.
+
+Object transformers V1
+----------------------
+
+:Implementations: ``v1``
+:Version: `0.2.0`+
 
 As of version 0.2.0, the notion of *object transformer* from the original
 project as been replaced by an *object creator*.
@@ -57,9 +72,20 @@ The *object creator* is called before the deserialization.
 This allows to store the reference of the converted object before deserializing
 it, and avoids a mismatch between the referenced object and the transformed one.
 
+Object transformers V2
+----------------------
 
-Compatibility Warning: bytes arrays
------------------------------------
+:Implementations: ``v2``
+:Version: `0.4.0`+
+
+The ``v2`` implementation provides a new API for the object transformers.
+Please look at the *Usage (V2)* section in this file.
+
+Bytes arrays
+------------
+
+:Implementations: ``v1``
+:Version: `0.2.3`+
 
 As of version 0.2.3, bytes arrays are loaded as a ``bytes`` object instead of
 an array of integers.
@@ -68,12 +94,12 @@ an array of integers.
 Features
 ========
 
-* Java object instance unmarshaling
-* Java classes unmarshaling
-* Primitive values unmarshaling
+* Java object instance un-marshalling
+* Java classes un-marshalling
+* Primitive values un-marshalling
 * Automatic conversion of Java Collections to python ones
   (``HashMap`` => ``dict``, ``ArrayList`` => ``list``, etc.)
-* Basic marshalling of simple Java objects
+* Basic marshalling of simple Java objects (``v1`` implementation only)
 
 Requirements
 ============
@@ -86,7 +112,7 @@ Requirements
 Usage (V1 implementation)
 =========================
 
-Unmarshalling of Java serialised object:
+Un-marshalling of Java serialised object:
 
 .. code-block:: python
 
