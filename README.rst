@@ -41,7 +41,7 @@ New implementation of the parser
 --------------------------------
 
 :Implementations: ``v1``, ``v2``
-:Version: ``0.4.0``+
+:Version: ``0.4.0+``
 
 Since version 0.4.0, two implementations of the parser are available:
 
@@ -63,7 +63,7 @@ Object transformers V1
 ----------------------
 
 :Implementations: ``v1``
-:Version: ``0.2.0``+
+:Version: ``0.2.0+``
 
 As of version 0.2.0, the notion of *object transformer* from the original
 project as been replaced by an *object creator*.
@@ -76,7 +76,7 @@ Object transformers V2
 ----------------------
 
 :Implementations: ``v2``
-:Version: ``0.4.0``+
+:Version: ``0.4.0+``
 
 The ``v2`` implementation provides a new API for the object transformers.
 Please look at the *Usage (V2)* section in this file.
@@ -85,7 +85,7 @@ Bytes arrays
 ------------
 
 :Implementations: ``v1``
-:Version: ``0.2.3``+
+:Version: ``0.2.3+``
 
 As of version 0.2.3, bytes arrays are loaded as a ``bytes`` object instead of
 an array of integers.
