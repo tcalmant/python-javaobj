@@ -3,8 +3,14 @@
 Mimics the core API with the new deserializer
 """
 
-from io import BytesIO
 from typing import Any, IO, Iterable
+
+try:
+    # Python 2
+    from StringIO import StringIO as BytesIO
+except ImportError:
+    # Python 3+
+    from io import BytesIO
 
 from .api import ObjectTransformer
 from .core import JavaStreamParser
