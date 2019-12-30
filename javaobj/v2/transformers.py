@@ -139,7 +139,7 @@ class JavaMap(dict, JavaInstance):
         """
         Load content from a parsed instance object
         """
-        # Lists have their content in there annotations
+        # Maps have their content in there annotations
         for cd, annotations in instance.annotations.items():
             if cd.name in JavaMap.HANDLED_CLASSES:
                 # Group annotation elements 2 by 2
@@ -416,6 +416,9 @@ class JavaTime(JavaInstance):
 
 
 class DefaultObjectTransformer(ObjectTransformer):
+    """
+    Provider of the default object transformers
+    """
 
     KNOWN_TRANSFORMERS = (
         JavaBool,
