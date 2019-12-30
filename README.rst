@@ -42,7 +42,7 @@ Since version 0.4.0, two implementations of the parser are available:
 * ``v1``: the *classic* implementation of ``javaobj``, with a work in progress
   implementation of a writer.
 * ``v2``: the *new* implementation, which is a port of the Java project
-  [``jdeserialize``](https://github.com/frohoff/jdeserialize/),
+  `jdeserialize <https://github.com/frohoff/jdeserialize/>`_,
   with support of the object transformer (with a new API) and of the ``numpy``
   arrays loading.
 
@@ -79,7 +79,7 @@ Requirements
 ============
 
 * Python >= 2.7 or Python >= 3.4
-* `enum34` and `typing` when using Python <= 3.4 (installable with `pip`)
+* ``enum34`` and ``typing`` when using Python <= 3.4 (installable with ``pip``)
 * Maven 2+ (for building test data of serialized objects.
   You can skip it if you do not plan to run ``tests.py``)
 
@@ -164,9 +164,10 @@ The Java object instance parsing works in two main steps:
 1. The transformer is called to create an instance of a bean that inherits
    ``JavaInstance``.
 2. The latter bean is then called:
-  * When the object is written with a custom block data
-  * After the fields and annotations have been parsed, to update the content of
-    the Python bean.
+
+   * When the object is written with a custom block data
+   * After the fields and annotations have been parsed, to update the content of
+     the Python bean.
 
 Here is an example for a Java ``HashMap`` object. You can look at the code of
 the ``javaobj.v2.transformer`` module to see the whole implementation.
