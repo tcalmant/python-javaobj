@@ -70,6 +70,10 @@ setup(
     keywords="python java marshalling serialization",
     packages=["javaobj", "javaobj.v1", "javaobj.v2"],
     test_suite="tests.tests",
+    install_requires=[
+        'enum34;python_version<="3.4"',
+        'typing;python_version<="3.4"',
+    ],
     long_description=read("README.rst"),
     classifiers=[
         "Development Status :: 3 - Alpha",
