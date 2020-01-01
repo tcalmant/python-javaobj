@@ -28,6 +28,7 @@ http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.ht
 """
 
 import os
+import sys
 
 try:
     from setuptools import setup
@@ -37,7 +38,7 @@ except ImportError:
 # ------------------------------------------------------------------------------
 
 # Module version
-__version_info__ = (0, 4, 0)
+__version_info__ = (0, 4, 0, 1)
 __version__ = ".".join(str(x) for x in __version_info__)
 
 # Documentation strings format
@@ -67,6 +68,7 @@ setup(
     url="https://github.com/tcalmant/python-javaobj",
     description="Module for serializing and de-serializing Java objects.",
     license="Apache License 2.0",
+    license_file="LICENSE",
     keywords="python java marshalling serialization",
     packages=["javaobj", "javaobj.v1", "javaobj.v2"],
     test_suite="tests.tests",
