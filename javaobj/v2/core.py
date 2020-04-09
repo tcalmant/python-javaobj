@@ -302,7 +302,7 @@ class JavaStreamParser:
             except ExceptionRead as ex:
                 return ex.exception_object
 
-    def _read_new_string(self, type_code, field_name=None):
+    def _read_new_string(self, type_code):
         # type: (int) -> JavaString
         """
         Reads a Java String
