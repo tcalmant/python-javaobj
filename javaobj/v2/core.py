@@ -48,6 +48,7 @@ from .beans import (
     ExceptionRead,
     ClassDescType,
     FieldType,
+    ClassDataType,
 )
 from .stream import DataStreamReader
 from ..constants import (
@@ -57,6 +58,7 @@ from ..constants import (
     TypeCode,
     PRIMITIVE_TYPES,
 )
+
 from ..modifiedutf8 import decode_modified_utf8
 
 # ------------------------------------------------------------------------------
@@ -276,7 +278,7 @@ class JavaStreamParser:
         """
         return None
 
-    def _read_content(self, type_code, block_data):
+    def _read_content(self, type_code, block_data, class_desc=None):
         # type: (int, bool) -> ParsedJavaContent
         """
         Parses the next content
@@ -290,6 +292,9 @@ class JavaStreamParser:
         try:
             handler = self.__type_code_handlers[type_code]
         except KeyError:
+            '''Looking for an external reader'''
+            if class_desc and class_desc.data_type == ClassDataType.WRCLASS:
+                return self._custom_readObject(class_desc.name)
             raise ValueError("Unknown type code: 0x{0:x}".format(type_code))
         else:
             try:
@@ -297,7 +302,7 @@ class JavaStreamParser:
             except ExceptionRead as ex:
                 return ex.exception_object
 
-    def _read_new_string(self, type_code):
+    def _read_new_string(self, type_code, field_name=None):
         # type: (int) -> JavaString
         """
         Reads a Java String
@@ -321,7 +326,7 @@ class JavaStreamParser:
                 raise ValueError("Invalid string length: {0}".format(length))
             elif length < 65536:
                 self._log.warning("Small string stored as a long one")
-
+            
         # Parse the content
         data = self.__fd.read(length)
         java_str = JavaString(handle, data)
@@ -338,12 +343,10 @@ class JavaStreamParser:
         type_code = self.__reader.read_byte()
         return self._do_classdesc(type_code)
 
-    def _do_classdesc(self, type_code, must_be_new=False):
+    def _do_classdesc(self, type_code):
         # type: (int, bool) -> JavaClassDesc
         """
         Parses a class description
-
-        :param must_be_new: Check if the class description is really a new one
         """
         if type_code == TerminalCode.TC_CLASSDESC:
             # Do the real job
@@ -352,31 +355,28 @@ class JavaStreamParser:
             handle = self._new_handle()
             desc_flags = self.__reader.read_byte()
             nb_fields = self.__reader.read_short()
+            
             if nb_fields < 0:
                 raise ValueError("Invalid field count: {0}".format(nb_fields))
 
             fields = []  # type: List[JavaField]
             for _ in range(nb_fields):
                 field_type = self.__reader.read_byte()
-                if field_type in PRIMITIVE_TYPES:
-                    # Primitive type
-                    field_name = self.__reader.read_UTF()
-                    fields.append(JavaField(FieldType(field_type), field_name))
-                elif field_type in (TypeCode.TYPE_OBJECT, TypeCode.TYPE_ARRAY,):
-                    # Array or object type
-                    field_name = self.__reader.read_UTF()
+                field_name = self.__reader.read_UTF()
+                class_name = None
+
+                if field_type in (TypeCode.TYPE_OBJECT, TypeCode.TYPE_ARRAY):
                     # String type code
                     str_type_code = self.__reader.read_byte()
                     class_name = self._read_new_string(str_type_code)
-                    fields.append(
-                        JavaField(
-                            FieldType(field_type), field_name, class_name,
-                        ),
-                    )
-                else:
+                elif field_type not in PRIMITIVE_TYPES:
                     raise ValueError(
                         "Invalid field type char: 0x{0:x}".format(field_type)
                     )
+
+                fields.append(JavaField(
+                    FieldType(field_type), field_name, class_name
+                ))
 
             # Setup the class description bean
             class_desc = JavaClassDesc(ClassDescType.NORMALCLASS)
@@ -385,7 +385,7 @@ class JavaStreamParser:
             class_desc.handle = handle
             class_desc.desc_flags = desc_flags
             class_desc.fields = fields
-            class_desc.annotations = self._read_class_annotations()
+            class_desc.annotations = self._read_class_annotations(class_desc)
             class_desc.super_class = self._read_classdesc()
 
             # Store the reference to the parsed bean
@@ -393,16 +393,9 @@ class JavaStreamParser:
             return class_desc
         elif type_code == TerminalCode.TC_NULL:
             # Null reference
-            if must_be_new:
-                raise ValueError("Got Null instead of a new class description")
             return None
         elif type_code == TerminalCode.TC_REFERENCE:
             # Reference to an already loading class description
-            if must_be_new:
-                raise ValueError(
-                    "Got a reference instead of a new class description"
-                )
-
             previous = self._do_reference()
             if not isinstance(previous, JavaClassDesc):
                 raise ValueError("Referenced object is not a class description")
@@ -424,10 +417,20 @@ class JavaStreamParser:
             # Store the reference to the parsed bean
             self._set_handle(handle, class_desc)
             return class_desc
-
+        
         raise ValueError("Expected a valid class description starter")
 
-    def _read_class_annotations(self):
+
+    def _custom_readObject(self, class_name):
+        self.__fd.seek(-1, os.SEEK_CUR)
+        for transformer in self.__transformers:
+            class_data = transformer.load_custom_writeObject(self, self.__reader, class_name)
+            if class_data:
+                return class_data
+        raise ValueError("Custom readObject can not be processed")
+        
+        
+    def _read_class_annotations(self, class_desc=None):
         # type: () -> List[ParsedJavaContent]
         """
         Reads the annotations associated to a class
@@ -442,8 +445,8 @@ class JavaStreamParser:
                 # Reset references
                 self._reset()
                 continue
+            java_object = self._read_content(type_code, True, class_desc)
 
-            java_object = self._read_content(type_code, True)
             if java_object is not None and java_object.is_exception:
                 raise ExceptionRead(java_object)
 
@@ -503,31 +506,16 @@ class JavaStreamParser:
 
         for cd in classes:
             values = {}  # type: Dict[JavaField, Any]
-            if cd.desc_flags & ClassDescFlags.SC_SERIALIZABLE:
-                if cd.desc_flags & ClassDescFlags.SC_EXTERNALIZABLE:
-                    raise ValueError(
-                        "SC_EXTERNALIZABLE & SC_SERIALIZABLE encountered"
-                    )
-
-                for field in cd.fields:
-                    values[field] = self._read_field_value(field.type)
-
-                all_data[cd] = values
-
-                if cd.desc_flags & ClassDescFlags.SC_WRITE_METHOD:
-                    if cd.desc_flags & ClassDescFlags.SC_ENUM:
-                        raise ValueError(
-                            "SC_ENUM & SC_WRITE_METHOD encountered!"
-                        )
-
-                    annotations[cd] = self._read_class_annotations()
-            elif cd.desc_flags & ClassDescFlags.SC_EXTERNALIZABLE:
-                if cd.desc_flags & ClassDescFlags.SC_SERIALIZABLE:
-                    raise ValueError(
-                        "SC_EXTERNALIZABLE & SC_SERIALIZABLE encountered"
-                    )
-
-                if cd.desc_flags & ClassDescFlags.SC_BLOCK_DATA:
+            cd.validate()
+            if cd.data_type == ClassDataType.NOWRCLASS or cd.data_type == ClassDataType.WRCLASS:
+                if cd.data_type == ClassDataType.NOWRCLASS:
+                    for field in cd.fields:
+                        values[field] = self._read_field_value(field.type)
+                    all_data[cd] = values
+                else:
+                    annotations[cd] = self._read_class_annotations(cd)
+            else:
+                if cd.data_type == ClassDataType.OBJECT_ANNOTATION:
                     # Call the transformer if possible
                     if not instance.load_from_blockdata(self, self.__reader):
                         # Can't read :/
@@ -535,8 +523,7 @@ class JavaStreamParser:
                             "hit externalizable with nonzero SC_BLOCK_DATA; "
                             "can't interpret data"
                         )
-
-                annotations[cd] = self._read_class_annotations()
+                annotations[cd] = self._read_class_annotations(cd)
 
         # Fill the instance object
         instance.annotations = annotations
@@ -568,11 +555,11 @@ class JavaStreamParser:
             return self.__reader.read_bool()
         elif field_type in (FieldType.OBJECT, FieldType.ARRAY):
             sub_type_code = self.__reader.read_byte()
-            if (
-                field_type == FieldType.ARRAY
-                and sub_type_code != TerminalCode.TC_ARRAY
-            ):
-                raise ValueError("Array type listed, but type code != TC_ARRAY")
+            if field_type == FieldType.ARRAY:
+                if sub_type_code == TerminalCode.TC_REFERENCE:
+                    return self._do_classdesc(sub_type_code)
+                elif sub_type_code != TerminalCode.TC_ARRAY:
+                    raise ValueError("Array type listed, but type code != TC_ARRAY")
 
             content = self._read_content(sub_type_code, False)
             if content is not None and content.is_exception:

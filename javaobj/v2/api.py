@@ -78,3 +78,19 @@ class ObjectTransformer:
         :param size: Number of elements in the array
         """
         return None
+        
+    def load_custom_writeObject(self, parser, reader, name):
+        """
+        Reads content stored from a custom writeObject.
+
+        This method is called only if the class description has both the
+        ``SC_SERIALIZABLE`` and ``SC_WRITE_METHOD`` flags set.
+
+        The stream parsing will stop and fail if this method returns None.
+
+        :param parser: The JavaStreamParser in use
+        :param reader: The data stream reader
+        :param name: The class description name
+        :return: An array with the parsed fields or None
+        """
+        return None

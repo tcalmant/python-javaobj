@@ -60,6 +60,16 @@ class ContentType(IntEnum):
     BLOCKDATA = 6
     EXCEPTIONSTATE = 7
 
+class ClassDataType(IntEnum):
+    """
+    Class data types
+    """
+
+    NOWRCLASS = 0
+    WRCLASS = 1
+    EXTERNAL_CONTENTS = 2
+    OBJECT_ANNOTATION = 3
+
 
 class ClassDescType(IntEnum):
     """
@@ -180,7 +190,6 @@ class JavaString(ParsedJavaContent):
 
     def __eq__(self, other):
         return self.value == other
-
 
 class JavaField:
     """
@@ -303,6 +312,16 @@ class JavaClassDesc(ParsedJavaContent):
         Mimics the javaobj API
         """
         return [field.type for field in self.fields]
+
+    @property
+    def data_type(self):
+        if (ClassDescFlags.SC_SERIALIZABLE & self.desc_flags):
+            return ClassDataType.WRCLASS if (ClassDescFlags.SC_WRITE_METHOD & self.desc_flags) else ClassDataType.NOWRCLASS
+        elif (ClassDescFlags.SC_EXTERNALIZABLE & self.desc_flags):
+            return ClassDataType.OBJECT_ANNOTATION if (ClassDescFlags.SC_WRITE_METHOD & self.desc_flags) else ClassDataType.EXTERNAL_CONTENTS
+        
+        raise ValueError("Unhandled Class Data Type")
+        
 
     def is_array_class(self):
         # type: () -> bool
