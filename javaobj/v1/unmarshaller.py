@@ -36,6 +36,7 @@ http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.ht
 from __future__ import absolute_import
 
 # Standard library
+from typing import Any, Union
 import os
 import struct
 
@@ -719,7 +720,7 @@ class JavaObjectUnmarshaller:
         return enum
 
     def _read_value(self, raw_field_type, ident, name=""):
-        # type: (bytes, int, str) -> Any
+        # type: (Union[bytes, int, TypeCode], int, str) -> Any
         """
         Reads the next value, of the given type
 
@@ -729,15 +730,21 @@ class JavaObjectUnmarshaller:
         :return: The read value
         :raise RuntimeError: Unknown field type
         """
-        if isinstance(raw_field_type, (TypeCode, int)):
+        if isinstance(raw_field_type, TypeCode):
             field_type = raw_field_type
+        elif isinstance(raw_field_type, int):
+            field_type = TypeCode(raw_field_type)
         else:
             # We don't need details for arrays and objects
-            field_type = TypeCode(ord(raw_field_type[0]))
+            raw_code = raw_field_type[0]
+            if isinstance(raw_code, int):
+                field_type = TypeCode(raw_code)
+            else:
+                field_type = TypeCode(ord(raw_code))
 
         if field_type == TypeCode.TYPE_BOOLEAN:
             (val,) = self._readStruct(">B")
-            res = bool(val)
+            res = bool(val)  # type: Any
         elif field_type == TypeCode.TYPE_BYTE:
             (res,) = self._readStruct(">b")
         elif field_type == TypeCode.TYPE_CHAR:

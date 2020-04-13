@@ -71,6 +71,17 @@ class ClassDataType(IntEnum):
     OBJECT_ANNOTATION = 3
 
 
+class ClassDataType(IntEnum):
+    """
+    Class data types
+    """
+
+    NOWRCLASS = 0
+    WRCLASS = 1
+    EXTERNAL_CONTENTS = 2
+    OBJECT_ANNOTATION = 3
+
+
 class ClassDescType(IntEnum):
     """
     Types of class descriptions
@@ -95,6 +106,10 @@ class FieldType(IntEnum):
     BOOLEAN = TypeCode.TYPE_BOOLEAN.value
     ARRAY = TypeCode.TYPE_ARRAY.value
     OBJECT = TypeCode.TYPE_OBJECT.value
+
+    def type_code(self):
+        # type: () -> TypeCode
+        return TypeCode(self.value)
 
 
 class ParsedJavaContent(object):
@@ -200,7 +215,7 @@ class JavaField:
         # type: (FieldType, str, Optional[JavaString]) -> None
         self.type = field_type
         self.name = name
-        self.class_name = class_name  # type: JavaString
+        self.class_name = class_name
         self.is_inner_class_reference = False
 
         if self.class_name:
@@ -318,13 +333,20 @@ class JavaClassDesc(ParsedJavaContent):
 
     @property
     def data_type(self):
-        if (ClassDescFlags.SC_SERIALIZABLE & self.desc_flags):
-            return ClassDataType.WRCLASS if (ClassDescFlags.SC_WRITE_METHOD & self.desc_flags) else ClassDataType.NOWRCLASS
-        elif (ClassDescFlags.SC_EXTERNALIZABLE & self.desc_flags):
-            return ClassDataType.OBJECT_ANNOTATION if (ClassDescFlags.SC_WRITE_METHOD & self.desc_flags) else ClassDataType.EXTERNAL_CONTENTS
-        
+        if ClassDescFlags.SC_SERIALIZABLE & self.desc_flags:
+            return (
+                ClassDataType.WRCLASS
+                if (ClassDescFlags.SC_WRITE_METHOD & self.desc_flags)
+                else ClassDataType.NOWRCLASS
+            )
+        elif ClassDescFlags.SC_EXTERNALIZABLE & self.desc_flags:
+            return (
+                ClassDataType.OBJECT_ANNOTATION
+                if (ClassDescFlags.SC_WRITE_METHOD & self.desc_flags)
+                else ClassDataType.EXTERNAL_CONTENTS
+            )
+
         raise ValueError("Unhandled Class Data Type")
-        
 
     def is_array_class(self):
         # type: () -> bool

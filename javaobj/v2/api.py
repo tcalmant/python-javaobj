@@ -62,7 +62,7 @@ class ObjectTransformer:
         """
         return None
 
-    def load_array(self, reader, field_type, size):
+    def load_array(self, reader, type_code, size):
         # type: (DataStreamReader, TypeCode, int) -> Optional[list]
         """
         Loads and returns the content of a Java array, if possible.
@@ -74,12 +74,13 @@ class ObjectTransformer:
         This method must return None if it can't handle the array.
 
         :param reader: The data stream reader
-        :param field_type: Type of the elements of the array
+        :param type_code: Type of the elements of the array
         :param size: Number of elements in the array
         """
         return None
-        
+
     def load_custom_writeObject(self, parser, reader, name):
+        # type: (JavaStreamParser, DataStreamReader, str) -> Optional[JavaClassDesc]
         """
         Reads content stored from a custom writeObject.
 
@@ -91,6 +92,6 @@ class ObjectTransformer:
         :param parser: The JavaStreamParser in use
         :param reader: The data stream reader
         :param name: The class description name
-        :return: An array with the parsed fields or None
+        :return: A JavaClassDesc instance or None
         """
         return None

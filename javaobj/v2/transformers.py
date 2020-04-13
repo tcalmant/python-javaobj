@@ -25,7 +25,7 @@ Defines the default object transformers
 """
 
 # Standard library
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import functools
 
 # Numpy (optional)
@@ -37,7 +37,7 @@ except ImportError:
 
 # Javaobj
 from .api import ObjectTransformer
-from .beans import JavaInstance
+from .beans import JavaInstance, JavaClassDesc, BlockData
 from ..constants import TerminalCode, TypeCode
 from ..utils import to_bytes, log_error, log_debug, read_struct, read_string
 
@@ -118,6 +118,10 @@ class JavaPrimitiveClass(JavaInstance):
 
 
 class JavaBool(JavaPrimitiveClass):
+    """
+    Represents a Java Boolean object
+    """
+
     HANDLED_CLASSES = "java.lang.Boolean"
 
     def __bool__(self):
@@ -125,6 +129,9 @@ class JavaBool(JavaPrimitiveClass):
 
 
 class JavaInt(JavaPrimitiveClass):
+    """
+    Represents a Java Integer or Long object
+    """
 
     HANDLED_CLASSES = ("java.lang.Integer", "java.lang.Long")
 
@@ -137,7 +144,10 @@ class JavaMap(dict, JavaInstance):
     Python-Java dictionary/map bridge type
     """
 
-    HANDLED_CLASSES = ("java.util.HashMap", "java.util.TreeMap")
+    HANDLED_CLASSES = (
+        "java.util.HashMap",
+        "java.util.TreeMap",
+    )  # type: Tuple[str, ...]
 
     def __init__(self):
         dict.__init__(self)
@@ -166,7 +176,7 @@ class JavaLinkedHashMap(JavaMap):
     Linked has map are handled with a specific block data
     """
 
-    HANDLED_CLASSES = "java.util.LinkedHashMap"
+    HANDLED_CLASSES = ("java.util.LinkedHashMap",)
 
     def load_from_blockdata(self, parser, reader, indent=0):
         # type: (JavaStreamParser, DataStreamReader, int) -> bool
@@ -204,7 +214,10 @@ class JavaSet(set, JavaInstance):
     Python-Java set bridge type
     """
 
-    HANDLED_CLASSES = ("java.util.HashSet", "java.util.LinkedHashSet")
+    HANDLED_CLASSES = (
+        "java.util.HashSet",
+        "java.util.LinkedHashSet",
+    )  # type: Tuple[str, ...]
 
     def __init__(self):
         set.__init__(self)
@@ -229,7 +242,7 @@ class JavaTreeSet(JavaSet):
     Tree sets are handled a bit differently
     """
 
-    HANDLED_CLASSES = "java.util.TreeSet"
+    HANDLED_CLASSES = ("java.util.TreeSet",)
 
     def load_from_instance(self, indent=0):
         # type: (int) -> bool
@@ -238,7 +251,7 @@ class JavaTreeSet(JavaSet):
         """
         # Lists have their content in there annotations
         for cd, annotations in self.annotations.items():
-            if cd.name == self.HANDLED_CLASSES:
+            if cd.name in self.HANDLED_CLASSES:
                 # Annotation[1] == size of the set
                 self.update(x for x in annotations[2:])
                 return True
@@ -254,7 +267,7 @@ class JavaTime(JavaInstance):
     parsed
     """
 
-    HANDLED_CLASSES = "java.time.Ser"
+    HANDLED_CLASSES = ("java.time.Ser",)  # type: Tuple[str, ...]
 
     DURATION_TYPE = 1
     INSTANT_TYPE = 2
@@ -322,7 +335,10 @@ class JavaTime(JavaInstance):
         """
         # Lists have their content in there annotations
         for cd, annotations in self.annotations.items():
-            if cd.name == self.HANDLED_CLASSES:
+            if cd.name in self.HANDLED_CLASSES:
+                if not isinstance(annotations[0], BlockData):
+                    raise ValueError("Require a BlockData as annotation")
+
                 # Convert back annotations to bytes
                 # latin-1 is used to ensure that bytes are kept as is
                 content = to_bytes(annotations[0].data, "latin1")
@@ -495,14 +511,14 @@ class NumpyArrayTransformer(ObjectTransformer):
         TypeCode.TYPE_BOOLEAN: ">B",
     }
 
-    def load_array(self, reader, field_type, size):
+    def load_array(self, reader, type_code, size):
         # type: (DataStreamReader, TypeCode, int) -> Optional[list]
         """
         Loads a Java array, if possible
         """
         if numpy is not None:
             try:
-                dtype = self.NUMPY_TYPE_MAP[field_type]
+                dtype = self.NUMPY_TYPE_MAP[type_code]
             except KeyError:
                 # Unhandled data type
                 return None

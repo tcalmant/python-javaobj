@@ -30,6 +30,8 @@ from __future__ import absolute_import
 import functools
 
 from .beans import JavaObject
+from .unmarshaller import JavaObjectUnmarshaller
+from ..constants import ClassDescFlags, TerminalCode, TypeCode
 from ..utils import (
     log_debug,
     log_error,
@@ -58,6 +60,9 @@ class DefaultObjectTransformer(object):
             # type: (JavaObjectUnmarshaller) -> None
             list.__init__(self)
             JavaObject.__init__(self)
+
+        def __hash__(self):
+                return list.__hash__(self)
 
         def __extra_loading__(self, unmarshaller, ident=0):
             # type: (JavaObjectUnmarshaller, int) -> None
@@ -110,6 +115,9 @@ class DefaultObjectTransformer(object):
             dict.__init__(self)
             JavaObject.__init__(self)
 
+        def __hash__(self):
+            return dict.__hash__(self)
+
         def __extra_loading__(self, unmarshaller, ident=0):
             # type: (JavaObjectUnmarshaller, int) -> None
             """
@@ -128,15 +136,15 @@ class DefaultObjectTransformer(object):
             """
             # Ignore the blockdata opid
             (opid,) = unmarshaller._readStruct(">B")
-            if opid != unmarshaller.SC_BLOCK_DATA:
+            if opid != ClassDescFlags.SC_BLOCK_DATA:
                 raise ValueError("Start of block data not found")
 
             # Read HashMap fields
             self.buckets = unmarshaller._read_value(
-                unmarshaller.TYPE_INTEGER, ident
+                TypeCode.TYPE_INTEGER, ident
             )
             self.size = unmarshaller._read_value(
-                unmarshaller.TYPE_INTEGER, ident
+                TypeCode.TYPE_INTEGER, ident
             )
 
             # Read entries
@@ -147,7 +155,7 @@ class DefaultObjectTransformer(object):
 
             # Ignore the end of the blockdata
             unmarshaller._read_and_exec_opcode(
-                ident, [unmarshaller.TC_ENDBLOCKDATA]
+                ident, [TerminalCode.TC_ENDBLOCKDATA]
             )
 
             # Ignore the trailing 0
@@ -164,6 +172,9 @@ class DefaultObjectTransformer(object):
             # type: (JavaObjectUnmarshaller) -> None
             set.__init__(self)
             JavaObject.__init__(self)
+
+        def __hash__(self):
+                return set.__hash__(self)
 
         def __extra_loading__(self, unmarshaller, ident=0):
             # type: (JavaObjectUnmarshaller, int) -> None
