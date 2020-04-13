@@ -97,7 +97,8 @@ class FieldType(IntEnum):
     ARRAY = TypeCode.TYPE_ARRAY.value
     OBJECT = TypeCode.TYPE_OBJECT.value
 
-    def type_code(self) -> TypeCode:
+    def type_code(self):
+        # type: () -> TypeCode
         return TypeCode(self.value)
 
 
