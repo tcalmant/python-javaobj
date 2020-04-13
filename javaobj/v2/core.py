@@ -216,15 +216,15 @@ class JavaStreamParser:
 
         if instance.annotations:
             lines.append("\tobject annotations:")
-            for cd, content in instance.annotations.items():
-                lines.append("\t" + cd.name)
-                for c in content:
+            for cd, annotation in instance.annotations.items():
+                lines.append("\t" + (cd.name or "null"))
+                for c in annotation:
                     lines.append("\t\t" + str(c))
 
         if instance.field_data:
             lines.append("\tfield data:")
             for field, obj in instance.field_data.items():
-                line = "\t\t" + field.name + ": "
+                line = "\t\t" + (field.name or "null") + ": "
                 if isinstance(obj, ParsedJavaContent):
                     content = obj  # type: ParsedJavaContent
                     h = content.handle
@@ -280,7 +280,7 @@ class JavaStreamParser:
         return None
 
     def _read_content(self, type_code, block_data, class_desc=None):
-        # type: (int, bool) -> ParsedJavaContent
+        # type: (int, bool, Optional[JavaClassDesc]) -> ParsedJavaContent
         """
         Parses the next content
         """
@@ -345,7 +345,7 @@ class JavaStreamParser:
         return self._do_classdesc(type_code)
 
     def _do_classdesc(self, type_code):
-        # type: (int, bool) -> JavaClassDesc
+        # type: (int) -> JavaClassDesc
         """
         Parses a class description
         """
@@ -432,7 +432,7 @@ class JavaStreamParser:
         raise ValueError("Custom readObject can not be processed")
 
     def _read_class_annotations(self, class_desc=None):
-        # type: () -> List[ParsedJavaContent]
+        # type: (Optional[JavaClassDesc]) -> List[ParsedJavaContent]
         """
         Reads the annotations associated to a class
         """
@@ -649,7 +649,7 @@ class JavaStreamParser:
         """
         cd = self._read_classdesc()
         handle = self._new_handle()
-        if len(cd.name) < 2:
+        if not cd.name or len(cd.name) < 2:
             raise ValueError("Invalid name in array class description")
 
         # ParsedJavaContent type

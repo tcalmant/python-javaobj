@@ -31,7 +31,7 @@ __docformat__ = "restructuredtext en"
 
 
 def load(file_object, *transformers, **kwargs):
-    # type: (IO[bytes], ObjectTransformer) -> Any
+    # type: (IO[bytes], ObjectTransformer, Any) -> Any
     """
     Deserializes Java primitive data and objects serialized using
     ObjectOutputStream from a file-like object.
@@ -68,7 +68,7 @@ def load(file_object, *transformers, **kwargs):
 
 
 def loads(data, *transformers, **kwargs):
-    # type: (bytes, ObjectTransformer) -> Any
+    # type: (bytes, ObjectTransformer, Any) -> Any
     """
     Deserializes Java objects and primitive data serialized using
     ObjectOutputStream from bytes.

@@ -30,6 +30,7 @@ Namely: logging methods, bytes/str/unicode converters
 from __future__ import absolute_import
 
 # Standard library
+from typing import Any, Tuple
 import logging
 import struct
 import sys
@@ -76,7 +77,7 @@ def log_error(message, ident=0):
 
 
 def read_struct(data, fmt_str):
-    # type: (bytes, str) -> list
+    # type: (bytes, str) -> Tuple
     """
     Reads input bytes and extract the given structure. Returns both the read
     elements and the remaining data
@@ -90,7 +91,7 @@ def read_struct(data, fmt_str):
 
 
 def read_string(data, length_fmt="H"):
-    # type: (bytes, str) -> UNICODE_TYPE
+    # type: (bytes, str) -> Tuple[UNICODE_TYPE, bytes]
     """
     Reads a serialized string
 

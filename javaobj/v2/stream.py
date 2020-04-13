@@ -26,11 +26,11 @@ Utility module to handle streams like in Java
 
 from __future__ import absolute_import
 
-from typing import Any, IO, List
+from typing import Any, IO, List, Tuple
 import struct
 
 from ..modifiedutf8 import decode_modified_utf8
-from ..utils import unicode_char
+from ..utils import unicode_char, UNICODE_TYPE
 
 # ------------------------------------------------------------------------------
 
@@ -65,7 +65,7 @@ class DataStreamReader:
         return self.__fd
 
     def read(self, struct_format):
-        # type: (str) -> List[Any]
+        # type: (str) -> Tuple[Any, ...]
         """
         Reads from the input stream, using struct
 
@@ -103,7 +103,7 @@ class DataStreamReader:
         return self.read(">B")[0]
 
     def read_char(self):
-        # type: () -> chr
+        # type: () -> UNICODE_TYPE
         """
         Shortcut to read a single `char` (2 bytes)
         """

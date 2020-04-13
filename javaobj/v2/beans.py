@@ -202,7 +202,7 @@ class JavaField:
         # type: (FieldType, str, Optional[JavaString]) -> None
         self.type = field_type
         self.name = name
-        self.class_name = class_name  # type: JavaString
+        self.class_name = class_name
         self.is_inner_class_reference = False
 
         if self.class_name:

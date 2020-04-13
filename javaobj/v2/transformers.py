@@ -25,7 +25,7 @@ Defines the default object transformers
 """
 
 # Standard library
-from typing import List, Optional
+from typing import List, Optional, Tuple
 import functools
 
 # Numpy (optional)
@@ -37,7 +37,8 @@ except ImportError:
 
 # Javaobj
 from .api import ObjectTransformer
-from .beans import JavaInstance
+from .beans import JavaInstance, JavaClassDesc
+from .core import JavaStreamParser, DataStreamReader
 from ..constants import TerminalCode, TypeCode
 from ..utils import to_bytes, log_error, log_debug, read_struct, read_string
 
@@ -137,7 +138,7 @@ class JavaMap(dict, JavaInstance):
     Python-Java dictionary/map bridge type
     """
 
-    HANDLED_CLASSES = ("java.util.HashMap", "java.util.TreeMap")
+    HANDLED_CLASSES = ("java.util.HashMap", "java.util.TreeMap")  # type: Tuple[str, ...]
 
     def __init__(self):
         dict.__init__(self)
@@ -166,7 +167,7 @@ class JavaLinkedHashMap(JavaMap):
     Linked has map are handled with a specific block data
     """
 
-    HANDLED_CLASSES = "java.util.LinkedHashMap"
+    HANDLED_CLASSES = ("java.util.LinkedHashMap",)
 
     def load_from_blockdata(self, parser, reader, indent=0):
         # type: (JavaStreamParser, DataStreamReader, int) -> bool
@@ -204,7 +205,7 @@ class JavaSet(set, JavaInstance):
     Python-Java set bridge type
     """
 
-    HANDLED_CLASSES = ("java.util.HashSet", "java.util.LinkedHashSet")
+    HANDLED_CLASSES = ("java.util.HashSet", "java.util.LinkedHashSet")  # type: Tuple[str, ...]
 
     def __init__(self):
         set.__init__(self)
@@ -229,7 +230,7 @@ class JavaTreeSet(JavaSet):
     Tree sets are handled a bit differently
     """
 
-    HANDLED_CLASSES = "java.util.TreeSet"
+    HANDLED_CLASSES = ("java.util.TreeSet",)
 
     def load_from_instance(self, indent=0):
         # type: (int) -> bool

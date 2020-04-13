@@ -198,6 +198,8 @@ class JavaArray(list, JavaObject):
         JavaObject.__init__(self)
         self.classdesc = classdesc
 
+    def __hash__(self):
+        return list.__hash__(self)
 
 class JavaByteArray(JavaObject):
     """
