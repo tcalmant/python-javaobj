@@ -37,7 +37,7 @@ except ImportError:
 
 # Javaobj
 from .api import ObjectTransformer
-from .beans import JavaInstance, JavaClassDesc, FieldType
+from .beans import JavaInstance, JavaClassDesc, FieldType, BlockData
 from ..constants import TerminalCode, TypeCode
 from ..utils import to_bytes, log_error, log_debug, read_struct, read_string
 
@@ -323,6 +323,9 @@ class JavaTime(JavaInstance):
         # Lists have their content in there annotations
         for cd, annotations in self.annotations.items():
             if cd.name in self.HANDLED_CLASSES:
+                if not isinstance(annotations[0], BlockData):
+                    raise ValueError("Require a BlockData as annotation")
+
                 # Convert back annotations to bytes
                 # latin-1 is used to ensure that bytes are kept as is
                 content = to_bytes(annotations[0].data, "latin1")
