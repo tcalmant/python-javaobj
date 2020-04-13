@@ -78,7 +78,7 @@ class ObjectTransformer:
         :param size: Number of elements in the array
         """
         return None
-        
+
     def load_custom_writeObject(self, parser, reader, name):
         """
         Reads content stored from a custom writeObject.
