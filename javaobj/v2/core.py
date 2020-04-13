@@ -51,6 +51,7 @@ from .beans import (
     ClassDataType,
 )
 from .stream import DataStreamReader
+from .transformers import DefaultObjectTransformer
 from ..constants import (
     ClassDescFlags,
     StreamConstants,
@@ -492,6 +493,10 @@ class JavaStreamParser:
         self._log.debug("Done reading object handle %x", handle)
         return instance
 
+    def _is_default_supported(self, class_name):
+        default_transf = [x for x in self.__transformers if isinstance(x, DefaultObjectTransformer)]
+        return len(default_transf) and class_name in default_transf[0]._type_mapper
+
     def _read_class_data(self, instance):
         # type: (JavaInstance) -> None
         """
@@ -508,12 +513,16 @@ class JavaStreamParser:
             values = {}  # type: Dict[JavaField, Any]
             cd.validate()
             if cd.data_type == ClassDataType.NOWRCLASS or cd.data_type == ClassDataType.WRCLASS:
-                if cd.data_type == ClassDataType.NOWRCLASS:
+                read_custom_data = cd.data_type == ClassDataType.WRCLASS and cd.is_super_class and not self._is_default_supported(cd.name) 
+                if read_custom_data or cd.data_type == ClassDataType.WRCLASS and instance.is_external_instance:
+                    annotations[cd] = self._read_class_annotations(cd)
+                else: 
                     for field in cd.fields:
                         values[field] = self._read_field_value(field.type)
                     all_data[cd] = values
-                else:
-                    annotations[cd] = self._read_class_annotations(cd)
+
+                    if cd.data_type == ClassDataType.WRCLASS:
+                        annotations[cd] = self._read_class_annotations(cd)
             else:
                 if cd.data_type == ClassDataType.OBJECT_ANNOTATION:
                     # Call the transformer if possible
