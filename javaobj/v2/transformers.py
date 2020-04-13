@@ -38,7 +38,6 @@ except ImportError:
 # Javaobj
 from .api import ObjectTransformer
 from .beans import JavaInstance, JavaClassDesc
-from .core import JavaStreamParser, DataStreamReader
 from ..constants import TerminalCode, TypeCode
 from ..utils import to_bytes, log_error, log_debug, read_struct, read_string
 
