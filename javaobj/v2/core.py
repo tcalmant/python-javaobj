@@ -291,16 +291,22 @@ class JavaStreamParser:
             raise ValueError("Got a block data, but not allowed here.")
 
         try:
+            # Look for a handler for that type code
             handler = self.__type_code_handlers[type_code]
         except KeyError:
-            """Looking for an external reader"""
+            # Look for an external reader
             if class_desc and class_desc.data_type == ClassDataType.WRCLASS:
+                # Return its result immediately
                 return self._custom_readObject(class_desc.name)
+
+            # No valid custom reader: abandon
             raise ValueError("Unknown type code: 0x{0:x}".format(type_code))
         else:
             try:
+                # Parse the object
                 return handler(type_code)
             except ExceptionRead as ex:
+                # We found an exception object: return it (raise later)
                 return ex.exception_object
 
     def _read_new_string(self, type_code):
@@ -422,6 +428,14 @@ class JavaStreamParser:
         raise ValueError("Expected a valid class description starter")
 
     def _custom_readObject(self, class_name):
+        # type: (str) -> ParsedJavaContent
+        """
+        Reads an object with a custom serialization process
+
+        :param class_name: Name of the class to load
+        :return: The parsed object
+        :raise ValueError: Unknown kind of class
+        """
         self.__fd.seek(-1, os.SEEK_CUR)
         for transformer in self.__transformers:
             class_data = transformer.load_custom_writeObject(
@@ -429,6 +443,7 @@ class JavaStreamParser:
             )
             if class_data:
                 return class_data
+
         raise ValueError("Custom readObject can not be processed")
 
     def _read_class_annotations(self, class_desc=None):
@@ -446,12 +461,16 @@ class JavaStreamParser:
                 # Reset references
                 self._reset()
                 continue
+
             java_object = self._read_content(type_code, True, class_desc)
 
             if java_object is not None and java_object.is_exception:
+                # Found an exception: raise it
                 raise ExceptionRead(java_object)
 
             contents.append(java_object)
+
+        raise Exception("Class annotation reading stopped before end")
 
     def _create_instance(self, class_desc):
         # type: (JavaClassDesc) -> JavaInstance
