@@ -5,7 +5,7 @@ Mimics the core API with the new deserializer
 
 from __future__ import absolute_import
 
-from typing import Any, IO, Iterable
+from typing import Any, IO
 
 try:
     # Python 2

@@ -513,13 +513,18 @@ class JavaStreamParser:
         return instance
 
     def _is_default_supported(self, class_name):
+        # type: (str) -> bool
+        """
+        Checks if this class is supported by the default object transformer
+        """
         default_transf = [
             x
             for x in self.__transformers
             if isinstance(x, DefaultObjectTransformer)
         ]
         return (
-            len(default_transf) and class_name in default_transf[0]._type_mapper
+            bool(default_transf)
+            and class_name in default_transf[0]._type_mapper
         )
 
     def _read_class_data(self, instance):
@@ -682,7 +687,9 @@ class JavaStreamParser:
 
         # Array content
         for transformer in self.__transformers:
-            content = transformer.load_array(self.__reader, field_type.type_code(), size)
+            content = transformer.load_array(
+                self.__reader, field_type.type_code(), size
+            )
             if content is not None:
                 break
         else:

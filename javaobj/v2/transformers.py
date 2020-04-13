@@ -25,7 +25,7 @@ Defines the default object transformers
 """
 
 # Standard library
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 import functools
 
 # Numpy (optional)
@@ -37,7 +37,7 @@ except ImportError:
 
 # Javaobj
 from .api import ObjectTransformer
-from .beans import JavaInstance, JavaClassDesc, FieldType, BlockData
+from .beans import JavaInstance, JavaClassDesc, BlockData
 from ..constants import TerminalCode, TypeCode
 from ..utils import to_bytes, log_error, log_debug, read_struct, read_string
 
@@ -118,6 +118,10 @@ class JavaPrimitiveClass(JavaInstance):
 
 
 class JavaBool(JavaPrimitiveClass):
+    """
+    Represents a Java Boolean object
+    """
+
     HANDLED_CLASSES = "java.lang.Boolean"
 
     def __bool__(self):
@@ -125,6 +129,9 @@ class JavaBool(JavaPrimitiveClass):
 
 
 class JavaInt(JavaPrimitiveClass):
+    """
+    Represents a Java Integer or Long object
+    """
 
     HANDLED_CLASSES = ("java.lang.Integer", "java.lang.Long")
 
@@ -137,7 +144,10 @@ class JavaMap(dict, JavaInstance):
     Python-Java dictionary/map bridge type
     """
 
-    HANDLED_CLASSES = ("java.util.HashMap", "java.util.TreeMap")  # type: Tuple[str, ...]
+    HANDLED_CLASSES = (
+        "java.util.HashMap",
+        "java.util.TreeMap",
+    )  # type: Tuple[str, ...]
 
     def __init__(self):
         dict.__init__(self)
@@ -204,7 +214,10 @@ class JavaSet(set, JavaInstance):
     Python-Java set bridge type
     """
 
-    HANDLED_CLASSES = ("java.util.HashSet", "java.util.LinkedHashSet")  # type: Tuple[str, ...]
+    HANDLED_CLASSES = (
+        "java.util.HashSet",
+        "java.util.LinkedHashSet",
+    )  # type: Tuple[str, ...]
 
     def __init__(self):
         set.__init__(self)
