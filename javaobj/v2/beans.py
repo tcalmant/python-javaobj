@@ -97,6 +97,9 @@ class FieldType(IntEnum):
     ARRAY = TypeCode.TYPE_ARRAY.value
     OBJECT = TypeCode.TYPE_OBJECT.value
 
+    def type_code(self) -> TypeCode:
+        return TypeCode(self.value)
+
 
 class ParsedJavaContent(object):
     """

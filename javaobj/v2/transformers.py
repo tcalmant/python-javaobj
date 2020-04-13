@@ -25,7 +25,7 @@ Defines the default object transformers
 """
 
 # Standard library
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 import functools
 
 # Numpy (optional)
@@ -37,7 +37,7 @@ except ImportError:
 
 # Javaobj
 from .api import ObjectTransformer
-from .beans import JavaInstance, JavaClassDesc
+from .beans import JavaInstance, JavaClassDesc, FieldType
 from ..constants import TerminalCode, TypeCode
 from ..utils import to_bytes, log_error, log_debug, read_struct, read_string
 
@@ -238,7 +238,7 @@ class JavaTreeSet(JavaSet):
         """
         # Lists have their content in there annotations
         for cd, annotations in self.annotations.items():
-            if cd.name == self.HANDLED_CLASSES:
+            if cd.name in self.HANDLED_CLASSES:
                 # Annotation[1] == size of the set
                 self.update(x for x in annotations[2:])
                 return True
@@ -254,7 +254,7 @@ class JavaTime(JavaInstance):
     parsed
     """
 
-    HANDLED_CLASSES = "java.time.Ser"
+    HANDLED_CLASSES = ("java.time.Ser",)  # type: Tuple[str, ...]
 
     DURATION_TYPE = 1
     INSTANT_TYPE = 2
@@ -322,7 +322,7 @@ class JavaTime(JavaInstance):
         """
         # Lists have their content in there annotations
         for cd, annotations in self.annotations.items():
-            if cd.name == self.HANDLED_CLASSES:
+            if cd.name in self.HANDLED_CLASSES:
                 # Convert back annotations to bytes
                 # latin-1 is used to ensure that bytes are kept as is
                 content = to_bytes(annotations[0].data, "latin1")
@@ -495,14 +495,14 @@ class NumpyArrayTransformer(ObjectTransformer):
         TypeCode.TYPE_BOOLEAN: ">B",
     }
 
-    def load_array(self, reader, field_type, size):
+    def load_array(self, reader, type_code, size):
         # type: (DataStreamReader, TypeCode, int) -> Optional[list]
         """
         Loads a Java array, if possible
         """
         if numpy is not None:
             try:
-                dtype = self.NUMPY_TYPE_MAP[field_type]
+                dtype = self.NUMPY_TYPE_MAP[type_code]
             except KeyError:
                 # Unhandled data type
                 return None

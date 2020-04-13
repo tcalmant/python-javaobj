@@ -62,7 +62,7 @@ class ObjectTransformer:
         """
         return None
 
-    def load_array(self, reader, field_type, size):
+    def load_array(self, reader, type_code, size):
         # type: (DataStreamReader, TypeCode, int) -> Optional[list]
         """
         Loads and returns the content of a Java array, if possible.
@@ -74,7 +74,7 @@ class ObjectTransformer:
         This method must return None if it can't handle the array.
 
         :param reader: The data stream reader
-        :param field_type: Type of the elements of the array
+        :param type_code: Type of the elements of the array
         :param size: Number of elements in the array
         """
         return None

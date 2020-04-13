@@ -100,7 +100,7 @@ class JavaStreamParser:
         self.__handles = {}  # type: Dict[int, ParsedJavaContent]
 
         # Initial handle value
-        self.__current_handle = StreamConstants.BASE_REFERENCE_IDX
+        self.__current_handle = StreamConstants.BASE_REFERENCE_IDX.value
 
         # Definition of the type code handlers
         # Each takes the type code as argument
@@ -663,7 +663,7 @@ class JavaStreamParser:
 
         # Array content
         for transformer in self.__transformers:
-            content = transformer.load_array(self.__reader, field_type, size)
+            content = transformer.load_array(self.__reader, field_type.type_code(), size)
             if content is not None:
                 break
         else:
