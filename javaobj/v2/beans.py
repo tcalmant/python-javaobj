@@ -254,6 +254,9 @@ class JavaClassDesc(ParsedJavaContent):
         # The super class of this one, if any
         self.super_class = None  # type: Optional[JavaClassDesc]
 
+        # Indicates if it is a super class
+        self.is_super_class = False
+
         # List of the interfaces of the class
         self.interfaces = []  # type: List[str]
 
@@ -387,6 +390,7 @@ class JavaInstance(ParsedJavaContent):
         self.annotations = (
             {}
         )  # type: Dict[JavaClassDesc, List[ParsedJavaContent]]
+        self.is_external_instance = False
 
     def __str__(self):
         return "[instance 0x{0:x}: type {1}]".format(
