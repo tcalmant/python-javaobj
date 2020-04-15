@@ -395,6 +395,9 @@ class JavaStreamParser:
             class_desc.annotations = self._read_class_annotations(class_desc)
             class_desc.super_class = self._read_classdesc()
 
+            if class_desc.super_class:
+                class_desc.super_class.is_super_class = True
+
             # Store the reference to the parsed bean
             self._set_handle(handle, class_desc)
             return class_desc
@@ -405,7 +408,8 @@ class JavaStreamParser:
             # Reference to an already loading class description
             previous = self._do_reference()
             if not isinstance(previous, JavaClassDesc):
-                raise ValueError("Referenced object is not a class description")
+                raise ValueError(
+                    "Referenced object is not a class description")
             return previous
         elif type_code == TerminalCode.TC_PROXYCLASSDESC:
             # Proxy class description
@@ -420,6 +424,9 @@ class JavaStreamParser:
             class_desc.interfaces = interfaces
             class_desc.annotations = self._read_class_annotations()
             class_desc.super_class = self._read_classdesc()
+
+            if class_desc.super_class:
+                class_desc.super_class.is_super_class = True
 
             # Store the reference to the parsed bean
             self._set_handle(handle, class_desc)
@@ -481,6 +488,9 @@ class JavaStreamParser:
         for transformer in self.__transformers:
             instance = transformer.create_instance(class_desc)
             if instance is not None:
+                if class_desc.name:
+                    instance.is_external_instance = not self._is_default_supported(
+                        class_desc.name)
                 return instance
 
         return JavaInstance()
@@ -546,14 +556,8 @@ class JavaStreamParser:
                 cd.data_type == ClassDataType.NOWRCLASS
                 or cd.data_type == ClassDataType.WRCLASS
             ):
-                read_custom_data = (
-                    cd.data_type == ClassDataType.WRCLASS
-                    and cd.is_super_class
-                    and not self._is_default_supported(cd.name)
-                )
                 if (
-                    read_custom_data
-                    or cd.data_type == ClassDataType.WRCLASS
+                    cd.data_type == ClassDataType.WRCLASS
                     and instance.is_external_instance
                 ):
                     annotations[cd] = self._read_class_annotations(cd)
