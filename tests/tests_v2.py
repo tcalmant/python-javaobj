@@ -37,6 +37,9 @@ import os
 import subprocess
 import sys
 import unittest
+import struct
+
+from io import BytesIO
 
 # Prepare Python path to import javaobj
 sys.path.insert(0, os.path.abspath(os.path.dirname(os.getcwd())))
@@ -51,6 +54,108 @@ from javaobj.utils import bytes_char
 __docformat__ = "restructuredtext en"
 
 _logger = logging.getLogger("javaobj.tests")
+
+# ------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------------------
+
+# Custom writeObject parsing classes
+class CustomWriterInstance(javaobj.beans.JavaInstance):
+    def __init__(self):
+        javaobj.beans.JavaInstance.__init__(self)
+
+    def load_from_instance(self):
+        """
+        Updates the content of this instance
+        from its parsed fields and annotations
+        :return: True on success, False on error
+        """
+        if self.classdesc and self.classdesc in self.annotations:
+            fields = ['int_not_in_fields'] + self.classdesc.fields_names
+            raw_data = self.annotations[self.classdesc]
+            int_not_in_fields = struct.unpack('>i', BytesIO(raw_data[0].data).read(4))[0]
+            custom_obj = raw_data[1]
+            values = [int_not_in_fields, custom_obj]
+            self.field_data = dict(zip(fields, values))
+            return True
+            
+        return False
+
+class RandomChildInstance(javaobj.beans.JavaInstance):
+    def load_from_instance(self):
+        """
+        Updates the content of this instance
+        from its parsed fields and annotations
+        :return: True on success, False on error
+        """
+        if self.classdesc and self.classdesc in self.field_data:
+            fields = self.classdesc.fields_names
+            values = self.field_data[self.classdesc].values()
+            self.field_data = dict(zip(fields, values))
+            if self.classdesc.super_class and self.classdesc.super_class in self.annotations:
+                super_class = self.annotations[self.classdesc.super_class][0]
+                self.annotations = dict(
+                    zip(super_class.fields_names, super_class.field_data))
+            return True
+
+        return False
+
+class BaseTransformer(javaobj.transformers.ObjectTransformer):
+    """
+    Creates a JavaInstance object with custom loading methods for the
+    classes it can handle
+    """
+    def __init__(self, handled_classes={}):
+        self.instance = None
+        self.HANDLED_CLASSES = handled_classes
+
+    def create_instance(self, classdesc):
+        """
+        Transforms a parsed Java object into a Python object
+
+        :param classdesc: The description of a Java class
+        :return: The Python form of the object, or the original JavaObject
+        """
+        if classdesc.name in self.HANDLED_CLASSES:
+            self.instance = self.HANDLED_CLASSES[classdesc.name]()
+            return self.instance
+
+        return None
+
+class RandomChildTransformer(BaseTransformer):
+    def __init__(self):
+        super().__init__({'RandomChild': RandomChildInstance})
+
+class CustomWriterTransformer(BaseTransformer):
+    def __init__(self):
+        super().__init__({'CustomWriter': CustomWriterInstance})
+
+class JavaRandomTransformer(BaseTransformer):
+    def __init__(self):
+        super().__init__()
+        self.name = "java.util.Random"
+        self.fields = {
+            'haveNextNextGaussian': javaobj.beans.FieldType.BOOLEAN,
+            'nextNextGaussian': javaobj.beans.FieldType.DOUBLE,
+            'seed': javaobj.beans.FieldType.LONG
+        }
+
+    def load_custom_writeObject(self, parser, reader, name):
+        if name == self.name:
+            fields = []
+            values = []
+            for field_name, field_type in self.fields.items():
+                values.append(parser._read_field_value(field_type))
+                fields.append(javaobj.beans.JavaField(field_type, field_name))
+
+            class_desc = javaobj.beans.JavaClassDesc(
+                javaobj.beans.ClassDescType.NORMALCLASS)
+            class_desc.name = self.name
+            class_desc.desc_flags = javaobj.beans.ClassDataType.EXTERNAL_CONTENTS
+            class_desc.fields = fields
+            class_desc.field_data = values
+            return class_desc
+        return None
 
 # ------------------------------------------------------------------------------
 
@@ -425,6 +530,39 @@ class TestJavaobjV2(unittest.TestCase):
         for key, value in pobj.items():
             self.assertEqual(parent_map[key], value)
 
+    def test_writeObject(self):
+        """
+        Tests support for custom writeObject (PR #38)
+        """
+
+        ser = self.read_file("testCustomWriteObject.ser")
+        transformers = [CustomWriterTransformer(), RandomChildTransformer(), JavaRandomTransformer()]
+        pobj = javaobj.loads(ser, *transformers)
+
+        self.assertEqual(isinstance(pobj, CustomWriterInstance), True)
+        self.assertEqual(isinstance(pobj.field_data['custom_obj'], RandomChildInstance), True)
+        
+        parent_data = pobj.field_data
+        child_data = parent_data['custom_obj'].field_data
+        super_data = parent_data['custom_obj'].annotations
+        expected = {
+            'int_not_in_fields': 0,
+            'custom_obj': {
+                'field_data': {
+                    'doub': 4.5,
+                    'num': 1
+                } ,
+                'annotations': {
+                    'haveNextNextGaussian': False,
+                    'nextNextGaussian': 0.0,
+                    'seed': 25214903879
+                }
+            }
+        }
+
+        self.assertEqual(expected['int_not_in_fields'], parent_data['int_not_in_fields'])
+        self.assertEqual(expected['custom_obj']['field_data'], child_data)
+        self.assertEqual(expected['custom_obj']['annotations'], super_data)
 
 # ------------------------------------------------------------------------------
 
