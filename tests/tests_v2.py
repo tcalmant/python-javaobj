@@ -108,9 +108,9 @@ class BaseTransformer(javaobj.transformers.ObjectTransformer):
     classes it can handle
     """
 
-    def __init__(self, handled_classes={}):
+    def __init__(self, handled_classes=None):
         self.instance = None
-        self.HANDLED_CLASSES = handled_classes
+        self.handled_classes = handled_classes or {}
 
     def create_instance(self, classdesc):
         """
@@ -119,8 +119,8 @@ class BaseTransformer(javaobj.transformers.ObjectTransformer):
         :param classdesc: The description of a Java class
         :return: The Python form of the object, or the original JavaObject
         """
-        if classdesc.name in self.HANDLED_CLASSES:
-            self.instance = self.HANDLED_CLASSES[classdesc.name]()
+        if classdesc.name in self.handled_classes:
+            self.instance = self.handled_classes[classdesc.name]()
             return self.instance
 
         return None
@@ -148,21 +148,22 @@ class JavaRandomTransformer(BaseTransformer):
         ]
 
     def load_custom_writeObject(self, parser, reader, name):
-        if name == self.name:
-            fields = []
-            values = []
-            for index, value in enumerate(self.field_types):
-                values.append(parser._read_field_value(value))
-                fields.append(javaobj.beans.JavaField(value, self.field_names[index]))
+        if name != self.name:
+            return None
 
-            class_desc = javaobj.beans.JavaClassDesc(
-                javaobj.beans.ClassDescType.NORMALCLASS)
-            class_desc.name = self.name
-            class_desc.desc_flags = javaobj.beans.ClassDataType.EXTERNAL_CONTENTS
-            class_desc.fields = fields
-            class_desc.field_data = values
-            return class_desc
-        return None
+        fields = []
+        values = []
+        for f_name, f_type in zip(self.field_names, self.field_types):
+            values.append(parser._read_field_value(f_type))
+            fields.append(javaobj.beans.JavaField(f_type, f_name))
+
+        class_desc = javaobj.beans.JavaClassDesc(
+            javaobj.beans.ClassDescType.NORMALCLASS)
+        class_desc.name = self.name
+        class_desc.desc_flags = javaobj.beans.ClassDataType.EXTERNAL_CONTENTS
+        class_desc.fields = fields
+        class_desc.field_data = values
+        return class_desc
 
 # ------------------------------------------------------------------------------
 
