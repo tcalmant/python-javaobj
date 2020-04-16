@@ -90,6 +90,15 @@ Bytes arrays
 As of version 0.2.3, bytes arrays are loaded as a ``bytes`` object instead of
 an array of integers.
 
+Custom Transformer
+------------------
+
+:Implementations: ``v2``
+:Version: ``0.4.1+``
+
+A new transformer API has been proposed to handle objects written with a custom
+Java writer.
+You can find a sample usage in the *Custom Transformer* section in this file.
 
 Features
 ========
@@ -273,3 +282,198 @@ the ``javaobj.v2.transformer`` module to see the whole implementation.
            else:
                # Return None if the class is not handled
                return None
+
+Custom Transformer
+------------------
+
+The custom transformer is called when the class is not handled by the default
+object transformer.
+
+
+The sample given here is used in the unit tests.
+
+On the Java side, we create various classes and write them as we wish:
+
+.. code-block:: java
+
+   class CustomClass implements Serializable {
+   	private static final long serialVersionUID = 1;
+
+       public void start(ObjectOutputStream out) throws Exception {
+           this.writeObject(out);
+       }
+
+       private void writeObject(ObjectOutputStream out) throws IOException {
+           CustomWriter custom = new CustomWriter(42);
+           out.writeObject(custom);
+           out.flush();
+       }
+   }
+
+   class RandomChild extends Random {
+   	private static final long serialVersionUID = 1;
+       private int num = 1;
+       private double doub = 4.5;
+
+       RandomChild(int seed) {
+           super(seed);
+       }
+   }
+
+   class CustomWriter implements Serializable {
+       protected RandomChild custom_obj = null;
+
+       CustomWriter(int seed) {
+           custom_obj = new RandomChild(seed);
+       }
+
+       private static final long serialVersionUID = 1;
+       private static final int CURRENT_SERIAL_VERSION = 0;
+       private void writeObject(ObjectOutputStream out) throws IOException {
+           out.writeInt(CURRENT_SERIAL_VERSION);
+           out.writeObject(custom_obj);
+       }
+   }
+
+An here is a sample writing of that kind of object:
+
+.. code-block:: java
+
+   ObjectOutputStream oos = new ObjectOutputStream(
+       new FileOutputStream("custom_objects.ser"));
+   CustomClass writer = new CustomClass();
+   writer.start(oos);
+   oos.flush();
+   oos.close();
+
+
+On the Python side, the first step is to define the custom transformers.
+They are children of the ``javaobj.v2.transformers.ObjectTransformer`` class.
+
+.. code-block:: python
+
+   class BaseTransformer(javaobj.v2.transformers.ObjectTransformer):
+       """
+       Creates a JavaInstance object with custom loading methods for the
+       classes it can handle
+       """
+
+       def __init__(self, handled_classes={}):
+           self.instance = None
+           self.handled_classes = handled_classes
+
+       def create_instance(self, classdesc):
+           """
+           Transforms a parsed Java object into a Python object
+
+           :param classdesc: The description of a Java class
+           :return: The Python form of the object, or the original JavaObject
+           """
+           if classdesc.name in self.handled_classes:
+               self.instance = self.handled_classes[classdesc.name]()
+               return self.instance
+
+           return None
+
+   class RandomChildTransformer(BaseTransformer):
+       def __init__(self):
+           super(RandomChildTransformer, self).__init__({'RandomChild': RandomChildInstance})
+
+   class CustomWriterTransformer(BaseTransformer):
+       def __init__(self):
+           super(CustomWriterTransformer, self).__init__({'CustomWriter': CustomWriterInstance})
+
+   class JavaRandomTransformer(BaseTransformer):
+       def __init__(self):
+           super(JavaRandomTransformer, self).__init__()
+           self.name = "java.util.Random"
+           self.field_names = ['haveNextNextGaussian', 'nextNextGaussian', 'seed']
+           self.field_types = [
+               javaobj.v2.beans.FieldType.BOOLEAN,
+               javaobj.v2.beans.FieldType.DOUBLE,
+               javaobj.v2.beans.FieldType.LONG
+           ]
+
+       def load_custom_writeObject(self, parser, reader, name):
+           if name == self.name:
+               fields = []
+               values = []
+               for index, value in enumerate(self.field_types):
+                   values.append(parser._read_field_value(value))
+                   fields.append(javaobj.v2.beans.JavaField(value, self.field_names[index]))
+
+               class_desc = javaobj.v2.beans.JavaClassDesc(
+                   javaobj.v2.beans.ClassDescType.NORMALCLASS)
+               class_desc.name = self.name
+               class_desc.desc_flags = javaobj.v2.beans.ClassDataType.EXTERNAL_CONTENTS
+               class_desc.fields = fields
+               class_desc.field_data = values
+               return class_desc
+           return None
+
+Second step is defining the representation of the instances, where the real
+object loading occurs. Those classes inherit from
+``javaobj.v2.beans.JavaInstance``.
+
+.. code-block:: python
+
+   # Custom writeObject parsing classes
+   class CustomWriterInstance(javaobj.v2.beans.JavaInstance):
+       def __init__(self):
+           javaobj.v2.beans.JavaInstance.__init__(self)
+
+       def load_from_instance(self):
+           """
+           Updates the content of this instance
+           from its parsed fields and annotations
+           :return: True on success, False on error
+           """
+           if self.classdesc and self.classdesc in self.annotations:
+               fields = ['int_not_in_fields'] + self.classdesc.fields_names
+               raw_data = self.annotations[self.classdesc]
+               int_not_in_fields = struct.unpack(
+                   '>i', BytesIO(raw_data[0].data).read(4))[0]
+               custom_obj = raw_data[1]
+               values = [int_not_in_fields, custom_obj]
+               self.field_data = dict(zip(fields, values))
+               return True
+
+           return False
+
+
+   class RandomChildInstance(javaobj.v2.beans.JavaInstance):
+       def load_from_instance(self):
+           """
+           Updates the content of this instance
+           from its parsed fields and annotations
+           :return: True on success, False on error
+           """
+           if self.classdesc and self.classdesc in self.field_data:
+               fields = self.classdesc.fields_names
+               values = [self.field_data[self.classdesc][self.classdesc.fields[i]] for i in range(len(fields))]
+               self.field_data = dict(zip(fields, values))
+               if self.classdesc.super_class and self.classdesc.super_class in self.annotations:
+                   super_class = self.annotations[self.classdesc.super_class][0]
+                   self.annotations = dict(zip(super_class.fields_names, super_class.field_data))
+               return True
+
+           return False
+
+
+Finally we can use the transformers in the loading process.
+Note that even if it is not explicitly given, the ``DefaultObjectTransformer``
+will be also be used, as it is added automatically by ``javaobj`` if it is
+missing from the given list.
+
+.. code-block:: python
+
+   # Load the object using those transformers
+   transformers = [
+       CustomWriterTransformer(),
+       RandomChildTransformer(),
+       JavaRandomTransformer()
+   ]
+   pobj = javaobj.loads("custom_objects.ser", *transformers)
+
+   # Here we show a field that doesn't belong to the class
+   print(pobj.field_data["int_not_in_fields"]
