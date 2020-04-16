@@ -69,11 +69,12 @@ class TestJavaobjV1(unittest.TestCase):
         # Compute the java directory
         java_dir = os.path.join(os.path.dirname(__file__), "java")
 
-        # Run Maven and go back to the working folder
-        cwd = os.getcwd()
-        os.chdir(java_dir)
-        subprocess.call("mvn test", shell=True)
-        os.chdir(cwd)
+        if not os.getenv("JAVAOBJ_NO_MAVEN"):
+            # Run Maven and go back to the working folder
+            cwd = os.getcwd()
+            os.chdir(java_dir)
+            subprocess.call("mvn test", shell=True)
+            os.chdir(cwd)
 
     def read_file(self, filename, stream=False):
         """
