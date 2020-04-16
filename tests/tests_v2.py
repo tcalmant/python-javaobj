@@ -61,6 +61,11 @@ _logger = logging.getLogger("javaobj.tests")
 
 # Custom writeObject parsing classes
 
+def assign_dict(fields, values):
+    ret = dict()
+    for i, v in enumerate(fields):
+        ret[v] = values[i]
+    return ret
 
 class CustomWriterInstance(javaobj.beans.JavaInstance):
     def __init__(self):
@@ -79,7 +84,7 @@ class CustomWriterInstance(javaobj.beans.JavaInstance):
                 '>i', BytesIO(raw_data[0].data).read(4))[0]
             custom_obj = raw_data[1]
             values = [int_not_in_fields, custom_obj]
-            self.field_data = dict(zip(fields, values))
+            self.field_data = assign_dict(fields, values)
             return True
 
         return False
@@ -95,11 +100,10 @@ class RandomChildInstance(javaobj.beans.JavaInstance):
         if self.classdesc and self.classdesc in self.field_data:
             fields = self.classdesc.fields_names
             values = self.field_data[self.classdesc].values()
-            self.field_data = dict(zip(fields, values))
+            self.field_data = assign_dict(fields, list(values))
             if self.classdesc.super_class and self.classdesc.super_class in self.annotations:
                 super_class = self.annotations[self.classdesc.super_class][0]
-                self.annotations = dict(
-                    zip(super_class.fields_names, super_class.field_data))
+                self.annotations = assign_dict(super_class.fields_names, super_class.field_data)
             return True
 
         return False
@@ -131,17 +135,17 @@ class BaseTransformer(javaobj.transformers.ObjectTransformer):
 
 class RandomChildTransformer(BaseTransformer):
     def __init__(self):
-        super().__init__({'RandomChild': RandomChildInstance})
+        super(RandomChildTransformer, self).__init__({'RandomChild': RandomChildInstance})
 
 
 class CustomWriterTransformer(BaseTransformer):
     def __init__(self):
-        super().__init__({'CustomWriter': CustomWriterInstance})
+        super(CustomWriterTransformer, self).__init__({'CustomWriter': CustomWriterInstance})
 
 
 class JavaRandomTransformer(BaseTransformer):
     def __init__(self):
-        super().__init__()
+        super(JavaRandomTransformer, self).__init__()
         self.name = "java.util.Random"
         self.fields = {
             'haveNextNextGaussian': javaobj.beans.FieldType.BOOLEAN,
