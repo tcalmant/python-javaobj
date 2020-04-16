@@ -39,6 +39,7 @@ import sys
 import unittest
 import struct
 
+from collections import OrderedDict
 from io import BytesIO
 
 # Prepare Python path to import javaobj
@@ -76,7 +77,7 @@ class CustomWriterInstance(javaobj.beans.JavaInstance):
             int_not_in_fields = struct.unpack('>i', BytesIO(raw_data[0].data).read(4))[0]
             custom_obj = raw_data[1]
             values = [int_not_in_fields, custom_obj]
-            self.field_data = dict(zip(fields, values))
+            self.field_data = OrderedDict(zip(fields, values))
             return True
             
         return False
@@ -91,10 +92,10 @@ class RandomChildInstance(javaobj.beans.JavaInstance):
         if self.classdesc and self.classdesc in self.field_data:
             fields = self.classdesc.fields_names
             values = self.field_data[self.classdesc].values()
-            self.field_data = dict(zip(fields, values))
+            self.field_data = OrderedDict(zip(fields, values))
             if self.classdesc.super_class and self.classdesc.super_class in self.annotations:
                 super_class = self.annotations[self.classdesc.super_class][0]
-                self.annotations = dict(
+                self.annotations = OrderedDict(
                     zip(super_class.fields_names, super_class.field_data))
             return True
 
@@ -545,7 +546,7 @@ class TestJavaobjV2(unittest.TestCase):
         parent_data = pobj.field_data
         child_data = parent_data['custom_obj'].field_data
         super_data = parent_data['custom_obj'].annotations
-        expected = {
+        expected = OrderedDict({
             'int_not_in_fields': 0,
             'custom_obj': {
                 'field_data': {
@@ -558,7 +559,7 @@ class TestJavaobjV2(unittest.TestCase):
                     'seed': 25214903879
                 }
             }
-        }
+        })
 
         self.assertEqual(expected['int_not_in_fields'], parent_data['int_not_in_fields'])
         self.assertEqual(expected['custom_obj']['field_data'], child_data)
