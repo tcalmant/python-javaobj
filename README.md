@@ -389,7 +389,7 @@ class JavaRandomTransformer(BaseTransformer):
         self.field_types = [
             javaobj.v2.beans.FieldType.BOOLEAN,
             javaobj.v2.beans.FieldType.DOUBLE,
-            javaobj.v2.beans.FieldType.LONG
+            javaobj.v2.beans.FieldType.LONG,
         ]
 
     def load_custom_writeObject(self, parser, reader, name):
@@ -403,7 +403,8 @@ class JavaRandomTransformer(BaseTransformer):
             fields.append(javaobj.beans.JavaField(f_type, f_name))
 
         class_desc = javaobj.beans.JavaClassDesc(
-            javaobj.beans.ClassDescType.NORMALCLASS)
+            javaobj.beans.ClassDescType.NORMALCLASS
+        )
         class_desc.name = self.name
         class_desc.desc_flags = javaobj.beans.ClassDataType.EXTERNAL_CONTENTS
         class_desc.fields = fields
@@ -432,7 +433,8 @@ class CustomWriterInstance(javaobj.v2.beans.JavaInstance):
             fields = ["int_not_in_fields"] + self.classdesc.fields_names
             raw_data = self.annotations[self.classdesc]
             int_not_in_fields = struct.unpack(
-                ">i", BytesIO(raw_data[0].data).read(4))[0]
+                ">i", BytesIO(raw_data[0].data).read(4)
+            )[0]
             custom_obj = raw_data[1]
             values = [int_not_in_fields, custom_obj]
             self.field_data = dict(zip(fields, values))
@@ -455,9 +457,14 @@ class RandomChildInstance(javaobj.v2.beans.JavaInstance):
                 for i in range(len(fields))
             ]
             self.field_data = dict(zip(fields, values))
-            if self.classdesc.super_class and self.classdesc.super_class in self.annotations:
+            if (
+                self.classdesc.super_class
+                and self.classdesc.super_class in self.annotations
+            ):
                 super_class = self.annotations[self.classdesc.super_class][0]
-                self.annotations = dict(zip(super_class.fields_names, super_class.field_data))
+                self.annotations = dict(
+                    zip(super_class.fields_names, super_class.field_data)
+                )
             return True
 
         return False

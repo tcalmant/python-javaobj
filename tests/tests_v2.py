@@ -71,10 +71,11 @@ class CustomWriterInstance(javaobj.beans.JavaInstance):
         :return: True on success, False on error
         """
         if self.classdesc and self.classdesc in self.annotations:
-            fields = ['int_not_in_fields'] + self.classdesc.fields_names
+            fields = ["int_not_in_fields"] + self.classdesc.fields_names
             raw_data = self.annotations[self.classdesc]
             int_not_in_fields = struct.unpack(
-                '>i', BytesIO(raw_data[0].data).read(4))[0]
+                ">i", BytesIO(raw_data[0].data).read(4)
+            )[0]
             custom_obj = raw_data[1]
             values = [int_not_in_fields, custom_obj]
             self.field_data = dict(zip(fields, values))
@@ -92,11 +93,19 @@ class RandomChildInstance(javaobj.beans.JavaInstance):
         """
         if self.classdesc and self.classdesc in self.field_data:
             fields = self.classdesc.fields_names
-            values = [self.field_data[self.classdesc][self.classdesc.fields[i]] for i in range(len(fields))]
+            values = [
+                self.field_data[self.classdesc][self.classdesc.fields[i]]
+                for i in range(len(fields))
+            ]
             self.field_data = dict(zip(fields, values))
-            if self.classdesc.super_class and self.classdesc.super_class in self.annotations:
+            if (
+                self.classdesc.super_class
+                and self.classdesc.super_class in self.annotations
+            ):
                 super_class = self.annotations[self.classdesc.super_class][0]
-                self.annotations = dict(zip(super_class.fields_names, super_class.field_data))
+                self.annotations = dict(
+                    zip(super_class.fields_names, super_class.field_data)
+                )
             return True
 
         return False
@@ -128,23 +137,27 @@ class BaseTransformer(javaobj.transformers.ObjectTransformer):
 
 class RandomChildTransformer(BaseTransformer):
     def __init__(self):
-        super(RandomChildTransformer, self).__init__({'RandomChild': RandomChildInstance})
+        super(RandomChildTransformer, self).__init__(
+            {"RandomChild": RandomChildInstance}
+        )
 
 
 class CustomWriterTransformer(BaseTransformer):
     def __init__(self):
-        super(CustomWriterTransformer, self).__init__({'CustomWriter': CustomWriterInstance})
+        super(CustomWriterTransformer, self).__init__(
+            {"CustomWriter": CustomWriterInstance}
+        )
 
 
 class JavaRandomTransformer(BaseTransformer):
     def __init__(self):
         super(JavaRandomTransformer, self).__init__()
         self.name = "java.util.Random"
-        self.field_names = ['haveNextNextGaussian', 'nextNextGaussian', 'seed']
+        self.field_names = ["haveNextNextGaussian", "nextNextGaussian", "seed"]
         self.field_types = [
             javaobj.beans.FieldType.BOOLEAN,
             javaobj.beans.FieldType.DOUBLE,
-            javaobj.beans.FieldType.LONG
+            javaobj.beans.FieldType.LONG,
         ]
 
     def load_custom_writeObject(self, parser, reader, name):
@@ -158,12 +171,14 @@ class JavaRandomTransformer(BaseTransformer):
             fields.append(javaobj.beans.JavaField(f_type, f_name))
 
         class_desc = javaobj.beans.JavaClassDesc(
-            javaobj.beans.ClassDescType.NORMALCLASS)
+            javaobj.beans.ClassDescType.NORMALCLASS
+        )
         class_desc.name = self.name
         class_desc.desc_flags = javaobj.beans.ClassDataType.EXTERNAL_CONTENTS
         class_desc.fields = fields
         class_desc.field_data = values
         return class_desc
+
 
 # ------------------------------------------------------------------------------
 
@@ -545,35 +560,39 @@ class TestJavaobjV2(unittest.TestCase):
         """
 
         ser = self.read_file("testCustomWriteObject.ser")
-        transformers = [CustomWriterTransformer(
-        ), RandomChildTransformer(), JavaRandomTransformer()]
+        transformers = [
+            CustomWriterTransformer(),
+            RandomChildTransformer(),
+            JavaRandomTransformer(),
+        ]
         pobj = javaobj.loads(ser, *transformers)
 
         self.assertEqual(isinstance(pobj, CustomWriterInstance), True)
-        self.assertEqual(isinstance(
-            pobj.field_data['custom_obj'], RandomChildInstance), True)
+        self.assertEqual(
+            isinstance(pobj.field_data["custom_obj"], RandomChildInstance), True
+        )
 
         parent_data = pobj.field_data
-        child_data = parent_data['custom_obj'].field_data
-        super_data = parent_data['custom_obj'].annotations
+        child_data = parent_data["custom_obj"].field_data
+        super_data = parent_data["custom_obj"].annotations
         expected = {
-            'int_not_in_fields': 0,
-            'custom_obj': {
-                'field_data': {
-                    'doub': 4.5,
-                    'num': 1
+            "int_not_in_fields": 0,
+            "custom_obj": {
+                "field_data": {"doub": 4.5, "num": 1},
+                "annotations": {
+                    "haveNextNextGaussian": False,
+                    "nextNextGaussian": 0.0,
+                    "seed": 25214903879,
                 },
-                'annotations': {
-                    'haveNextNextGaussian': False,
-                    'nextNextGaussian': 0.0,
-                    'seed': 25214903879
-                }
-            }
+            },
         }
 
-        self.assertEqual(expected['int_not_in_fields'], parent_data['int_not_in_fields'])
-        self.assertEqual(expected['custom_obj']['field_data'], child_data)
-        self.assertEqual(expected['custom_obj']['annotations'], super_data)
+        self.assertEqual(
+            expected["int_not_in_fields"], parent_data["int_not_in_fields"]
+        )
+        self.assertEqual(expected["custom_obj"]["field_data"], child_data)
+        self.assertEqual(expected["custom_obj"]["annotations"], super_data)
+
 
 # ------------------------------------------------------------------------------
 
