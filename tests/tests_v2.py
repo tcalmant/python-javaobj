@@ -92,7 +92,7 @@ class RandomChildInstance(javaobj.beans.JavaInstance):
         """
         if self.classdesc and self.classdesc in self.field_data:
             fields = self.classdesc.fields_names
-            values = self.field_data[self.classdesc].values()
+            values = [self.field_data[self.classdesc][self.classdesc.fields[i]] for i in range(len(fields))]
             self.field_data = dict(zip(fields, values))
             if self.classdesc.super_class and self.classdesc.super_class in self.annotations:
                 super_class = self.annotations[self.classdesc.super_class][0]
