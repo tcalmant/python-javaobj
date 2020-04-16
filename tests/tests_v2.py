@@ -32,6 +32,8 @@ http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.ht
 from __future__ import print_function
 
 # Standard library
+from javaobj.utils import bytes_char
+import javaobj.v2 as javaobj
 import logging
 import os
 import subprocess
@@ -39,15 +41,12 @@ import sys
 import unittest
 import struct
 
-from collections import OrderedDict
 from io import BytesIO
 
 # Prepare Python path to import javaobj
 sys.path.insert(0, os.path.abspath(os.path.dirname(os.getcwd())))
 
 # Local
-import javaobj.v2 as javaobj
-from javaobj.utils import bytes_char
 
 # ------------------------------------------------------------------------------
 
@@ -61,6 +60,8 @@ _logger = logging.getLogger("javaobj.tests")
 # ------------------------------------------------------------------------------
 
 # Custom writeObject parsing classes
+
+
 class CustomWriterInstance(javaobj.beans.JavaInstance):
     def __init__(self):
         javaobj.beans.JavaInstance.__init__(self)
@@ -74,13 +75,15 @@ class CustomWriterInstance(javaobj.beans.JavaInstance):
         if self.classdesc and self.classdesc in self.annotations:
             fields = ['int_not_in_fields'] + self.classdesc.fields_names
             raw_data = self.annotations[self.classdesc]
-            int_not_in_fields = struct.unpack('>i', BytesIO(raw_data[0].data).read(4))[0]
+            int_not_in_fields = struct.unpack(
+                '>i', BytesIO(raw_data[0].data).read(4))[0]
             custom_obj = raw_data[1]
             values = [int_not_in_fields, custom_obj]
-            self.field_data = OrderedDict(zip(fields, values))
+            self.field_data = dict(zip(fields, values))
             return True
-            
+
         return False
+
 
 class RandomChildInstance(javaobj.beans.JavaInstance):
     def load_from_instance(self):
@@ -92,20 +95,22 @@ class RandomChildInstance(javaobj.beans.JavaInstance):
         if self.classdesc and self.classdesc in self.field_data:
             fields = self.classdesc.fields_names
             values = self.field_data[self.classdesc].values()
-            self.field_data = OrderedDict(zip(fields, values))
+            self.field_data = dict(zip(fields, values))
             if self.classdesc.super_class and self.classdesc.super_class in self.annotations:
                 super_class = self.annotations[self.classdesc.super_class][0]
-                self.annotations = OrderedDict(
+                self.annotations = dict(
                     zip(super_class.fields_names, super_class.field_data))
             return True
 
         return False
+
 
 class BaseTransformer(javaobj.transformers.ObjectTransformer):
     """
     Creates a JavaInstance object with custom loading methods for the
     classes it can handle
     """
+
     def __init__(self, handled_classes={}):
         self.instance = None
         self.HANDLED_CLASSES = handled_classes
@@ -123,13 +128,16 @@ class BaseTransformer(javaobj.transformers.ObjectTransformer):
 
         return None
 
+
 class RandomChildTransformer(BaseTransformer):
     def __init__(self):
         super().__init__({'RandomChild': RandomChildInstance})
 
+
 class CustomWriterTransformer(BaseTransformer):
     def __init__(self):
         super().__init__({'CustomWriter': CustomWriterInstance})
+
 
 class JavaRandomTransformer(BaseTransformer):
     def __init__(self):
@@ -537,33 +545,44 @@ class TestJavaobjV2(unittest.TestCase):
         """
 
         ser = self.read_file("testCustomWriteObject.ser")
-        transformers = [CustomWriterTransformer(), RandomChildTransformer(), JavaRandomTransformer()]
+        transformers = [CustomWriterTransformer(
+        ), RandomChildTransformer(), JavaRandomTransformer()]
         pobj = javaobj.loads(ser, *transformers)
 
         self.assertEqual(isinstance(pobj, CustomWriterInstance), True)
-        self.assertEqual(isinstance(pobj.field_data['custom_obj'], RandomChildInstance), True)
-        
+        self.assertEqual(isinstance(
+            pobj.field_data['custom_obj'], RandomChildInstance), True)
+
         parent_data = pobj.field_data
         child_data = parent_data['custom_obj'].field_data
         super_data = parent_data['custom_obj'].annotations
-        expected = OrderedDict({
+        expected = {
             'int_not_in_fields': 0,
             'custom_obj': {
                 'field_data': {
                     'doub': 4.5,
                     'num': 1
-                } ,
+                },
                 'annotations': {
                     'haveNextNextGaussian': False,
                     'nextNextGaussian': 0.0,
                     'seed': 25214903879
                 }
             }
-        })
+        }
 
-        self.assertEqual(expected['int_not_in_fields'], parent_data['int_not_in_fields'])
-        self.assertEqual(expected['custom_obj']['field_data'], child_data)
-        self.assertEqual(expected['custom_obj']['annotations'], super_data)
+        self.assertEqual(expected['int_not_in_fields'],
+                         parent_data['int_not_in_fields'])
+        self.assertEqual(expected['custom_obj']
+                         ['field_data']['doub'], child_data['doub'])
+        self.assertEqual(expected['custom_obj']
+                         ['field_data']['num'], child_data['num'])
+        self.assertEqual(expected['custom_obj']['annotations']
+                         ['haveNextNextGaussian'], super_data['haveNextNextGaussian'])
+        self.assertEqual(expected['custom_obj']['annotations']
+                         ['nextNextGaussian'], super_data['nextNextGaussian'])
+        self.assertEqual(expected['custom_obj']
+                         ['annotations']['seed'], super_data['seed'])
 
 # ------------------------------------------------------------------------------
 
