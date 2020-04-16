@@ -110,7 +110,7 @@ class JavaObject(object):
         """
         Sets up members
         """
-        self.classdesc = None
+        self.classdesc = None  # type: JavaClass
         self.annotations = []
 
     def get_class(self):

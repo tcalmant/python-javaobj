@@ -27,9 +27,10 @@ Implementation of the object transformers in v1 parser
 
 from __future__ import absolute_import
 
+from typing import Callable, Dict
 import functools
 
-from .beans import JavaObject
+from .beans import JavaClass, JavaObject
 from .unmarshaller import JavaObjectUnmarshaller
 from ..constants import ClassDescFlags, TerminalCode, TypeCode
 from ..utils import (
@@ -368,10 +369,10 @@ class DefaultObjectTransformer(object):
         "java.lang.Boolean": JavaBool,
         "java.lang.Integer": JavaInt,
         "java.lang.Long": JavaInt,
-    }
+    }  # type: Dict[str, Callable[[JavaObjectUnmarshaller], JavaObject]]
 
-    def create(self, classdesc, unmarshaller=None):
-        # type: (JavaClassDesc, JavaObjectUnmarshaller) -> JavaObject
+    def create(self, classdesc, unmarshaller):
+        # type: (JavaClass, JavaObjectUnmarshaller) -> JavaObject
         """
         Transforms a deserialized Java object into a Python object
 
