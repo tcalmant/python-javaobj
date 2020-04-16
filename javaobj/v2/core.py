@@ -295,7 +295,11 @@ class JavaStreamParser:
             handler = self.__type_code_handlers[type_code]
         except KeyError:
             # Look for an external reader
-            if class_desc and class_desc.data_type == ClassDataType.WRCLASS:
+            if (
+                class_desc
+                and class_desc.name
+                and class_desc.data_type == ClassDataType.WRCLASS
+            ):
                 # Return its result immediately
                 return self._custom_readObject(class_desc.name)
 
@@ -408,8 +412,7 @@ class JavaStreamParser:
             # Reference to an already loading class description
             previous = self._do_reference()
             if not isinstance(previous, JavaClassDesc):
-                raise ValueError(
-                    "Referenced object is not a class description")
+                raise ValueError("Referenced object is not a class description")
             return previous
         elif type_code == TerminalCode.TC_PROXYCLASSDESC:
             # Proxy class description
@@ -490,7 +493,8 @@ class JavaStreamParser:
             if instance is not None:
                 if class_desc.name:
                     instance.is_external_instance = not self._is_default_supported(
-                        class_desc.name)
+                        class_desc.name
+                    )
                 return instance
 
         return JavaInstance()
