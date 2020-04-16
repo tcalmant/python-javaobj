@@ -80,7 +80,7 @@ class ObjectTransformer(object):
         return None
 
     def load_custom_writeObject(self, parser, reader, name):
-        # type: (JavaStreamParser, DataStreamReader, str) -> Optional[list]
+        # type: (JavaStreamParser, DataStreamReader, str) -> Optional[JavaClassDesc]
         """
         Reads content stored from a custom writeObject.
 
@@ -92,6 +92,6 @@ class ObjectTransformer(object):
         :param parser: The JavaStreamParser in use
         :param reader: The data stream reader
         :param name: The class description name
-        :return: An array with the parsed fields or None
+        :return: A Java class description, if handled, else None
         """
         return None
