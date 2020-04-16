@@ -76,7 +76,8 @@ setup(
         'enum34;python_version<="3.4"',
         'typing;python_version<="3.4"',
     ],
-    long_description=read("README.rst"),
+    long_description=read("README.md"),
+    long_description_content_type="text/markdown",
     classifiers=[
         "Development Status :: 3 - Alpha",
         "License :: OSI Approved :: Apache Software License",

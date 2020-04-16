@@ -1,5 +1,5 @@
 # Include the README
-include README.rst
+include README.md
 
 # Include the authors file
 include AUTHORS
