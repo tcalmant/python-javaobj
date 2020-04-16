@@ -44,7 +44,7 @@ __docformat__ = "restructuredtext en"
 # ------------------------------------------------------------------------------
 
 
-class ObjectTransformer:
+class ObjectTransformer(object):
     """
     Representation of an object transformer
     """

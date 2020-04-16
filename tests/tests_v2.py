@@ -102,7 +102,6 @@ class RandomChildInstance(javaobj.beans.JavaInstance):
         return False
 
 
-__metaclass__ = type
 class BaseTransformer(javaobj.transformers.ObjectTransformer):
     """
     Creates a JavaInstance object with custom loading methods for the
