@@ -468,15 +468,15 @@ Note that even if it is not explicitly given, the `DefaultObjectTransformer`
 will be also be used, as it is added automatically by `javaobj` if it is
 missing from the given list.
 
-.. code-block:: python
+```python
+# Load the object using those transformers
+transformers = [
+    CustomWriterTransformer(),
+    RandomChildTransformer(),
+    JavaRandomTransformer()
+]
+pobj = javaobj.loads("custom_objects.ser", *transformers)
 
-   # Load the object using those transformers
-   transformers = [
-       CustomWriterTransformer(),
-       RandomChildTransformer(),
-       JavaRandomTransformer()
-   ]
-   pobj = javaobj.loads("custom_objects.ser", *transformers)
-
-   # Here we show a field that doesn't belong to the class
-   print(pobj.field_data["int_not_in_fields"]
+# Here we show a field that doesn't belong to the class
+print(pobj.field_data["int_not_in_fields"]
+```
