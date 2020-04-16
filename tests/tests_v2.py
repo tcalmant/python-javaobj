@@ -60,13 +60,6 @@ _logger = logging.getLogger("javaobj.tests")
 # ------------------------------------------------------------------------------
 
 # Custom writeObject parsing classes
-
-def assign_dict(fields, values):
-    ret = dict()
-    for i, v in enumerate(fields):
-        ret[v] = values[i]
-    return ret
-
 class CustomWriterInstance(javaobj.beans.JavaInstance):
     def __init__(self):
         javaobj.beans.JavaInstance.__init__(self)
@@ -84,7 +77,7 @@ class CustomWriterInstance(javaobj.beans.JavaInstance):
                 '>i', BytesIO(raw_data[0].data).read(4))[0]
             custom_obj = raw_data[1]
             values = [int_not_in_fields, custom_obj]
-            self.field_data = assign_dict(fields, values)
+            self.field_data = dict(zip(fields, values))
             return True
 
         return False
@@ -100,15 +93,16 @@ class RandomChildInstance(javaobj.beans.JavaInstance):
         if self.classdesc and self.classdesc in self.field_data:
             fields = self.classdesc.fields_names
             values = self.field_data[self.classdesc].values()
-            self.field_data = assign_dict(fields, list(values))
+            self.field_data = dict(zip(fields, values))
             if self.classdesc.super_class and self.classdesc.super_class in self.annotations:
                 super_class = self.annotations[self.classdesc.super_class][0]
-                self.annotations = assign_dict(super_class.fields_names, super_class.field_data)
+                self.annotations = dict(zip(super_class.fields_names, super_class.field_data))
             return True
 
         return False
 
 
+__metaclass__ = type
 class BaseTransformer(javaobj.transformers.ObjectTransformer):
     """
     Creates a JavaInstance object with custom loading methods for the
@@ -147,19 +141,20 @@ class JavaRandomTransformer(BaseTransformer):
     def __init__(self):
         super(JavaRandomTransformer, self).__init__()
         self.name = "java.util.Random"
-        self.fields = {
-            'haveNextNextGaussian': javaobj.beans.FieldType.BOOLEAN,
-            'nextNextGaussian': javaobj.beans.FieldType.DOUBLE,
-            'seed': javaobj.beans.FieldType.LONG
-        }
+        self.field_names = ['haveNextNextGaussian', 'nextNextGaussian', 'seed']
+        self.field_types = [
+            javaobj.beans.FieldType.BOOLEAN, 
+            javaobj.beans.FieldType.DOUBLE,
+            javaobj.beans.FieldType.LONG
+        ]
 
     def load_custom_writeObject(self, parser, reader, name):
         if name == self.name:
             fields = []
             values = []
-            for field_name, field_type in self.fields.items():
-                values.append(parser._read_field_value(field_type))
-                fields.append(javaobj.beans.JavaField(field_type, field_name))
+            for index, value in enumerate(self.field_types):
+                values.append(parser._read_field_value(value))
+                fields.append(javaobj.beans.JavaField(value, self.field_names[index]))
 
             class_desc = javaobj.beans.JavaClassDesc(
                 javaobj.beans.ClassDescType.NORMALCLASS)
@@ -575,18 +570,9 @@ class TestJavaobjV2(unittest.TestCase):
             }
         }
 
-        self.assertEqual(expected['int_not_in_fields'],
-                         parent_data['int_not_in_fields'])
-        self.assertEqual(expected['custom_obj']
-                         ['field_data']['doub'], child_data['doub'])
-        self.assertEqual(expected['custom_obj']
-                         ['field_data']['num'], child_data['num'])
-        self.assertEqual(expected['custom_obj']['annotations']
-                         ['haveNextNextGaussian'], super_data['haveNextNextGaussian'])
-        self.assertEqual(expected['custom_obj']['annotations']
-                         ['nextNextGaussian'], super_data['nextNextGaussian'])
-        self.assertEqual(expected['custom_obj']
-                         ['annotations']['seed'], super_data['seed'])
+        self.assertEqual(expected['int_not_in_fields'], parent_data['int_not_in_fields'])
+        self.assertEqual(expected['custom_obj']['field_data'], child_data)
+        self.assertEqual(expected['custom_obj']['annotations'], super_data)
 
 # ------------------------------------------------------------------------------
 
