@@ -484,6 +484,8 @@ transformers = [
 ]
 pobj = javaobj.loads("custom_objects.ser", *transformers)
 
-# Here we show a field that doesn't belong to the class
-print(pobj.field_data["int_not_in_fields"]
+# Here we show a field that isn't visible from the class description
+# The field belongs to the class but it's not serialized by default because
+# it's static. See: https://stackoverflow.com/a/16477421/12621168
+print(pobj.field_data["int_not_in_fields"])
 ```
