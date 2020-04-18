@@ -329,7 +329,7 @@ class JavaObjectUnmarshaller:
                     expect=(TerminalCode.TC_STRING, TerminalCode.TC_REFERENCE),
                 )
 
-                if type(field_type) is not JavaString:
+                if type(field_type) is not JavaString:  # pylint:disable=C0123
                     raise AssertionError(
                         "Field type must be a JavaString, "
                         "not {0}".format(type(field_type))
@@ -345,7 +345,7 @@ class JavaObjectUnmarshaller:
                     # FIXME: ugly trick
                     field_type = JavaString(field_type.name)
 
-                if type(field_type) is not JavaString:
+                if type(field_type) is not JavaString:  # pylint:disable=C0123
                     raise AssertionError(
                         "Field type must be a JavaString, "
                         "not {0}".format(type(field_type))
@@ -367,8 +367,8 @@ class JavaObjectUnmarshaller:
             clazz.fields_types.append(field_type)
 
         if parent:
-            parent.__fields = clazz.fields_names
-            parent.__types = clazz.fields_types
+            parent.__fields = clazz.fields_names  # pylint:disable=W0212
+            parent.__types = clazz.fields_types  # pylint:disable=W0212
 
         # classAnnotation
         (opid,) = self._readStruct(">B")
@@ -714,7 +714,10 @@ class JavaObjectUnmarshaller:
         )
         enum.classdesc = classdesc
         self._add_reference(enum, ident)
-        _, enumConstantName = self._read_and_exec_opcode(
+        (
+            _,
+            enumConstantName,
+        ) = self._read_and_exec_opcode(  # pylint:disable=C0103
             ident=ident + 1,
             expect=(TerminalCode.TC_STRING, TerminalCode.TC_REFERENCE),
         )

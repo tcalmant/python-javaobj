@@ -45,7 +45,7 @@ from ..utils import (
 __all__ = ("DefaultObjectTransformer",)
 
 
-class DefaultObjectTransformer(object):
+class DefaultObjectTransformer(object):  # pylint:disable=R0205
     """
     Default transformer for the deserialized objects.
     Converts JavaObject objects to Python types (maps, lists, ...)

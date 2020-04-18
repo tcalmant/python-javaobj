@@ -26,11 +26,11 @@ Utility module to handle streams like in Java
 
 from __future__ import absolute_import
 
-from typing import Any, IO, Tuple
+from typing import Any, IO, Tuple  # pylint:disable=W0611
 import struct
 
 from ..modifiedutf8 import decode_modified_utf8
-from ..utils import unicode_char, UNICODE_TYPE
+from ..utils import unicode_char, UNICODE_TYPE  # pylint:disable=W0611
 
 # ------------------------------------------------------------------------------
 
@@ -151,7 +151,7 @@ class DataStreamReader:
         """
         return self.read(">d")[0]
 
-    def read_UTF(self):
+    def read_UTF(self):  # pylint:disable=C0103
         # type: () -> str
         """
         Reads a Java string

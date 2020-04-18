@@ -30,7 +30,7 @@ Namely: logging methods, bytes/str/unicode converters
 from __future__ import absolute_import
 
 # Standard library
-from typing import Any, Tuple  # noqa: F401
+from typing import Tuple  # noqa: F401
 import logging
 import struct
 import sys
@@ -117,7 +117,7 @@ def hexdump(src, start_offset=0, length=16):
     :param length: Length of a dump line
     :return: A dump string
     """
-    FILTER = "".join(
+    hex_filter = "".join(
         (len(repr(chr(x))) == 3) and chr(x) or "." for x in range(256)
     )
     pattern = "{{0:04X}}   {{1:<{0}}}  {{2}}\n".format(length * 3)
@@ -129,7 +129,7 @@ def hexdump(src, start_offset=0, length=16):
     for i in range(0, len(src), length):
         s = src[i : i + length]
         hexa = " ".join("{0:02X}".format(ord(x)) for x in s)
-        printable = s.translate(FILTER)
+        printable = s.translate(hex_filter)
         result.append(pattern.format(i + start_offset, hexa, printable))
 
     return "".join(result)
@@ -139,11 +139,14 @@ def hexdump(src, start_offset=0, length=16):
 
 
 if sys.version_info[0] >= 3:
-    BYTES_TYPE = bytes
-    UNICODE_TYPE = str
-    unicode_char = chr
+    BYTES_TYPE = bytes  # pylint:disable=C0103
+    UNICODE_TYPE = str  # pylint:disable=C0103
+    unicode_char = chr  # pylint:disable=C0103
 
     def bytes_char(c):
+        """
+        Converts the given character to a bytes string
+        """
         return bytes((c,))
 
     # Python 3 interpreter : bytes & str
@@ -156,7 +159,7 @@ if sys.version_info[0] >= 3:
         :param encoding: The encoding of data
         :return: The corresponding array of bytes
         """
-        if type(data) is bytes:
+        if type(data) is bytes:  # pylint:disable=C0123
             # Nothing to do
             return data
         return data.encode(encoding)
@@ -170,7 +173,7 @@ if sys.version_info[0] >= 3:
         :param encoding: The encoding of data
         :return: The corresponding string
         """
-        if type(data) is str:
+        if type(data) is str:  # pylint:disable=C0123
             # Nothing to do
             return data
         try:
@@ -179,7 +182,7 @@ if sys.version_info[0] >= 3:
             return decode_modified_utf8(data)[0]
 
     # Same operation
-    to_unicode = to_str
+    to_unicode = to_str  # pylint:disable=C0103
 
     def read_to_str(data):
         """
@@ -189,10 +192,14 @@ if sys.version_info[0] >= 3:
 
 
 else:
-    BYTES_TYPE = str
-    UNICODE_TYPE = unicode  # pylint:disable=undefined-variable  # noqa: F821
-    unicode_char = unichr  # pylint:disable=undefined-variable  # noqa: F821
-    bytes_char = chr
+    BYTES_TYPE = str  # pylint:disable=C0103
+    UNICODE_TYPE = (
+        unicode  # pylint:disable=C0103,undefined-variable  # noqa: F821
+    )
+    unicode_char = (
+        unichr  # pylint:disable=C0103,undefined-variable  # noqa: F821
+    )
+    bytes_char = chr  # pylint:disable=C0103
 
     # Python 2 interpreter : str & unicode
     def to_str(data, encoding="UTF-8"):
@@ -204,13 +211,13 @@ else:
         :param encoding: The encoding of data
         :return: The corresponding string
         """
-        if type(data) is str:
+        if type(data) is str:  # pylint:disable=C0123
             # Nothing to do
             return data
         return data.encode(encoding)
 
     # Same operation
-    to_bytes = to_str
+    to_bytes = to_str  # pylint:disable=C0103
 
     # Python 2 interpreter : str & unicode
     def to_unicode(data, encoding="UTF-8"):
@@ -222,7 +229,7 @@ else:
         :param encoding: The encoding of data
         :return: The corresponding string
         """
-        if type(data) is UNICODE_TYPE:
+        if type(data) is UNICODE_TYPE:  # pylint:disable=C0123
             # Nothing to do
             return data
         try:

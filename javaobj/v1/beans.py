@@ -53,7 +53,7 @@ __docformat__ = "restructuredtext en"
 # ------------------------------------------------------------------------------
 
 
-class JavaClass(object):
+class JavaClass(object):  # pylint:disable=R0205
     """
     Represents a class in the Java world
     """
@@ -63,7 +63,7 @@ class JavaClass(object):
         Sets up members
         """
         self.name = None  # type: str
-        self.serialVersionUID = None  # type: int
+        self.serialVersionUID = None  # type: int  # pylint:disable=C0103
         self.flags = None  # type: int
         self.fields_names = []  # type: List[str]
         self.fields_types = []  # type: List[JavaString]
@@ -101,7 +101,7 @@ class JavaClass(object):
         )
 
 
-class JavaObject(object):
+class JavaObject(object):  # pylint:disable=R0205
     """
     Represents a deserialized non-primitive Java object
     """

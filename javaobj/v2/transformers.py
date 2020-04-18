@@ -37,7 +37,11 @@ except ImportError:
 
 # Javaobj
 from .api import ObjectTransformer
-from .beans import JavaInstance, JavaClassDesc, BlockData
+from .beans import (
+    JavaInstance,
+    JavaClassDesc,
+    BlockData,
+)  # pylint:disable=W0611
 from ..constants import TerminalCode, TypeCode
 from ..utils import to_bytes, log_error, log_debug, read_struct, read_string
 

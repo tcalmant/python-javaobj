@@ -28,9 +28,9 @@ from __future__ import absolute_import
 
 from typing import Optional
 
-from .beans import JavaClassDesc, JavaInstance
-from .stream import DataStreamReader
-from ..constants import TypeCode
+from .beans import JavaClassDesc, JavaInstance  # pylint:disable=W0611
+from .stream import DataStreamReader  # pylint:disable=W0611
+from ..constants import TypeCode  # pylint:disable=W0611
 
 # ------------------------------------------------------------------------------
 
@@ -44,12 +44,12 @@ __docformat__ = "restructuredtext en"
 # ------------------------------------------------------------------------------
 
 
-class ObjectTransformer(object):
+class ObjectTransformer(object):  # pylint:disable=R0205
     """
     Representation of an object transformer
     """
 
-    def create_instance(self, classdesc):
+    def create_instance(self, classdesc):  # pylint:disable=W0613,R0201
         # type: (JavaClassDesc) -> Optional[JavaInstance]
         """
         Transforms a parsed Java object into a Python object.
@@ -62,7 +62,9 @@ class ObjectTransformer(object):
         """
         return None
 
-    def load_array(self, reader, type_code, size):
+    def load_array(
+        self, reader, type_code, size
+    ):  # pylint:disable=W0613,R0201
         # type: (DataStreamReader, TypeCode, int) -> Optional[list]
         """
         Loads and returns the content of a Java array, if possible.
@@ -79,7 +81,9 @@ class ObjectTransformer(object):
         """
         return None
 
-    def load_custom_writeObject(self, parser, reader, name):
+    def load_custom_writeObject(
+        self, parser, reader, name
+    ):  # pylint:disable=W0613,R0201
         # type: (JavaStreamParser, DataStreamReader, str) -> Optional[JavaClassDesc]
         """
         Reads content stored from a custom writeObject.

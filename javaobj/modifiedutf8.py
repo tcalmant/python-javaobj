@@ -33,7 +33,7 @@ NAME = "mutf8"
 # ------------------------------------------------------------------------------
 
 if sys.version_info[0] >= 3:
-    unicode_char = chr
+    unicode_char = chr  # pylint:disable=C0103
 
     def byte_to_int(data):
         # type: (bytes) -> int
@@ -42,12 +42,17 @@ if sys.version_info[0] >= 3:
         """
         if isinstance(data, int):
             return data
-        elif isinstance(data, bytes):
+
+        if isinstance(data, bytes):
             return data[0]
+
+        raise ValueError("Didn't get a byte as input")
 
 
 else:
-    unicode_char = unichr  # pylint:disable=undefined-variable  # noqa: F821
+    unicode_char = (
+        unichr  # pylint:disable=C0103,undefined-variable  # noqa: F821
+    )
 
     def byte_to_int(data):
         # type: (bytes) -> int
@@ -56,14 +61,17 @@ else:
         """
         if isinstance(data, int):
             return data
-        elif isinstance(data, str):
+
+        if isinstance(data, str):
             return ord(data[0])
+
+        raise ValueError("Didn't get a byte as input")
 
 
 # ------------------------------------------------------------------------------
 
 
-class DecodeMap(object):
+class DecodeMap(object):  # pylint:disable=R0205
     """
     A utility class which manages masking, comparing and mapping in bits.
     If the mask and compare fails, this will raise UnicodeDecodeError so
@@ -167,14 +175,16 @@ def decoder(data):
             raise UnicodeDecodeError(
                 NAME, data, i, i + 1, "embedded zero-byte not allowed"
             )
-        elif d & 0x80:  # 1xxxxxxx
+
+        if d & 0x80:  # 1xxxxxxx
             if d & 0x40:  # 11xxxxxx
                 if d & 0x20:  # 111xxxxx
                     if d & 0x10:  # 1111xxxx
                         raise UnicodeDecodeError(
                             NAME, data, i, i + 1, "invalid encoding character"
                         )
-                    elif d == 0xED:
+
+                    if d == 0xED:
                         value = 0
                         for i1, dm in enumerate(DECODE_MAP[6]):
                             d1 = next_byte(it, i, i1 + 1)
@@ -221,7 +231,8 @@ def decode_modified_utf8(data, errors="strict"):
         except UnicodeDecodeError as e:
             if errors == "strict":
                 raise e
-            elif errors == "ignore":
+
+            if errors == "ignore":
                 pass
             elif errors == "replace":
                 value += "\uFFFD"
@@ -230,4 +241,7 @@ def decode_modified_utf8(data, errors="strict"):
 
 
 def mutf8_unichr(value):
+    """
+    Mimics Python 2 unichr() and Python 3 chr()
+    """
     return unicode_char(value)

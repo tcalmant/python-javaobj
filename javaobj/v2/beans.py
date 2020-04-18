@@ -99,10 +99,13 @@ class FieldType(IntEnum):
 
     def type_code(self):
         # type: () -> TypeCode
+        """
+        Converts this FieldType to its matching TypeCode
+        """
         return TypeCode(self.value)
 
 
-class ParsedJavaContent(object):
+class ParsedJavaContent(object):  # pylint:disable=R205
     """
     Generic representation of data parsed from the stream
     """
@@ -295,7 +298,7 @@ class JavaClassDesc(ParsedJavaContent):
         )
 
     @property
-    def serialVersionUID(self):
+    def serialVersionUID(self):  # pylint:disable=C0103
         """
         Mimics the javaobj API
         """
@@ -324,13 +327,17 @@ class JavaClassDesc(ParsedJavaContent):
 
     @property
     def data_type(self):
+        """
+        Computes the data type of this class (Write, No Write, Annotation)
+        """
         if ClassDescFlags.SC_SERIALIZABLE & self.desc_flags:
             return (
                 ClassDataType.WRCLASS
                 if (ClassDescFlags.SC_WRITE_METHOD & self.desc_flags)
                 else ClassDataType.NOWRCLASS
             )
-        elif ClassDescFlags.SC_EXTERNALIZABLE & self.desc_flags:
+
+        if ClassDescFlags.SC_EXTERNALIZABLE & self.desc_flags:
             return (
                 ClassDataType.OBJECT_ANNOTATION
                 if (ClassDescFlags.SC_WRITE_METHOD & self.desc_flags)
@@ -475,7 +482,9 @@ class JavaInstance(ParsedJavaContent):
         """
         return self.classdesc
 
-    def load_from_blockdata(self, parser, reader, indent=0):
+    def load_from_blockdata(
+        self, parser, reader, indent=0
+    ):  # pylint:disable=W0613,R0201
         """
         Reads content stored in a block data.
 
@@ -491,7 +500,7 @@ class JavaInstance(ParsedJavaContent):
         """
         return False
 
-    def load_from_instance(self, indent=0):
+    def load_from_instance(self, indent=0):  # pylint:disable=W0613,R0201
         # type: (int) -> bool
         """
         Updates the content of this instance from its parsed fields and

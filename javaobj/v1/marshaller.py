@@ -120,7 +120,7 @@ class JavaObjectMarshaller:
         self.writeObject(obj)
         return self.object_stream.getvalue()
 
-    def _writeStreamHeader(self):
+    def _writeStreamHeader(self):  # pylint:disable=C0103
         """
         Writes the Java serialization magic header in the serialization stream
         """
@@ -130,7 +130,7 @@ class JavaObjectMarshaller:
             (StreamConstants.STREAM_MAGIC, StreamConstants.STREAM_VERSION),
         )
 
-    def writeObject(self, obj):
+    def writeObject(self, obj):  # pylint:disable=C0103
         """
         Appends an object to the serialization stream
 
@@ -156,7 +156,7 @@ class JavaObjectMarshaller:
         elif obj is None:
             # Null
             self.write_null()
-        elif type(obj) is str:
+        elif type(obj) is str:  # pylint:disable=C0123
             # String value
             self.write_blockdata(obj)
         else:
@@ -166,7 +166,7 @@ class JavaObjectMarshaller:
                 "supported.".format(type(obj))
             )
 
-    def _writeStruct(self, unpack, length, args):
+    def _writeStruct(self, unpack, length, args):  # pylint:disable=C0103
         """
         Appends data to the serialization stream
 
@@ -177,7 +177,7 @@ class JavaObjectMarshaller:
         ba = struct.pack(unpack, *args)
         self.object_stream.write(ba)
 
-    def _writeString(self, obj, use_reference=True):
+    def _writeString(self, obj, use_reference=True):  # pylint:disable=C0103
         """
         Appends a string to the serialization stream
 
@@ -270,7 +270,7 @@ class JavaObjectMarshaller:
 
         self.write_string(obj.constant)
 
-    def write_blockdata(self, obj, parent=None):
+    def write_blockdata(self, obj, parent=None):  # pylint:disable=W0613
         """
         Appends a block of data to the serialization stream
 
@@ -374,7 +374,7 @@ class JavaObjectMarshaller:
                     self.writeObject(annotation)
             self._writeStruct(">B", 1, (TerminalCode.TC_ENDBLOCKDATA,))
 
-    def write_class(self, obj, parent=None):
+    def write_class(self, obj, parent=None):  # pylint:disable=W0613
         """
         Writes a class to the stream
 
@@ -384,7 +384,7 @@ class JavaObjectMarshaller:
         self._writeStruct(">B", 1, (TerminalCode.TC_CLASS,))
         self.write_classdesc(obj)
 
-    def write_classdesc(self, obj, parent=None):
+    def write_classdesc(self, obj, parent=None):  # pylint:disable=W0613
         """
         Writes a class description
 
@@ -553,9 +553,11 @@ class JavaObjectMarshaller:
         """
         if isinstance(type_char, TypeCode):
             return type_char.value
-        elif isinstance(type_char, int):
+
+        if isinstance(type_char, int):
             return type_char
-        elif isinstance(type_char, (BYTES_TYPE, UNICODE_TYPE)):
+
+        if isinstance(type_char, (BYTES_TYPE, UNICODE_TYPE)):
             # Conversion to TypeCode will raise an error if the type
             # is invalid
             return TypeCode(ord(type_char[0])).value

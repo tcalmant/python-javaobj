@@ -27,11 +27,18 @@ See: https://github.com/frohoff/jdeserialize
 
 from __future__ import absolute_import
 
-from typing import Any, Callable, Dict, IO, List, Optional
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    IO,
+    List,
+    Optional,
+)  # pylint:disable=W0611
 import logging
 import os
 
-from . import api
+from . import api  # pylint:disable=W0611
 from .beans import (
     ParsedJavaContent,
     BlockData,
@@ -57,7 +64,9 @@ from ..constants import (
     PRIMITIVE_TYPES,
 )
 
-from ..modifiedutf8 import decode_modified_utf8  # noqa: F401
+from ..modifiedutf8 import (
+    decode_modified_utf8,
+)  # pylint:disable=W0611  # noqa: F401
 
 # ------------------------------------------------------------------------------
 
@@ -197,7 +206,8 @@ class JavaStreamParser:
         lines.append("")
         return "\n".join(lines)
 
-    def _dump_instance(self, instance):
+    @staticmethod
+    def _dump_instance(instance):
         # type: (JavaInstance) -> List[str]
         """
         Dumps an instance to a set of lines
@@ -230,7 +240,7 @@ class JavaStreamParser:
                     else:
                         line += "r0x{0:x}".format(h)
 
-                    line += ": " + str(c)
+                    line += ": " + str(content)
                 else:
                     line += str(obj)
 
@@ -270,7 +280,8 @@ class JavaStreamParser:
 
         self.__handles[handle] = content
 
-    def _do_null(self, _):
+    @staticmethod
+    def _do_null(_):
         """
         The easiest one
         """
@@ -332,7 +343,8 @@ class JavaStreamParser:
             length = self.__reader.read_long()
             if length < 0 or length > 2147483647:
                 raise ValueError("Invalid string length: {0}".format(length))
-            elif length < 65536:
+
+            if length < 65536:
                 self._log.warning("Small string stored as a long one")
 
         # Parse the content
@@ -596,26 +608,26 @@ class JavaStreamParser:
         """
         if field_type == FieldType.BYTE:
             return self.__reader.read_byte()
-        elif field_type == FieldType.CHAR:
+        if field_type == FieldType.CHAR:
             return self.__reader.read_char()
-        elif field_type == FieldType.DOUBLE:
+        if field_type == FieldType.DOUBLE:
             return self.__reader.read_double()
-        elif field_type == FieldType.FLOAT:
+        if field_type == FieldType.FLOAT:
             return self.__reader.read_float()
-        elif field_type == FieldType.INTEGER:
+        if field_type == FieldType.INTEGER:
             return self.__reader.read_int()
-        elif field_type == FieldType.LONG:
+        if field_type == FieldType.LONG:
             return self.__reader.read_long()
-        elif field_type == FieldType.SHORT:
+        if field_type == FieldType.SHORT:
             return self.__reader.read_short()
-        elif field_type == FieldType.BOOLEAN:
+        if field_type == FieldType.BOOLEAN:
             return self.__reader.read_bool()
-        elif field_type in (FieldType.OBJECT, FieldType.ARRAY):
+        if field_type in (FieldType.OBJECT, FieldType.ARRAY):
             sub_type_code = self.__reader.read_byte()
             if field_type == FieldType.ARRAY:
                 if sub_type_code == TerminalCode.TC_REFERENCE:
                     return self._do_classdesc(sub_type_code)
-                elif sub_type_code != TerminalCode.TC_ARRAY:
+                if sub_type_code != TerminalCode.TC_ARRAY:
                     raise ValueError(
                         "Array type listed, but type code != TC_ARRAY"
                     )
