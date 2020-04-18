@@ -221,7 +221,8 @@ class JavaObjectUnmarshaller:
 
         if expect and opid not in expect:
             raise IOError(
-                "Unexpected opcode 0x{0:X} -- {1} (at offset 0x{2:X})".format(
+                "Unexpected opcode 0x{0:X} -- {1} "
+                "(at offset 0x{2:X})".format(
                     opid, StreamCodeDebug.op_id(opid), position
                 )
             )
@@ -230,9 +231,8 @@ class JavaObjectUnmarshaller:
             handler = self.opmap[opid]
         except KeyError:
             raise RuntimeError(
-                "Unknown OpCode in the stream: 0x{0:X} (at offset 0x{1:X})".format(
-                    opid, position
-                )
+                "Unknown OpCode in the stream: 0x{0:X} "
+                "(at offset 0x{1:X})".format(opid, position)
             )
         else:
             return opid, handler(ident=ident)
@@ -656,7 +656,9 @@ class JavaObjectUnmarshaller:
             array = JavaByteArray(self.object_stream.read(size), classdesc)
         elif self.use_numpy_arrays and numpy is not None:
             array = numpy.fromfile(
-                self.object_stream, dtype=NUMPY_TYPE_MAP[type_code], count=size,
+                self.object_stream,
+                dtype=NUMPY_TYPE_MAP[type_code],
+                count=size,
             )
         else:
             for _ in range(size):
@@ -823,7 +825,8 @@ class JavaObjectUnmarshaller:
         log_error("==Oops state dump" + "=" * (30 - 17))
         log_error("References: {0}".format(self.references))
         log_error(
-            "Stream seeking back at -16 byte (2nd line is an actual position!):"
+            "Stream seeking back at -16 byte "
+            "(2nd line is an actual position!):"
         )
 
         # Do not use a keyword argument

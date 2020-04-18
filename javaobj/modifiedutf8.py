@@ -47,7 +47,7 @@ if sys.version_info[0] >= 3:
 
 
 else:
-    unicode_char = unichr  # pylint:disable=undefined-variable
+    unicode_char = unichr  # pylint:disable=undefined-variable  # noqa: F821
 
     def byte_to_int(data):
         # type: (bytes) -> int

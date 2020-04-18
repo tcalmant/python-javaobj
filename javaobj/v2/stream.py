@@ -26,7 +26,7 @@ Utility module to handle streams like in Java
 
 from __future__ import absolute_import
 
-from typing import Any, IO, List, Tuple
+from typing import Any, IO, Tuple
 import struct
 
 from ..modifiedutf8 import decode_modified_utf8

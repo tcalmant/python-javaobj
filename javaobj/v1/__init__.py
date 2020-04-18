@@ -24,15 +24,15 @@ First version of the un-marshalling process of javaobj.
     limitations under the License.
 """
 
-from . import beans, core, transformers
-from .core import (
+from . import beans, core, transformers  # noqa: F401
+from .core import (  # noqa: F401
     load,
     loads,
     dumps,
     JavaObjectMarshaller,
     JavaObjectUnmarshaller,
 )
-from .transformers import DefaultObjectTransformer
+from .transformers import DefaultObjectTransformer  # noqa: F401
 
 # ------------------------------------------------------------------------------
 

@@ -27,11 +27,9 @@ See: https://github.com/frohoff/jdeserialize
 
 from __future__ import absolute_import
 
-from enum import Enum
 from typing import Any, Callable, Dict, IO, List, Optional
 import logging
 import os
-import struct
 
 from . import api
 from .beans import (
@@ -53,14 +51,13 @@ from .beans import (
 from .stream import DataStreamReader
 from .transformers import DefaultObjectTransformer
 from ..constants import (
-    ClassDescFlags,
     StreamConstants,
     TerminalCode,
     TypeCode,
     PRIMITIVE_TYPES,
 )
 
-from ..modifiedutf8 import decode_modified_utf8
+from ..modifiedutf8 import decode_modified_utf8  # noqa: F401
 
 # ------------------------------------------------------------------------------
 
@@ -412,7 +409,9 @@ class JavaStreamParser:
             # Reference to an already loading class description
             previous = self._do_reference()
             if not isinstance(previous, JavaClassDesc):
-                raise ValueError("Referenced object is not a class description")
+                raise ValueError(
+                    "Referenced object is not a class description"
+                )
             return previous
         elif type_code == TerminalCode.TC_PROXYCLASSDESC:
             # Proxy class description

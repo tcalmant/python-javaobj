@@ -37,7 +37,6 @@ from ..utils import (
     log_debug,
     log_error,
     to_bytes,
-    to_unicode,
     read_struct,
     read_string,
 )
@@ -63,7 +62,7 @@ class DefaultObjectTransformer(object):
             JavaObject.__init__(self)
 
         def __hash__(self):
-                return list.__hash__(self)
+            return list.__hash__(self)
 
         def __extra_loading__(self, unmarshaller, ident=0):
             # type: (JavaObjectUnmarshaller, int) -> None
@@ -144,9 +143,7 @@ class DefaultObjectTransformer(object):
             self.buckets = unmarshaller._read_value(
                 TypeCode.TYPE_INTEGER, ident
             )
-            self.size = unmarshaller._read_value(
-                TypeCode.TYPE_INTEGER, ident
-            )
+            self.size = unmarshaller._read_value(TypeCode.TYPE_INTEGER, ident)
 
             # Read entries
             for _ in range(self.size):
@@ -175,7 +172,7 @@ class DefaultObjectTransformer(object):
             JavaObject.__init__(self)
 
         def __hash__(self):
-                return set.__hash__(self)
+            return set.__hash__(self)
 
         def __extra_loading__(self, unmarshaller, ident=0):
             # type: (JavaObjectUnmarshaller, int) -> None

@@ -30,7 +30,7 @@ Namely: logging methods, bytes/str/unicode converters
 from __future__ import absolute_import
 
 # Standard library
-from typing import Any, Tuple
+from typing import Any, Tuple  # noqa: F401
 import logging
 import struct
 import sys
@@ -190,8 +190,8 @@ if sys.version_info[0] >= 3:
 
 else:
     BYTES_TYPE = str
-    UNICODE_TYPE = unicode  # pylint:disable=undefined-variable
-    unicode_char = unichr  # pylint:disable=undefined-variable
+    UNICODE_TYPE = unicode  # pylint:disable=undefined-variable  # noqa: F821
+    unicode_char = unichr  # pylint:disable=undefined-variable  # noqa: F821
     bytes_char = chr
 
     # Python 2 interpreter : str & unicode

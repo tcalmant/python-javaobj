@@ -109,11 +109,7 @@ def loads(string, *transformers, **kwargs):
     :return: The deserialized object
     """
     # Reuse the load method (avoid code duplication)
-    return load(
-        BytesIO(string),
-        *transformers,
-        **kwargs
-    )
+    return load(BytesIO(string), *transformers, **kwargs)
 
 
 def dumps(obj, *transformers):

@@ -201,6 +201,7 @@ class JavaArray(list, JavaObject):
     def __hash__(self):
         return list.__hash__(self)
 
+
 class JavaByteArray(JavaObject):
     """
     Represents the special case of Java Array which contains bytes
