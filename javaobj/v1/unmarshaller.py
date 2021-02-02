@@ -114,6 +114,7 @@ class JavaObjectUnmarshaller:
             try:
                 global numpy
                 import numpy as np
+
                 numpy = np
             except ImportError:
                 pass
