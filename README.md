@@ -90,7 +90,7 @@ an array of integers.
 
 | Implementations | Version  |
 |-----------------|----------|
-| `v2`            | `0.4.1+` |
+| `v2`            | `0.4.2+` |
 
 A new transformer API has been proposed to handle objects written with a custom
 Java writer.
