@@ -37,7 +37,6 @@ from __future__ import absolute_import
 
 # Standard library
 from typing import Any, Union
-import contextlib
 import os
 import struct
 
@@ -112,10 +111,12 @@ class JavaObjectUnmarshaller:
 
         # Numpy array support
         if self.use_numpy_arrays:
-            with contextlib.suppress(ImportError):
+            try:
                 global numpy
                 import numpy as np
                 numpy = np
+            except ImportError:
+                pass
 
         # Check stream
         if stream is None:
