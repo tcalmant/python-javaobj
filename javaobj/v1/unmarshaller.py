@@ -37,6 +37,7 @@ from __future__ import absolute_import
 
 # Standard library
 from typing import Any, Union
+import contextlib
 import os
 import struct
 
@@ -65,11 +66,7 @@ from ..utils import (
     hexdump,
 )
 
-# Numpy array support
-try:
-    import numpy
-except ImportError:
-    numpy = None
+numpy = None  # Imported only when really used
 
 # ------------------------------------------------------------------------------
 
@@ -112,6 +109,13 @@ class JavaObjectUnmarshaller:
         :raise IOError: Invalid input stream
         """
         self.use_numpy_arrays = use_numpy_arrays
+
+        # Numpy array support
+        if self.use_numpy_arrays:
+            with contextlib.suppress(ImportError):
+                global numpy
+                import numpy as np
+                numpy = np
 
         # Check stream
         if stream is None:
