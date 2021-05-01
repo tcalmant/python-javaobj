@@ -625,6 +625,9 @@ class JavaStreamParser:
         if field_type in (FieldType.OBJECT, FieldType.ARRAY):
             sub_type_code = self.__reader.read_byte()
             if field_type == FieldType.ARRAY:
+                if sub_type_code == TerminalCode.TC_NULL:
+                    # Seems required, according to issue #46
+                    return None
                 if sub_type_code == TerminalCode.TC_REFERENCE:
                     return self._do_classdesc(sub_type_code)
                 if sub_type_code != TerminalCode.TC_ARRAY:
