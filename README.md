@@ -104,6 +104,7 @@ You can find a sample usage in the *Custom Transformer* section in this file.
 * Automatic conversion of Java Collections to python ones
   (`HashMap` => `dict`, `ArrayList` => `list`, etc.)
 * Basic marshalling of simple Java objects (`v1` implementation only)
+* Automatically uncompresses GZipped files
 
 ## Requirements
 
