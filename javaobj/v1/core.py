@@ -47,6 +47,7 @@ except ImportError:
 from .marshaller import JavaObjectMarshaller
 from .unmarshaller import JavaObjectUnmarshaller
 from .transformers import DefaultObjectTransformer
+from ..utils import java_data_fd
 
 # ------------------------------------------------------------------------------
 
@@ -81,6 +82,9 @@ def load(file_object, *transformers, **kwargs):
                                   trailing bytes are remaining
     :return: The deserialized object
     """
+    # Check file format (uncompress if necessary)
+    file_object = java_data_fd(file_object)
+
     # Read keyword argument
     ignore_remaining_data = kwargs.get("ignore_remaining_data", False)
 

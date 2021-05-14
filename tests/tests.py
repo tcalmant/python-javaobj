@@ -43,7 +43,7 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(os.getcwd())))
 
 # Local
 import javaobj.v1 as javaobj
-from javaobj.utils import hexdump
+from javaobj.utils import hexdump, java_data_fd
 
 # ------------------------------------------------------------------------------
 
@@ -140,6 +140,34 @@ class TestJavaobjV1(unittest.TestCase):
         _logger.debug("Read char objects: %s", pobj)
         self.assertEqual(pobj, expected)
         self._try_marshalling(jobj, pobj)
+
+    def test_gzip_open(self):
+        """
+        Tests if the GZip auto-uncompress works
+        """
+        with java_data_fd(self.read_file("testChars.ser", stream=True)) as fd:
+            base = fd.read()
+
+        with java_data_fd(
+            self.read_file("testChars.ser.gz", stream=True)
+        ) as fd:
+            gzipped = fd.read()
+
+        self.assertEqual(
+            base, gzipped, "Uncompressed content doesn't match the original"
+        )
+
+    def test_chars_gzip(self):
+        """
+        Reads testChars.ser.gz
+        """
+        # Expected string as a UTF-16 string
+        expected = "python-javaobj".encode("utf-16-be").decode("latin1")
+
+        jobj = self.read_file("testChars.ser.gz")
+        pobj = javaobj.loads(jobj)
+        _logger.debug("Read char objects: %s", pobj)
+        self.assertEqual(pobj, expected)
 
     def test_double_rw(self):
         """

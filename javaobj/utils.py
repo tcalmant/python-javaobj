@@ -30,8 +30,10 @@ Namely: logging methods, bytes/str/unicode converters
 from __future__ import absolute_import
 
 # Standard library
-from typing import Tuple  # noqa: F401
+from typing import IO, Tuple  # noqa: F401
+import gzip
 import logging
+import os
 import struct
 import sys
 
@@ -102,6 +104,36 @@ def read_string(data, length_fmt="H"):
     (length,), data = read_struct(data, ">{0}".format(length_fmt))
     ba, data = data[:length], data[length:]
     return to_unicode(ba), data
+
+
+# ------------------------------------------------------------------------------
+
+
+def java_data_fd(original_df):
+    # type: (IO[bytes]) -> IO[bytes]
+    """
+    Ensures that the input file descriptor contains a Java serialized content.
+    Automatically uncompresses GZipped data
+
+    :param original_df: Input file descriptor
+    :return: Input file descriptor or a fake one to access uncompressed data
+    :raise IOError: Error reading input file
+    """
+    # Read the first bytes
+    start_idx = original_df.tell()
+    magic_header = original_df.read(2)
+    original_df.seek(start_idx, os.SEEK_SET)
+
+    if magic_header[0] == 0xAC:
+        # Consider we have a raw seralized stream: use it
+        original_df.seek(start_idx, os.SEEK_SET)
+        return original_df
+    elif magic_header[0] == 0x1F and magic_header[1] == 0x8B:
+        # Open the GZip file
+        return gzip.open(original_df, "rb")
+    else:
+        # Let the parser raise the error
+        return original_df
 
 
 # ------------------------------------------------------------------------------
