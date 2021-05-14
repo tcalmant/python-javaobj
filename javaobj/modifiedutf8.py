@@ -46,7 +46,11 @@ if sys.version_info[0] >= 3:
         if isinstance(data, bytes):
             return data[0]
 
-        raise ValueError("Didn't get a byte as input")
+        raise ValueError(
+            "Expected byte or int as input, got: {0}".format(
+                type(data).__name__
+            )
+        )
 
 
 else:
@@ -65,7 +69,11 @@ else:
         if isinstance(data, str):
             return ord(data[0])
 
-        raise ValueError("Didn't get a byte as input")
+        raise ValueError(
+            "Expected byte or int as input, got: {0}".format(
+                type(data).__name__
+            )
+        )
 
 
 # ------------------------------------------------------------------------------
