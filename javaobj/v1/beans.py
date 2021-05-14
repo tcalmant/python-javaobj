@@ -5,7 +5,7 @@ Definition of the beans of the v1 parser
 
 :authors: Volodymyr Buell, Thomas Calmant
 :license: Apache License 2.0
-:version: 0.4.2
+:version: 0.4.3
 :status: Alpha
 
 ..
@@ -44,7 +44,7 @@ __all__ = (
 )
 
 # Module version
-__version_info__ = (0, 4, 2)
+__version_info__ = (0, 4, 3)
 __version__ = ".".join(str(x) for x in __version_info__)
 
 # Documentation strings format
