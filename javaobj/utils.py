@@ -38,7 +38,7 @@ import struct
 import sys
 
 # Modified UTF-8 parser
-from .modifiedutf8 import decode_modified_utf8
+from .modifiedutf8 import byte_to_int, decode_modified_utf8
 
 # ------------------------------------------------------------------------------
 
@@ -121,7 +121,7 @@ def java_data_fd(original_df):
     """
     # Read the first bytes
     start_idx = original_df.tell()
-    magic_header = original_df.read(2)
+    magic_header = [byte_to_int(x) for x in original_df.read(2)]  # type: ignore
     original_df.seek(start_idx, os.SEEK_SET)
 
     if magic_header[0] == 0xAC:
@@ -130,7 +130,7 @@ def java_data_fd(original_df):
         return original_df
     elif magic_header[0] == 0x1F and magic_header[1] == 0x8B:
         # Open the GZip file
-        return gzip.open(original_df, "rb")
+        return gzip.GzipFile(fileobj=original_df, mode="rb")  # type: ignore
     else:
         # Let the parser raise the error
         return original_df
