@@ -17,6 +17,7 @@ except ImportError:
 from .api import ObjectTransformer  # pylint:disable=W0611
 from .core import JavaStreamParser
 from .transformers import DefaultObjectTransformer, NumpyArrayTransformer
+from ..utils import java_data_fd
 
 # ------------------------------------------------------------------------------
 
@@ -40,6 +41,9 @@ def load(file_object, *transformers, **kwargs):
     :param transformers: Custom transformers to use
     :return: The deserialized object
     """
+    # Check file format (uncompress if necessary)
+    file_object = java_data_fd(file_object)
+
     # Ensure we have the default object transformer
     all_transformers = list(transformers)
     for t in all_transformers:
