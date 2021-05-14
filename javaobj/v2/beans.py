@@ -631,7 +631,7 @@ class BlockData(ParsedJavaContent):
 
     def __eq__(self, other):
         if isinstance(other, (str, UNICODE_TYPE)):
-            other_data = tuple(byte_to_int(x) for x in other)
+            other_data = tuple(ord(x) for x in other)
         elif isinstance(other, bytes):
             other_data = tuple(byte_to_int(x) for x in other)
         else:
