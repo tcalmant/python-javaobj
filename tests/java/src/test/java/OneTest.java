@@ -1,6 +1,7 @@
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.ByteArrayOutputStream;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -22,6 +23,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.Vector;
 import java.util.Random;
+import java.util.zip.GZIPOutputStream;
 
 import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
@@ -168,10 +170,16 @@ public class OneTest {
 
 	ObjectOutputStream oos;
 
+    /**
+     * Returns the name of the file where to serialize the test content
+     */
+    private String getTestFileName() {
+        return name.getMethodName() + ".ser";
+    }
+
 	@Before
 	public void setUp() throws Exception {
-		oos = new ObjectOutputStream(fos = new FileOutputStream(
-				name.getMethodName() + ".ser"));
+		oos = new ObjectOutputStream(fos = new FileOutputStream(getTestFileName()));
 	}
 
 	@Test
@@ -208,6 +216,20 @@ public class OneTest {
 	public void testChars() throws IOException {
 		oos.writeChars("python-javaobj");
 		oos.close();
+
+        // Also compress the file
+        final String serializedFileName = getTestFileName();
+        final String gzippedFileName = serializedFileName + ".gz";
+
+        try (final GZIPOutputStream out = new GZIPOutputStream(new FileOutputStream(gzippedFileName))){
+            try (final FileInputStream in = new FileInputStream(serializedFileName)){
+                final byte[] buffer = new byte[1024];
+                int len;
+                while((len = in.read(buffer)) != -1){
+                    out.write(buffer, 0, len);
+                }
+            }
+        }
 	}
 
 	@Test
@@ -389,7 +411,7 @@ public class OneTest {
 		});
 	}
 
-	
+
 	/**
      * Tests the pull request #38 by @UruDev:
      * Add support for custom writeObject
