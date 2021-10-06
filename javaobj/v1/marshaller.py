@@ -537,6 +537,8 @@ class JavaObjectMarshaller:
                 self.write_object(value)
             elif isinstance(value, JavaString):
                 self.write_string(value)
+            elif isinstance(value, JavaClass):
+                self.write_class(value)
             elif isinstance(value, (BYTES_TYPE, UNICODE_TYPE)):
                 self.write_blockdata(value)
             else:
