@@ -26,11 +26,11 @@ Utility module to handle streams like in Java
 
 from __future__ import absolute_import
 
-from typing import Any, IO, Tuple  # pylint:disable=W0611
 import struct
+from typing import IO, Any, Tuple  # pylint:disable=W0611
 
 from ..modifiedutf8 import decode_modified_utf8
-from ..utils import unicode_char, UNICODE_TYPE  # pylint:disable=W0611
+from ..utils import UNICODE_TYPE, unicode_char  # pylint:disable=W0611
 
 # ------------------------------------------------------------------------------
 

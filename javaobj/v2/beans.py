@@ -26,12 +26,12 @@ Definition of the beans used to represent the parsed objects
 
 from __future__ import absolute_import
 
+import logging
 from enum import IntEnum
 from typing import Any, Dict, List, Optional, Set
-import logging
 
 from ..constants import ClassDescFlags, TypeCode
-from ..modifiedutf8 import decode_modified_utf8, byte_to_int
+from ..modifiedutf8 import byte_to_int, decode_modified_utf8
 from ..utils import UNICODE_TYPE
 
 # ------------------------------------------------------------------------------

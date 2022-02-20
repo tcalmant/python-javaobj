@@ -25,25 +25,25 @@ Defines the default object transformers
 """
 
 # Standard library
-from typing import List, Optional, Tuple
 import functools
+from typing import List, Optional, Tuple
 
 # Numpy (optional)
 try:
     import numpy
 except ImportError:
-    numpy = None
-
+    numpy = None  # type: ignore
 
 # Javaobj
-from .api import ObjectTransformer
-from .beans import (
-    JavaInstance,
-    JavaClassDesc,
-    BlockData,
-)  # pylint:disable=W0611
 from ..constants import TerminalCode, TypeCode
-from ..utils import to_bytes, log_error, log_debug, read_struct, read_string
+from ..utils import log_debug, log_error, read_string, read_struct, to_bytes
+from .api import IJavaStreamParser, ObjectTransformer
+from .beans import ( # pylint:disable=W0611
+    BlockData,
+    JavaClassDesc,
+    JavaInstance,
+)
+from .stream import DataStreamReader
 
 # ------------------------------------------------------------------------------
 
@@ -183,7 +183,7 @@ class JavaLinkedHashMap(JavaMap):
     HANDLED_CLASSES = ("java.util.LinkedHashMap",)
 
     def load_from_blockdata(self, parser, reader, indent=0):
-        # type: (JavaStreamParser, DataStreamReader, int) -> bool
+        # type: (IJavaStreamParser, DataStreamReader, int) -> bool
         """
         Loads the content of the map, written with a custom implementation
         """

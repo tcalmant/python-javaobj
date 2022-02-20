@@ -26,11 +26,15 @@ Definition of the object transformer API
 
 from __future__ import absolute_import
 
-from typing import Optional
+from typing import List, Optional
 
-from .beans import JavaClassDesc, JavaInstance  # pylint:disable=W0611
-from .stream import DataStreamReader  # pylint:disable=W0611
 from ..constants import TypeCode  # pylint:disable=W0611
+from .beans import (  # pylint:disable=W0611
+    JavaClassDesc,
+    JavaInstance,
+    ParsedJavaContent,
+)
+from .stream import DataStreamReader  # pylint:disable=W0611
 
 # ------------------------------------------------------------------------------
 
@@ -42,6 +46,32 @@ __version__ = ".".join(str(x) for x in __version_info__)
 __docformat__ = "restructuredtext en"
 
 # ------------------------------------------------------------------------------
+
+
+class IJavaStreamParser:
+    """
+    API of the Java stream parser
+    """
+
+    def run(self):
+        # type: () -> List[ParsedJavaContent]
+        """
+        Parses the input stream
+        """
+        raise NotImplementedError
+
+    def dump(self, content):
+        # type: (List[ParsedJavaContent]) -> str
+        """
+        Dumps to a string the given objects
+        """
+        raise NotImplementedError
+
+    def _read_content(self, type_code, block_data, class_desc=None):
+        # type: (int, bool, Optional[JavaClassDesc]) -> ParsedJavaContent
+        """
+        Parses the next content. Use with care (use only in a transformer)
+        """
 
 
 class ObjectTransformer(object):  # pylint:disable=R0205
@@ -84,7 +114,7 @@ class ObjectTransformer(object):  # pylint:disable=R0205
     def load_custom_writeObject(
         self, parser, reader, name
     ):  # pylint:disable=W0613,R0201
-        # type: (JavaStreamParser, DataStreamReader, str) -> Optional[JavaClassDesc]
+        # type: (IJavaStreamParser, DataStreamReader, str) -> Optional[JavaClassDesc]
         """
         Reads content stored from a custom writeObject.
 

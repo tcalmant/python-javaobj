@@ -27,46 +27,45 @@ See: https://github.com/frohoff/jdeserialize
 
 from __future__ import absolute_import
 
-from typing import (
+import logging
+import os
+from typing import (  # pylint:disable=W0611
+    IO,
     Any,
     Callable,
     Dict,
-    IO,
     List,
     Optional,
-)  # pylint:disable=W0611
-import logging
-import os
+)
 
+from ..constants import (
+    PRIMITIVE_TYPES,
+    StreamConstants,
+    TerminalCode,
+    TypeCode,
+)
+from ..modifiedutf8 import (  # pylint:disable=W0611  # noqa: F401
+    decode_modified_utf8,
+)
 from . import api  # pylint:disable=W0611
 from .beans import (
-    ParsedJavaContent,
     BlockData,
-    JavaClassDesc,
-    JavaClass,
+    ClassDataType,
+    ClassDescType,
+    ExceptionRead,
+    ExceptionState,
+    FieldType,
     JavaArray,
+    JavaClass,
+    JavaClassDesc,
     JavaEnum,
     JavaField,
     JavaInstance,
     JavaString,
-    ExceptionState,
-    ExceptionRead,
-    ClassDescType,
-    FieldType,
-    ClassDataType,
+    ParsedJavaContent,
 )
 from .stream import DataStreamReader
 from .transformers import DefaultObjectTransformer
-from ..constants import (
-    StreamConstants,
-    TerminalCode,
-    TypeCode,
-    PRIMITIVE_TYPES,
-)
-
-from ..modifiedutf8 import (
-    decode_modified_utf8,
-)  # pylint:disable=W0611  # noqa: F401
 
 # ------------------------------------------------------------------------------
 
@@ -80,7 +79,7 @@ __docformat__ = "restructuredtext en"
 # ------------------------------------------------------------------------------
 
 
-class JavaStreamParser:
+class JavaStreamParser(api.IJavaStreamParser):
     """
     Parses a Java stream
     """
