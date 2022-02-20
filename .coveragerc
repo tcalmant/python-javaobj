@@ -1,0 +1,5 @@
+[run]
+source = javaobj/
+
+[report]
+include = javaobj/*

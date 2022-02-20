@@ -1,19 +1,9 @@
 # javaobj-py3
 
-<p>
-    <a href="https://pypi.python.org/pypi/javaobj-py3/">
-        <img src="https://img.shields.io/pypi/v/javaobj-py3.svg" alt="Latest Version" />
-        <img src="https://img.shields.io/pypi/l/javaobj-py3.svg" alt="License" />
-    </a>
-    <a href="https://travis-ci.org/tcalmant/python-javaobj">
-    <img src="https://travis-ci.org/tcalmant/python-javaobj.svg?branch=master"
-        alt="Travis-CI status" />
-    </a>
-    <a href="https://coveralls.io/r/tcalmant/python-javaobj?branch=master">
-        <img src="https://coveralls.io/repos/tcalmant/python-javaobj/badge.svg?branch=master"
-            alt="Coveralls status" />
-    </a>
-</p>
+[![Latest Version](https://img.shields.io/pypi/v/javaobj-py3.svg)](https://pypi.python.org/pypi/javaobj-py3/)
+[![License](https://img.shields.io/pypi/l/javaobj-py3.svg)](https://pypi.python.org/pypi/javaobj-py3/)
+[![CI Build](https://github.com/tcalmant/python-javaobj/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/tcalmant/python-javaobj/actions/workflows/build.yml)
+[![Coveralls status](https://coveralls.io/repos/tcalmant/python-javaobj/badge.svg?branch=master)](https://coveralls.io/r/tcalmant/python-javaobj?branch=master)
 
 *python-javaobj* is a python library that provides functions for reading and
 writing (writing is WIP currently) Java objects serialized or will be

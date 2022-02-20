@@ -34,19 +34,18 @@ from __future__ import print_function
 # Standard library
 import logging
 import os
+import struct
 import subprocess
 import sys
 import unittest
-import struct
-
 from io import BytesIO
 
 # Prepare Python path to import javaobj
 sys.path.insert(0, os.path.abspath(os.path.dirname(os.getcwd())))
 
+import javaobj.v2 as javaobj
 # Local
 from javaobj.utils import bytes_char, java_data_fd
-import javaobj.v2 as javaobj
 
 # ------------------------------------------------------------------------------
 
@@ -54,8 +53,6 @@ import javaobj.v2 as javaobj
 __docformat__ = "restructuredtext en"
 
 _logger = logging.getLogger("javaobj.tests")
-
-# ------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------
 
