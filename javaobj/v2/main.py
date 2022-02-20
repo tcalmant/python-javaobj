@@ -5,7 +5,7 @@ Mimics the core API with the new deserializer
 
 from __future__ import absolute_import
 
-from typing import Any, IO  # pylint:disable=W0611
+from typing import IO, Any  # pylint:disable=W0611
 
 try:
     # Python 2
@@ -14,10 +14,10 @@ except ImportError:
     # Python 3+
     from io import BytesIO
 
+from ..utils import java_data_fd
 from .api import ObjectTransformer  # pylint:disable=W0611
 from .core import JavaStreamParser
 from .transformers import DefaultObjectTransformer, NumpyArrayTransformer
-from ..utils import java_data_fd
 
 # ------------------------------------------------------------------------------
 
