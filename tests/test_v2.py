@@ -464,6 +464,17 @@ class TestJavaobjV2(unittest.TestCase):
             pobj, [[1, 2, 3], [4, 5, 6],],
         )
 
+    def test_class_array(self):
+        """
+        Tests the handling of an array of Class objects
+        """
+        jobj = self.read_file("testClassArray.ser")
+        pobj = javaobj.loads(jobj)
+        _logger.debug(pobj)
+        self.assertEqual(pobj[0].name, "java.lang.Integer")
+        self.assertEqual(pobj[1].name, "java.io.ObjectOutputStream")
+        self.assertEqual(pobj[2].name, "java.lang.Exception")
+
     def test_enums(self):
         """
         Tests the handling of "enum" types

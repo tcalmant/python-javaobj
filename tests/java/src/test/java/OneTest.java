@@ -255,6 +255,17 @@ public class OneTest {
 	}
 
 	@Test
+	public void testClassArray() throws IOException {
+		Class<?>[] array = new Class<?>[] {
+			Integer.class,
+			ObjectOutputStream.class,
+			Exception.class,
+		};
+		oos.writeObject(array);
+		oos.close();
+	}
+
+	@Test
 	public void testJapan() throws IOException {
 		String stateOfJapan = "日本国";
 		oos.writeObject(stateOfJapan);
