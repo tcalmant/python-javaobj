@@ -245,6 +245,16 @@ public class OneTest {
 	}
 
 	@Test
+	public void test2DArray() throws IOException {
+		int[][] array = new int[][] {
+			new int[] {1, 2, 3},
+			new int[] {4, 5, 6},
+		};
+		oos.writeObject(array);
+		oos.close();
+	}
+
+	@Test
 	public void testJapan() throws IOException {
 		String stateOfJapan = "日本国";
 		oos.writeObject(stateOfJapan);

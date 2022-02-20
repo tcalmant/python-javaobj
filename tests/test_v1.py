@@ -359,6 +359,17 @@ class TestJavaobjV1(unittest.TestCase):
         )
         self._try_marshalling(jobj, pobj)
 
+    def test_2d_array(self):
+        """
+        Tests the handling of a 2D array
+        """
+        jobj = self.read_file("test2DArray.ser")
+        pobj = javaobj.loads(jobj)
+        _logger.debug(pobj)
+        self.assertEqual(
+            pobj, [[1, 2, 3], [4, 5, 6],],
+        )
+
     def test_enums(self):
         """
         Tests the handling of "enum" types

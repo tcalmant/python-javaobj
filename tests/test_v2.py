@@ -44,6 +44,7 @@ from io import BytesIO
 sys.path.insert(0, os.path.abspath(os.path.dirname(os.getcwd())))
 
 import javaobj.v2 as javaobj
+
 # Local
 from javaobj.utils import bytes_char, java_data_fd
 
@@ -452,6 +453,17 @@ class TestJavaobjV2(unittest.TestCase):
             ],
         )
 
+    def test_2d_array(self):
+        """
+        Tests the handling of a 2D array
+        """
+        jobj = self.read_file("test2DArray.ser")
+        pobj = javaobj.loads(jobj)
+        _logger.debug(pobj)
+        self.assertEqual(
+            pobj, [[1, 2, 3], [4, 5, 6],],
+        )
+
     def test_enums(self):
         """
         Tests the handling of "enum" types
@@ -596,7 +608,8 @@ class TestJavaobjV2(unittest.TestCase):
 
         self.assertEqual(isinstance(pobj, CustomWriterInstance), True)
         self.assertEqual(
-            isinstance(pobj.field_data["custom_obj"], RandomChildInstance), True
+            isinstance(pobj.field_data["custom_obj"], RandomChildInstance),
+            True,
         )
 
         parent_data = pobj.field_data
