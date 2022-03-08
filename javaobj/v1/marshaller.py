@@ -141,6 +141,9 @@ class JavaObjectMarshaller:
         if isinstance(obj, JavaArray):
             # Deserialized Java array
             self.write_array(obj)
+        elif isinstance(obj, JavaByteArray):
+            # Deserialized Java byte array
+            self.write_array(obj)
         elif isinstance(obj, JavaEnum):
             # Deserialized Java Enum
             self.write_enum(obj)
