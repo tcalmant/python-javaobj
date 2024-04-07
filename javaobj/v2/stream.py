@@ -4,12 +4,12 @@ Utility module to handle streams like in Java
 
 :authors: Thomas Calmant
 :license: Apache License 2.0
-:version: 0.4.3
+:version: 0.4.4
 :status: Alpha
 
 ..
 
-    Copyright 2021 Thomas Calmant
+    Copyright 2024 Thomas Calmant
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@ from ..utils import UNICODE_TYPE, unicode_char  # pylint:disable=W0611
 # ------------------------------------------------------------------------------
 
 # Module version
-__version_info__ = (0, 4, 3)
+__version_info__ = (0, 4, 4)
 __version__ = ".".join(str(x) for x in __version_info__)
 
 # Documentation strings format

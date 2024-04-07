@@ -7,12 +7,12 @@ Namely: logging methods, bytes/str/unicode converters
 
 :authors: Thomas Calmant
 :license: Apache License 2.0
-:version: 0.4.3
+:version: 0.4.4
 :status: Alpha
 
 ..
 
-    Copyright 2021 Thomas Calmant
+    Copyright 2024 Thomas Calmant
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ from .modifiedutf8 import byte_to_int, decode_modified_utf8
 # ------------------------------------------------------------------------------
 
 # Module version
-__version_info__ = (0, 4, 3)
+__version_info__ = (0, 4, 4)
 __version__ = ".".join(str(x) for x in __version_info__)
 
 # Documentation strings format
