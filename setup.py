@@ -70,7 +70,7 @@ setup(
     license_file="LICENSE",
     keywords="python java marshalling serialization",
     packages=["javaobj", "javaobj.v1", "javaobj.v2"],
-    test_suite="tests.test_v1",
+    test_suite="tests",
     install_requires=[
         'enum34;python_version<="3.4"',
         'typing;python_version<="3.4"',
