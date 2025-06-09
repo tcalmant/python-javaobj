@@ -644,6 +644,13 @@ class TestJavaobjV2(unittest.TestCase):
         self.assertEqual(expected["custom_obj"]["field_data"], child_data)
         self.assertEqual(expected["custom_obj"]["annotations"], super_data)
 
+    def test_read_custom(self):
+        ser = self.read_file("issue60_custom_reader_endblock.ser")
+        pobj = javaobj.loads(ser)
+        self.assertIsNone(pobj.superItems)
+        self.assertIsNone(pobj.items)
+        self.assertEquals(pobj.name, "test")
+        self.assertEquals(pobj.port, 443)
 
 # ------------------------------------------------------------------------------
 
