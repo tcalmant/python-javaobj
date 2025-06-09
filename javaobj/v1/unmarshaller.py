@@ -515,86 +515,42 @@ class JavaObjectUnmarshaller:
             raise NotImplementedError("externalContents isn't implemented yet")
 
         if classdesc.flags & ClassDescFlags.SC_SERIALIZABLE:
-            # TODO: look at ObjectInputStream.readSerialData()
-            # FIXME: Handle the SC_WRITE_METHOD flag
-
-            # create megalist
-            tempclass = classdesc
-            megalist = []
-            megatypes = []
-            log_debug("Constructing class...", ident)
-            while tempclass:
-                log_debug("Class: {0}".format(tempclass.name), ident + 1)
-                class_fields_str = " - ".join(
-                    " ".join((str(field_type), field_name))
-                    for field_type, field_name in zip(
-                        tempclass.fields_types, tempclass.fields_names
-                    )
-                )
-                if class_fields_str:
-                    log_debug(class_fields_str, ident + 2)
-
-                fieldscopy = tempclass.fields_names[:]
-                fieldscopy.extend(megalist)
-                megalist = fieldscopy
-
-                fieldscopy = tempclass.fields_types[:]
-                fieldscopy.extend(megatypes)
-                megatypes = fieldscopy
-
-                tempclass = tempclass.superclass
-
-            log_debug("Values count: {0}".format(len(megalist)), ident)
-            log_debug("Prepared list of values: {0}".format(megalist), ident)
-            log_debug("Prepared list of types: {0}".format(megatypes), ident)
-
-            for field_name, field_type in zip(megalist, megatypes):
-                log_debug(
-                    "Reading field: {0} - {1}".format(field_type, field_name)
-                )
-                res = self._read_value(field_type, ident, name=field_name)
-                java_object.__setattr__(field_name, res)
-
-        if (
-            classdesc.flags & ClassDescFlags.SC_SERIALIZABLE
-            and classdesc.flags & ClassDescFlags.SC_WRITE_METHOD
-            or classdesc.flags & ClassDescFlags.SC_EXTERNALIZABLE
-            and classdesc.flags & ClassDescFlags.SC_BLOCK_DATA
-            or classdesc.superclass is not None
-            and classdesc.superclass.flags & ClassDescFlags.SC_SERIALIZABLE
-            and classdesc.superclass.flags & ClassDescFlags.SC_WRITE_METHOD
-        ):
-            # objectAnnotation
-            log_debug(
-                "java_object.annotations before: {0}".format(
-                    java_object.annotations
-                ),
-                ident,
-            )
-
-            while opcode != TerminalCode.TC_ENDBLOCKDATA:
-                opcode, obj = self._read_and_exec_opcode(ident=ident + 1)
-                # , expect=[self.TC_ENDBLOCKDATA, self.TC_BLOCKDATA,
-                # self.TC_OBJECT, self.TC_NULL, self.TC_REFERENCE])
-                if opcode != TerminalCode.TC_ENDBLOCKDATA:
-                    java_object.annotations.append(obj)
-
-                log_debug("objectAnnotation value: {0}".format(obj), ident)
-
-            log_debug(
-                "java_object.annotations after: {0}".format(
-                    java_object.annotations
-                ),
-                ident,
-            )
-
-        # Allow extra loading operations
-        if hasattr(java_object, "__extra_loading__"):
-            log_debug("Java object has extra loading capability.")
-            java_object.__extra_loading__(self, ident)
+            # Handle each class in the hierarchy separately, from most derived to root
+            self._read_class_data(java_object, classdesc, ident)
 
         log_debug(">>> java_object: {0}".format(java_object), ident)
         return java_object
+
+    def _read_class_data(self, java_object, classdesc, ident):
+        """
+        Recursively reads class data for the inheritance hierarchy
+        """
+        if classdesc is None:
+            return
+
+        # First, handle the superclass data
+        if classdesc.superclass is not None:
+            self._read_class_data(java_object, classdesc.superclass, ident)
+
+        # Then handle this class's data
+        log_debug("Reading class data for: {0}".format(classdesc.name), ident)
+
+        # Read field values for this specific class
+        for field_name, field_type in zip(classdesc.fields_names, classdesc.fields_types):
+            log_debug("Reading field: {0} - {1}".format(field_type, field_name), ident)
+            res = self._read_value(field_type, ident, name=field_name)
+            java_object.__setattr__(field_name, res)
+
+        # Handle annotations if this class has the SC_WRITE_METHOD flag
+        if classdesc.flags & ClassDescFlags.SC_WRITE_METHOD:
+            log_debug("Reading annotations for class: {0}".format(classdesc.name), ident)
+
+            while True:
+                opcode, obj = self._read_and_exec_opcode(ident=ident + 1)
+                if opcode == TerminalCode.TC_ENDBLOCKDATA:
+                    break
+                java_object.annotations.append(obj)
+                log_debug("objectAnnotation value: {0}".format(obj), ident)
 
     def do_string(self, parent=None, ident=0):
         """
