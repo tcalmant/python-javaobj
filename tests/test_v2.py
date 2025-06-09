@@ -645,6 +645,9 @@ class TestJavaobjV2(unittest.TestCase):
         self.assertEqual(expected["custom_obj"]["annotations"], super_data)
 
     def test_read_custom(self):
+        """
+        Tests to verify that the super-class is properly read when a custom writer is involved.
+        """
         ser = self.read_file("issue60_custom_reader_endblock.ser")
         pobj = javaobj.loads(ser)
         self.assertIsNone(pobj.superItems)
