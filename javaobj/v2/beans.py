@@ -4,12 +4,12 @@ Definition of the beans used to represent the parsed objects
 
 :authors: Thomas Calmant
 :license: Apache License 2.0
-:version: 0.4.4
+:version: 0.5.0
 :status: Alpha
 
 ..
 
-    Copyright 2024 Thomas Calmant
+    Copyright 2026 Thomas Calmant
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ from __future__ import absolute_import
 
 import logging
 from enum import IntEnum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set  # noqa: F401
 
 from ..constants import ClassDescFlags, TypeCode
 from ..modifiedutf8 import byte_to_int, decode_modified_utf8

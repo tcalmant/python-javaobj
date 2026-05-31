@@ -7,12 +7,12 @@ Namely: logging methods, bytes/str/unicode converters
 
 :authors: Thomas Calmant
 :license: Apache License 2.0
-:version: 0.4.4
+:version: 0.5.0
 :status: Alpha
 
 ..
 
-    Copyright 2024 Thomas Calmant
+    Copyright 2026 Thomas Calmant
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -30,12 +30,12 @@ Namely: logging methods, bytes/str/unicode converters
 from __future__ import absolute_import
 
 # Standard library
-from typing import IO, Tuple  # noqa: F401
 import gzip
 import logging
 import os
 import struct
 import sys
+from typing import IO, Tuple  # noqa: F401
 
 # Modified UTF-8 parser
 from .modifiedutf8 import byte_to_int, decode_modified_utf8

@@ -5,12 +5,12 @@ Implementation of the object transformers in v1 parser
 
 :authors: Volodymyr Buell, Thomas Calmant
 :license: Apache License 2.0
-:version: 0.4.4
+:version: 0.5.0
 :status: Alpha
 
 ..
 
-    Copyright 2024 Thomas Calmant
+    Copyright 2026 Thomas Calmant
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -27,20 +27,19 @@ Implementation of the object transformers in v1 parser
 
 from __future__ import absolute_import
 
-from typing import Callable, Dict
 import functools
+from typing import Callable, Dict  # noqa: F401
 
-from .beans import JavaClass, JavaObject
-from .unmarshaller import JavaObjectUnmarshaller
 from ..constants import ClassDescFlags, TerminalCode, TypeCode
 from ..utils import (
     log_debug,
     log_error,
-    to_bytes,
-    read_struct,
     read_string,
+    read_struct,
+    to_bytes,
 )
-
+from .beans import JavaClass, JavaObject
+from .unmarshaller import JavaObjectUnmarshaller
 
 __all__ = ("DefaultObjectTransformer",)
 

@@ -15,12 +15,12 @@ The writing mode should be handled by the "classic" javaobj code.
 
 :authors: Thomas Calmant
 :license: Apache License 2.0
-:version: 0.4.4
+:version: 0.5.0
 :status: Alpha
 
 ..
 
-    Copyright 2024 Thomas Calmant
+    Copyright 2026 Thomas Calmant
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -35,8 +35,8 @@ The writing mode should be handled by the "classic" javaobj code.
     limitations under the License.
 """
 
-from . import api, beans, core, main, stream, transformers  # noqa: 401
-from .main import load, loads  # noqa: 401
+from . import api, beans, core, main, stream, transformers  # noqa: F401
+from .main import load, loads  # noqa: F401
 
 # ------------------------------------------------------------------------------
 

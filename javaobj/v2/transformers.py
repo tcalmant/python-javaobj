@@ -4,12 +4,12 @@ Defines the default object transformers
 
 :authors: Thomas Calmant
 :license: Apache License 2.0
-:version: 0.4.4
+:version: 0.5.0
 :status: Alpha
 
 ..
 
-    Copyright 2024 Thomas Calmant
+    Copyright 2026 Thomas Calmant
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@ Defines the default object transformers
 
 # Standard library
 import functools
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple  # noqa: F401
 
 # Numpy (optional)
 try:
@@ -37,13 +37,13 @@ except ImportError:
 # Javaobj
 from ..constants import TerminalCode, TypeCode
 from ..utils import log_debug, log_error, read_string, read_struct, to_bytes
-from .api import IJavaStreamParser, ObjectTransformer
-from .beans import ( # pylint:disable=W0611
+from .api import IJavaStreamParser, ObjectTransformer  # noqa: F401
+from .beans import (  # noqa: F401
     BlockData,
     JavaClassDesc,
     JavaInstance,
 )
-from .stream import DataStreamReader
+from .stream import DataStreamReader  # noqa: F401
 
 # ------------------------------------------------------------------------------
 

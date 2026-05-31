@@ -13,12 +13,12 @@ http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.ht
 
 :authors: Volodymyr Buell, Thomas Calmant
 :license: Apache License 2.0
-:version: 0.4.4
+:version: 0.5.0
 :status: Alpha
 
 ..
 
-    Copyright 2024 Thomas Calmant
+    Copyright 2026 Thomas Calmant
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -44,10 +44,10 @@ except ImportError:
     from io import BytesIO
 
 # Javaobj modules
-from .marshaller import JavaObjectMarshaller
-from .unmarshaller import JavaObjectUnmarshaller
-from .transformers import DefaultObjectTransformer
 from ..utils import java_data_fd
+from .marshaller import JavaObjectMarshaller
+from .transformers import DefaultObjectTransformer
+from .unmarshaller import JavaObjectUnmarshaller
 
 # ------------------------------------------------------------------------------
 

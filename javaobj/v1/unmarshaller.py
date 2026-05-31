@@ -13,12 +13,12 @@ http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.ht
 
 :authors: Volodymyr Buell, Thomas Calmant
 :license: Apache License 2.0
-:version: 0.4.4
+:version: 0.5.0
 :status: Alpha
 
 ..
 
-    Copyright 2024 Thomas Calmant
+    Copyright 2026 Thomas Calmant
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -35,34 +35,35 @@ http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.ht
 
 from __future__ import absolute_import
 
-# Standard library
-from typing import Any, Union
-import os
 import struct
 
-# Javaobj modules
-from .beans import (
-    JavaClass,
-    JavaString,
-    JavaObject,
-    JavaByteArray,
-    JavaEnum,
-    JavaArray,
-)
+# Standard library
+from typing import Any, Union  # noqa: F401
+
 from ..constants import (
-    StreamConstants,
     ClassDescFlags,
+    StreamCodeDebug,
+    StreamConstants,
     TerminalCode,
     TypeCode,
-    StreamCodeDebug,
 )
 from ..utils import (
+    hexdump,
     log_debug,
     log_error,
     read_to_str,
     to_unicode,
     unicode_char,
-    hexdump,
+)
+
+# Javaobj modules
+from .beans import (
+    JavaArray,
+    JavaByteArray,
+    JavaClass,
+    JavaEnum,
+    JavaObject,
+    JavaString,
 )
 
 numpy = None  # Imported only when really used

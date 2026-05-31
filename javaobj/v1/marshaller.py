@@ -13,12 +13,12 @@ http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.ht
 
 :authors: Volodymyr Buell, Thomas Calmant
 :license: Apache License 2.0
-:version: 0.4.4
+:version: 0.5.0
 :status: Alpha
 
 ..
 
-    Copyright 2024 Thomas Calmant
+    Copyright 2026 Thomas Calmant
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -48,26 +48,26 @@ except ImportError:
     from io import BytesIO
 
 # Javaobj modules
-from .beans import (
-    JavaClass,
-    JavaString,
-    JavaObject,
-    JavaByteArray,
-    JavaEnum,
-    JavaArray,
-)
 from ..constants import (
-    StreamConstants,
     ClassDescFlags,
+    StreamConstants,
     TerminalCode,
     TypeCode,
 )
 from ..utils import (
+    BYTES_TYPE,
+    UNICODE_TYPE,
     log_debug,
     log_error,
     to_bytes,
-    BYTES_TYPE,
-    UNICODE_TYPE,
+)
+from .beans import (
+    JavaArray,
+    JavaByteArray,
+    JavaClass,
+    JavaEnum,
+    JavaObject,
+    JavaString,
 )
 
 # ------------------------------------------------------------------------------

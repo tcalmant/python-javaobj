@@ -5,7 +5,7 @@ Mimics the core API with the new deserializer
 
 from __future__ import absolute_import
 
-from typing import IO, Any  # pylint:disable=W0611
+from typing import IO, Any  # noqa: F401
 
 try:
     # Python 2
@@ -15,7 +15,7 @@ except ImportError:
     from io import BytesIO
 
 from ..utils import java_data_fd
-from .api import ObjectTransformer  # pylint:disable=W0611
+from .api import ObjectTransformer  # noqa: F401
 from .core import JavaStreamParser
 from .transformers import DefaultObjectTransformer, NumpyArrayTransformer
 

@@ -11,14 +11,13 @@ https://github.com/swstephe/py2jdbc/
 
 :authors: Scott Stephens (@swstephe), @guywithface
 :license: Apache License 2.0
-:version: 0.4.4
+:version: 0.5.0
 :status: Alpha
 """
 
 from __future__ import unicode_literals
 
 import sys
-
 
 # Module version
 __version_info__ = (0, 4, 4)

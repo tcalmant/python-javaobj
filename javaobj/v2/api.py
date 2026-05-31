@@ -4,12 +4,12 @@ Definition of the object transformer API
 
 :authors: Thomas Calmant
 :license: Apache License 2.0
-:version: 0.4.4
+:version: 0.5.0
 :status: Alpha
 
 ..
 
-    Copyright 2024 Thomas Calmant
+    Copyright 2026 Thomas Calmant
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -26,15 +26,15 @@ Definition of the object transformer API
 
 from __future__ import absolute_import
 
-from typing import List, Optional
+from typing import List, Optional  # noqa: F401
 
-from ..constants import TypeCode  # pylint:disable=W0611
-from .beans import (  # pylint:disable=W0611
+from ..constants import TypeCode  # noqa: F401
+from .beans import (  # noqa: F401
     JavaClassDesc,
     JavaInstance,
     ParsedJavaContent,
 )
-from .stream import DataStreamReader  # pylint:disable=W0611
+from .stream import DataStreamReader  # noqa: F401
 
 # ------------------------------------------------------------------------------
 
