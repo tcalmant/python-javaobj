@@ -85,9 +85,7 @@ class TestJavaobjV1(unittest.TestCase):
         :return: File content or stream
         """
         for subfolder in ("java", ""):
-            found_file = os.path.join(
-                os.path.dirname(__file__), subfolder, filename
-            )
+            found_file = os.path.join(os.path.dirname(__file__), subfolder, filename)
             if os.path.exists(found_file):
                 break
         else:
@@ -148,14 +146,10 @@ class TestJavaobjV1(unittest.TestCase):
         with java_data_fd(self.read_file("testChars.ser", stream=True)) as fd:
             base = fd.read()
 
-        with java_data_fd(
-            self.read_file("testChars.ser.gz", stream=True)
-        ) as fd:
+        with java_data_fd(self.read_file("testChars.ser.gz", stream=True)) as fd:
             gzipped = fd.read()
 
-        self.assertEqual(
-            base, gzipped, "Uncompressed content doesn't match the original"
-        )
+        self.assertEqual(base, gzipped, "Uncompressed content doesn't match the original")
 
     def test_chars_gzip(self):
         """
@@ -238,7 +232,7 @@ class TestJavaobjV1(unittest.TestCase):
         pobj = javaobj.loads(jobj)
         _logger.debug("Read object: %s", pobj)
 
-        self.assertEqual(pobj.aField1, u"Gabba")
+        self.assertEqual(pobj.aField1, "Gabba")
         self.assertEqual(pobj.aField2, None)
 
         classdesc = pobj.get_class()
@@ -290,10 +284,10 @@ class TestJavaobjV1(unittest.TestCase):
         _logger.debug(classdesc.fields_names)
         _logger.debug(classdesc.fields_types)
 
-        self.assertEqual(pobj.childString, u"Child!!")
+        self.assertEqual(pobj.childString, "Child!!")
         self.assertEqual(pobj.bool, True)
         self.assertEqual(pobj.integer, -1)
-        self.assertEqual(pobj.superString, u"Super!!")
+        self.assertEqual(pobj.superString, "Super!!")
 
         self._try_marshalling(jobj, pobj)
 
@@ -333,9 +327,7 @@ class TestJavaobjV1(unittest.TestCase):
         pobj = javaobj.loads(jobj)
         _logger.debug(pobj)
         # Compare the UTF-8 encoded version of the name
-        self.assertEqual(
-            pobj, b"\xe6\x97\xa5\xe6\x9c\xac\xe5\x9b\xbd".decode("utf-8")
-        )
+        self.assertEqual(pobj, b"\xe6\x97\xa5\xe6\x9c\xac\xe5\x9b\xbd".decode("utf-8"))
         self._try_marshalling(jobj, pobj)
 
     def test_char_array(self):
@@ -348,13 +340,13 @@ class TestJavaobjV1(unittest.TestCase):
         self.assertEqual(
             pobj,
             [
-                u"\u0000",
-                u"\ud800",
-                u"\u0001",
-                u"\udc00",
-                u"\u0002",
-                u"\uffff",
-                u"\u0003",
+                "\u0000",
+                "\ud800",
+                "\u0001",
+                "\udc00",
+                "\u0002",
+                "\uffff",
+                "\u0003",
             ],
         )
         self._try_marshalling(jobj, pobj)
@@ -367,7 +359,11 @@ class TestJavaobjV1(unittest.TestCase):
         pobj = javaobj.loads(jobj)
         _logger.debug(pobj)
         self.assertEqual(
-            pobj, [[1, 2, 3], [4, 5, 6],],
+            pobj,
+            [
+                [1, 2, 3],
+                [4, 5, 6],
+            ],
         )
 
     def test_enums(self):
@@ -385,9 +381,9 @@ class TestJavaobjV1(unittest.TestCase):
 
         self.assertEqual(classdesc.name, "ClassWithEnum")
         self.assertEqual(pobj.color.classdesc.name, "Color")
-        self.assertEqual(pobj.color.constant, u"GREEN")
+        self.assertEqual(pobj.color.constant, "GREEN")
 
-        for color, intended in zip(pobj.colors, (u"GREEN", u"BLUE", u"RED")):
+        for color, intended in zip(pobj.colors, ("GREEN", "BLUE", "RED")):
             self.assertEqual(color.classdesc.name, "Color")
             self.assertEqual(color.constant, intended)
 
@@ -424,9 +420,7 @@ class TestJavaobjV1(unittest.TestCase):
         # Check types
         self.assertIsInstance(pobj, javaobj.beans.JavaArray)
         for obj in pobj:
-            self.assertIsInstance(
-                obj, javaobj.DefaultObjectTransformer.JavaTime
-            )
+            self.assertIsInstance(obj, javaobj.DefaultObjectTransformer.JavaTime)
 
     # def test_exception(self):
     #     jobj = self.read_file("objException.ser")
@@ -442,9 +436,7 @@ class TestJavaobjV1(unittest.TestCase):
     #     self.assertEqual(classdesc.name, "MyExceptionWhenDumping")
 
     def test_sun_example(self):
-        marshaller = javaobj.JavaObjectUnmarshaller(
-            self.read_file("sunExample.ser", stream=True)
-        )
+        marshaller = javaobj.JavaObjectUnmarshaller(self.read_file("sunExample.ser", stream=True))
         pobj = marshaller.readObject()
 
         self.assertEqual(pobj.value, 17)
@@ -492,19 +484,19 @@ class TestJavaobjV1(unittest.TestCase):
         _logger.debug(pobj)
 
         # Basic checking
-        self.assertEqual(pobj[u"key1"], u"value1")
-        self.assertEqual(pobj[u"key2"], u"value2")
-        self.assertEqual(pobj[u"int"], 9)
-        self.assertEqual(pobj[u"int2"], 10)
-        self.assertEqual(pobj[u"bool"], True)
-        self.assertEqual(pobj[u"bool2"], True)
+        self.assertEqual(pobj["key1"], "value1")
+        self.assertEqual(pobj["key2"], "value2")
+        self.assertEqual(pobj["int"], 9)
+        self.assertEqual(pobj["int2"], 10)
+        self.assertEqual(pobj["bool"], True)
+        self.assertEqual(pobj["bool2"], True)
 
         # Load the parent map
         jobj2 = self.read_file("testBoolIntLong-2.ser")
         pobj2 = javaobj.loads(jobj2)
         _logger.debug(pobj2)
 
-        parent_map = pobj2[u"subMap"]
+        parent_map = pobj2["subMap"]
         for key, value in pobj.items():
             self.assertEqual(parent_map[key], value)
 

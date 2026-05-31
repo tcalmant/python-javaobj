@@ -57,6 +57,7 @@ _logger = logging.getLogger("javaobj.tests")
 
 # ------------------------------------------------------------------------------
 
+
 # Custom writeObject parsing classes
 class CustomWriterInstance(javaobj.beans.JavaInstance):
     def __init__(self):
@@ -71,9 +72,7 @@ class CustomWriterInstance(javaobj.beans.JavaInstance):
         if self.classdesc and self.classdesc in self.annotations:
             fields = ["int_not_in_fields"] + self.classdesc.fields_names
             raw_data = self.annotations[self.classdesc]
-            int_not_in_fields = struct.unpack(
-                ">i", BytesIO(raw_data[0].data).read(4)
-            )[0]
+            int_not_in_fields = struct.unpack(">i", BytesIO(raw_data[0].data).read(4))[0]
             custom_obj = raw_data[1]
             values = [int_not_in_fields, custom_obj]
             self.field_data = dict(zip(fields, values))
@@ -91,19 +90,11 @@ class RandomChildInstance(javaobj.beans.JavaInstance):
         """
         if self.classdesc and self.classdesc in self.field_data:
             fields = self.classdesc.fields_names
-            values = [
-                self.field_data[self.classdesc][self.classdesc.fields[i]]
-                for i in range(len(fields))
-            ]
+            values = [self.field_data[self.classdesc][self.classdesc.fields[i]] for i in range(len(fields))]
             self.field_data = dict(zip(fields, values))
-            if (
-                self.classdesc.super_class
-                and self.classdesc.super_class in self.annotations
-            ):
+            if self.classdesc.super_class and self.classdesc.super_class in self.annotations:
                 super_class = self.annotations[self.classdesc.super_class][0]
-                self.annotations = dict(
-                    zip(super_class.fields_names, super_class.field_data)
-                )
+                self.annotations = dict(zip(super_class.fields_names, super_class.field_data))
             return True
 
         return False
@@ -135,16 +126,12 @@ class BaseTransformer(javaobj.transformers.ObjectTransformer):
 
 class RandomChildTransformer(BaseTransformer):
     def __init__(self):
-        super(RandomChildTransformer, self).__init__(
-            {"RandomChild": RandomChildInstance}
-        )
+        super(RandomChildTransformer, self).__init__({"RandomChild": RandomChildInstance})
 
 
 class CustomWriterTransformer(BaseTransformer):
     def __init__(self):
-        super(CustomWriterTransformer, self).__init__(
-            {"CustomWriter": CustomWriterInstance}
-        )
+        super(CustomWriterTransformer, self).__init__({"CustomWriter": CustomWriterInstance})
 
 
 class JavaRandomTransformer(BaseTransformer):
@@ -168,9 +155,7 @@ class JavaRandomTransformer(BaseTransformer):
             values.append(parser._read_field_value(f_type))
             fields.append(javaobj.beans.JavaField(f_type, f_name))
 
-        class_desc = javaobj.beans.JavaClassDesc(
-            javaobj.beans.ClassDescType.NORMALCLASS
-        )
+        class_desc = javaobj.beans.JavaClassDesc(javaobj.beans.ClassDescType.NORMALCLASS)
         class_desc.name = self.name
         class_desc.desc_flags = javaobj.beans.ClassDataType.EXTERNAL_CONTENTS
         class_desc.fields = fields
@@ -211,9 +196,7 @@ class TestJavaobjV2(unittest.TestCase):
         :return: File content or stream
         """
         for subfolder in ("java", ""):
-            found_file = os.path.join(
-                os.path.dirname(__file__), subfolder, filename
-            )
+            found_file = os.path.join(os.path.dirname(__file__), subfolder, filename)
             if os.path.exists(found_file):
                 break
         else:
@@ -254,14 +237,10 @@ class TestJavaobjV2(unittest.TestCase):
         with java_data_fd(self.read_file("testChars.ser", stream=True)) as fd:
             base = fd.read()
 
-        with java_data_fd(
-            self.read_file("testChars.ser.gz", stream=True)
-        ) as fd:
+        with java_data_fd(self.read_file("testChars.ser.gz", stream=True)) as fd:
             gzipped = fd.read()
 
-        self.assertEqual(
-            base, gzipped, "Uncompressed content doesn't match the original"
-        )
+        self.assertEqual(base, gzipped, "Uncompressed content doesn't match the original")
 
     def test_chars_gzip(self):
         """
@@ -340,7 +319,7 @@ class TestJavaobjV2(unittest.TestCase):
         pobj = javaobj.loads(jobj)
         _logger.debug("Read object: %s", pobj)
 
-        self.assertEqual(pobj.aField1, u"Gabba")
+        self.assertEqual(pobj.aField1, "Gabba")
         self.assertEqual(pobj.aField2, None)
 
         classdesc = pobj.get_class()
@@ -390,10 +369,10 @@ class TestJavaobjV2(unittest.TestCase):
         _logger.debug(classdesc.fields_names)
         _logger.debug(classdesc.fields_types)
 
-        self.assertEqual(pobj.childString, u"Child!!")
+        self.assertEqual(pobj.childString, "Child!!")
         self.assertEqual(pobj.bool, True)
         self.assertEqual(pobj.integer, -1)
-        self.assertEqual(pobj.superString, u"Super!!")
+        self.assertEqual(pobj.superString, "Super!!")
 
     def test_arrays(self):
         """
@@ -429,9 +408,7 @@ class TestJavaobjV2(unittest.TestCase):
         pobj = javaobj.loads(jobj)
         _logger.debug(pobj)
         # Compare the UTF-8 encoded version of the name
-        self.assertEqual(
-            pobj, b"\xe6\x97\xa5\xe6\x9c\xac\xe5\x9b\xbd".decode("utf-8")
-        )
+        self.assertEqual(pobj, b"\xe6\x97\xa5\xe6\x9c\xac\xe5\x9b\xbd".decode("utf-8"))
 
     def test_char_array(self):
         """
@@ -443,13 +420,13 @@ class TestJavaobjV2(unittest.TestCase):
         self.assertEqual(
             pobj,
             [
-                u"\u0000",
-                u"\ud800",
-                u"\u0001",
-                u"\udc00",
-                u"\u0002",
-                u"\uffff",
-                u"\u0003",
+                "\u0000",
+                "\ud800",
+                "\u0001",
+                "\udc00",
+                "\u0002",
+                "\uffff",
+                "\u0003",
             ],
         )
 
@@ -461,7 +438,11 @@ class TestJavaobjV2(unittest.TestCase):
         pobj = javaobj.loads(jobj)
         _logger.debug(pobj)
         self.assertEqual(
-            pobj, [[1, 2, 3], [4, 5, 6],],
+            pobj,
+            [
+                [1, 2, 3],
+                [4, 5, 6],
+            ],
         )
 
     def test_class_array(self):
@@ -489,9 +470,9 @@ class TestJavaobjV2(unittest.TestCase):
 
         self.assertEqual(classdesc.name, "ClassWithEnum")
         self.assertEqual(pobj.color.classdesc.name, "Color")
-        self.assertEqual(pobj.color.constant, u"GREEN")
+        self.assertEqual(pobj.color.constant, "GREEN")
 
-        for color, intended in zip(pobj.colors, (u"GREEN", u"BLUE", u"RED")):
+        for color, intended in zip(pobj.colors, ("GREEN", "BLUE", "RED")):
             _logger.debug("color: {0} - {1}".format(color, type(color)))
             self.assertEqual(color.classdesc.name, "Color")
             self.assertEqual(color.constant, intended)
@@ -588,19 +569,19 @@ class TestJavaobjV2(unittest.TestCase):
         _logger.debug(pobj)
 
         # Basic checking
-        self.assertEqual(pobj[u"key1"], u"value1")
-        self.assertEqual(pobj[u"key2"], u"value2")
-        self.assertEqual(pobj[u"int"], 9)
-        self.assertEqual(pobj[u"int2"], 10)
-        self.assertEqual(pobj[u"bool"], True)
-        self.assertEqual(pobj[u"bool2"], True)
+        self.assertEqual(pobj["key1"], "value1")
+        self.assertEqual(pobj["key2"], "value2")
+        self.assertEqual(pobj["int"], 9)
+        self.assertEqual(pobj["int2"], 10)
+        self.assertEqual(pobj["bool"], True)
+        self.assertEqual(pobj["bool2"], True)
 
         # Load the parent map
         jobj2 = self.read_file("testBoolIntLong-2.ser")
         pobj2 = javaobj.loads(jobj2)
         _logger.debug(pobj2)
 
-        parent_map = pobj2[u"subMap"]
+        parent_map = pobj2["subMap"]
         for key, value in pobj.items():
             self.assertEqual(parent_map[key], value)
 
@@ -638,11 +619,10 @@ class TestJavaobjV2(unittest.TestCase):
             },
         }
 
-        self.assertEqual(
-            expected["int_not_in_fields"], parent_data["int_not_in_fields"]
-        )
+        self.assertEqual(expected["int_not_in_fields"], parent_data["int_not_in_fields"])
         self.assertEqual(expected["custom_obj"]["field_data"], child_data)
         self.assertEqual(expected["custom_obj"]["annotations"], super_data)
+
 
 # ------------------------------------------------------------------------------
 
