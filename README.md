@@ -67,6 +67,18 @@ it, and avoids a mismatch between the referenced object and the transformed one.
 The `v2` implementation provides a new API for the object transformers.
 Please look at the *Usage (V2)* section in this file.
 
+### Object transformers V3
+
+| Implementations | Version  |
+|-----------------|----------|
+| `v3`            | `0.5.0+` |
+
+The `v3` implementation is a full rewrite targeting **Python 3.12+**.
+It uses `dataclasses`, structural pattern matching (`match/case`) and PEP 604
+union types.  Its API is intentionally similar to `v2` but fixes several
+correctness issues and adds stricter safety limits.
+Please look at the *Usage (V3)* and *Migration to V3* sections in this file.
+
 ### Bytes arrays
 
 | Implementations | Version  |
@@ -98,7 +110,8 @@ You can find a sample usage in the *Custom Transformer* section in this file.
 
 ## Requirements
 
-* Python >= 2.7 or Python >= 3.4
+* Python >= 2.7 or Python >= 3.4 for `v1` and `v2`
+* Python >= 3.12 for `v3`
 * `enum34` and `typing` when using Python <= 3.4 (installable with `pip`)
 * Maven 2+ (for building test data of serialized objects.
   You can skip it if you do not plan to run `tests.py`)
@@ -480,3 +493,143 @@ pobj = javaobj.loads("custom_objects.ser", *transformers)
 # it's static. See: https://stackoverflow.com/a/16477421/12621168
 print(pobj.field_data["int_not_in_fields"])
 ```
+
+## Usage (V3 implementation)
+
+> **Requires Python 3.12+.**
+
+The `javaobj.v3` package is a full rewrite of the Java object stream parser.
+It provides the same two entry-points as `v2`:
+
+* `load(fd, *transformers, use_numpy_arrays=False, max_array_size=…, max_depth=500)`:
+  Parses a binary file descriptor opened in `rb` mode and returns the top-level
+  object if the stream contains exactly one, a list of objects if there are
+  several, or `None` for an empty stream.  Pass additional `ObjectTransformer`
+  instances as positional arguments.
+
+* `loads(data, *transformers, …)`:
+  Convenience wrapper around `load()` that accepts `bytes`.
+
+Sample usage:
+
+```python
+import javaobj.v3 as javaobj
+
+with open("obj5.ser", "rb") as fd:
+    pobj = javaobj.load(fd)
+
+# Access fields by name (preferred)
+value = pobj.get_field("myField")
+
+# Or use attribute-style access (issues a warning on ambiguity)
+value = pobj.myField
+```
+
+### New features in V3
+
+| Feature | V1 | V2 | V3 |
+|---|---|---|---|
+| Python 3.12+ (`match/case`, PEP 604) | ✗ | ✗ | ✓ |
+| Fully typed (`dataclasses`, `TypeAlias`) | ✗ | partial | ✓ |
+| `TC_RESET` handling | ✗ | ✗ | ✓ |
+| `TC_EXCEPTION` in object graph | ✗ | ✗ | ✓ |
+| `TC_PROXYCLASSDESC` | ✗ | ✓ | ✓ |
+| Security limits (max depth / array size) | ✗ | ✗ | ✓ |
+| Correct `TYPE_CHAR` numpy dtype (`>u2`) | ✗ | ✗ | ✓ |
+| Typed exception hierarchy | ✗ | ✗ | ✓ |
+| `BlockData.__eq__(bytes)` compatibility | ✓ | ✓ | ✓ |
+
+### Security limits
+
+`v3` adds two optional safety limits that prevent resource exhaustion when
+parsing untrusted streams:
+
+```python
+import javaobj.v3 as javaobj
+
+with open("untrusted.ser", "rb") as fd:
+    pobj = javaobj.load(
+        fd,
+        max_array_size=10 * 1024 * 1024,  # 10 MiB max per array
+        max_depth=100,                      # max object-graph depth
+    )
+```
+
+### Object Transformer V3
+
+The `ObjectTransformer` base class in `v3` has the same three override points
+as in `v2`:
+
+* `create_instance(classdesc)` — return a `JavaInstance` subclass (or `None`
+  to fall back to the next transformer).
+* `load_array(reader, type_code, size)` — called for `TC_ARRAY` records;
+  return the array data (`bytes` or `list`) or `None` to use the default logic.
+* `load_custom_writeObject(parser, reader, class_name)` — called when a
+  class written with `writeObject()` requires fully custom parsing.
+
+The `DefaultObjectTransformer` additionally exposes a public `handles(name)`
+method that returns `True` when the transformer knows how to load the given
+Java class name.
+
+### Using NumPy arrays (V3)
+
+```python
+import javaobj.v3 as javaobj
+
+with open("arrays.ser", "rb") as fd:
+    pobj = javaobj.load(fd, use_numpy_arrays=True)
+```
+
+When `use_numpy_arrays=True`, a `NumpyArrayTransformer` is appended to the
+transformer list and primitive arrays are returned as `numpy.ndarray`.
+
+---
+
+## Migration to V3
+
+### From V1 to V3
+
+| V1 | V3 |
+|---|---|
+| `import javaobj` | `import javaobj.v3 as javaobj` |
+| `pobj.classdesc.name` | `pobj.classdesc.name` (unchanged) |
+| `pobj.myField` (direct attribute) | `pobj.get_field("myField")` (preferred) or `pobj.myField` |
+| `pobj._data` on arrays | `pobj.data` (public) |
+| `javaobj.JavaObjectUnmarshaller` | removed — use `javaobj.v3.parser.JavaStreamParser` |
+| `javaobj.JavaObjectMarshaller` | marshalling not available in `v3` |
+| Exceptions: bare `Exception` | Typed: `ParseError`, `UnexpectedOpcodeError`, … |
+
+Shallow conversion helper (best-effort, for gradual migration):
+
+```python
+from javaobj.v3._compat import v1_to_v3
+v3_obj = v1_to_v3(v1_obj)
+```
+
+### From V2 to V3
+
+| V2 | V3 |
+|---|---|
+| `import javaobj.v2 as javaobj` | `import javaobj.v3 as javaobj` |
+| `javaobj.load(fd)` | `javaobj.load(fd)` (same signature) |
+| `javaobj.loads(data)` | `javaobj.loads(data)` (same signature) |
+| `pobj.classdesc.name` | `pobj.classdesc.name` (unchanged) |
+| `pobj.field_data[cd][field]` | `pobj.field_data[cd][field]` (unchanged) |
+| `pobj.get_field("name")` | `pobj.get_field("name")` (unchanged) |
+| `pobj.__getattr__` ambiguity silent | warns when field exists in multiple classes |
+| `transformer._type_mapper` (private) | `transformer.handles(name)` (public) |
+| `JavaArray.data` (`tuple` of ints for bytes) | `JavaArray.data` (`bytes` for `TYPE_BYTE`) |
+| `BlockData` compared with `bytes` | `BlockData.__eq__(bytes)` still works |
+| `use_numpy_arrays=True` (v2 option) | `use_numpy_arrays=True` (same) |
+| No depth/size limits | `max_depth=500`, `max_array_size=100 MiB` |
+| No typed exceptions | `ParseError`, `SecurityError`, … |
+
+Shallow conversion helper (best-effort, for gradual migration):
+
+```python
+from javaobj.v3._compat import v2_to_v3
+v3_obj = v2_to_v3(v2_obj)
+```
+
+> **Note:** `v3` requires **Python 3.12+** and does **not** support marshalling
+> (writing).  If you need to write Java object streams, use `v1`.
