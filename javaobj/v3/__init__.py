@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Rewritten version of the un-marshalling process of javaobj (v3)
+Rewritten version of the un-marshalling and marshalling process of javaobj (v3)
 
-This package targets Python 3.12+ and provides fully typed parsing of the
-Java Object Serialization stream format, in read-only mode.
+This package targets Python 3.12+ and provides fully typed parsing and
+serializing of the Java Object Serialization stream format.
 
 :authors: Thomas Calmant
 :license: Apache License 2.0
@@ -66,11 +66,16 @@ from .transformers import (
     NumpyArrayTransformer,
     ObjectTransformer,
 )
+from .writer import JavaStreamWriter, dump, dumps
 
 __all__ = [
-    # Entry points
+    # Entry points (reading)
     "load",
     "loads",
+    # Entry points (writing)
+    "dump",
+    "dumps",
+    "JavaStreamWriter",
     # Transformer API
     "ObjectTransformer",
     "DefaultObjectTransformer",

@@ -52,6 +52,7 @@ from javaobj.v3.transformers import (
     JavaTime,
     ObjectTransformer,
 )
+from javaobj.v3.writer import _encode_mutf8
 
 # ------------------------------------------------------------------------------
 
@@ -643,6 +644,172 @@ class TestCompat(unittest.TestCase):
         """v1_to_v3 raises JavaObjError for an unmappable type."""
         with self.assertRaises(JavaObjError):
             v1_to_v3(object())  # type: ignore[arg-type]
+
+
+# ------------------------------------------------------------------------------
+# Writer / round-trip tests
+# ------------------------------------------------------------------------------
+
+
+class TestWriter(TestJavaobjV3Base):
+    """Tests for javaobj.v3.writer — serializing beans back to bytes."""
+
+    # ------------------------------------------------------------------
+    # Modified UTF-8 encoder unit tests
+    # ------------------------------------------------------------------
+
+    def test_mutf8_ascii(self) -> None:
+        """ASCII characters round-trip through Modified UTF-8."""
+        s = "Hello, World!"
+        self.assertEqual(_encode_mutf8(s), s.encode("ascii"))
+
+    def test_mutf8_null(self) -> None:
+        """Null character is encoded as two-byte sequence 0xC0 0x80."""
+        self.assertEqual(_encode_mutf8("\x00"), b"\xc0\x80")
+
+    def test_mutf8_japanese(self) -> None:
+        """CJK characters produce a 3-byte-per-codepoint encoding."""
+        s = "\u65e5\u672c\u56fd"  # 日本国
+        encoded = _encode_mutf8(s)
+        # 3 codepoints × 3 bytes each = 9 bytes
+        self.assertEqual(len(encoded), 9)
+
+    def test_mutf8_supplementary(self) -> None:
+        """A supplementary character (U+1F600 😀) encodes as 6 bytes."""
+        encoded = _encode_mutf8("\U0001f600")
+        self.assertEqual(len(encoded), 6)
+        # Must start with the first surrogate half marker
+        self.assertEqual(encoded[0], 0xED)
+        self.assertEqual(encoded[3], 0xED)
+
+    # ------------------------------------------------------------------
+    # dumps / dump API smoke tests
+    # ------------------------------------------------------------------
+
+    def test_dumps_returns_bytes(self) -> None:
+        """javaobj.v3.dumps() returns bytes starting with the magic header."""
+        pobj = self.load_file("testBoolIntLong.ser")
+        data = javaobj.dumps(pobj)
+        self.assertIsInstance(data, bytes)
+        # Magic: 0xACED, version: 0x0005
+        self.assertEqual(data[:4], b"\xac\xed\x00\x05")
+
+    def test_dump_to_fd(self) -> None:
+        """javaobj.v3.dump(fd, obj) writes to a file-like object."""
+        import io
+
+        pobj = self.load_file("testBoolIntLong.ser")
+        buf = io.BytesIO()
+        javaobj.dump(buf, pobj)
+        self.assertEqual(buf.getvalue()[:4], b"\xac\xed\x00\x05")
+
+    # ------------------------------------------------------------------
+    # Round-trip tests (parse → write → re-parse → compare field values)
+    # ------------------------------------------------------------------
+
+    def _round_trip(self, filename: str) -> tuple[Any, Any]:
+        """
+        Parses *filename*, serializes the result, re-parses the bytes, and
+        returns ``(original, re_parsed)`` for the caller to assert on.
+        """
+        original = self.load_file(filename)
+        serialized = javaobj.dumps(original)
+        re_parsed = javaobj.loads(serialized)
+        return original, re_parsed
+
+    def test_round_trip_instance_fields(self) -> None:
+        """NOWRCLASS instance: field values survive a write→re-read cycle."""
+        original, re_parsed = self._round_trip("testBoolIntLong.ser")
+        self.assertIsInstance(re_parsed, JavaInstance)
+        # Compare all field values by name
+        orig_cd = original.get_class()
+        new_cd = re_parsed.get_class()
+        self.assertEqual(orig_cd.name, new_cd.name)
+        self.assertEqual(orig_cd.serial_version_uid, new_cd.serial_version_uid)
+        for field_name in orig_cd.fields_names:
+            self.assertEqual(
+                original.get_field(field_name),
+                re_parsed.get_field(field_name),
+                msg=f"Field {field_name!r} differs after round-trip",
+            )
+
+    def test_round_trip_string(self) -> None:
+        """JavaString: value survives a write→re-read cycle."""
+        original, re_parsed = self._round_trip("testJapan.ser")
+        self.assertIsInstance(re_parsed, JavaString)
+        self.assertEqual(str(original), str(re_parsed))
+
+    def test_round_trip_char_array(self) -> None:
+        """JavaArray (chars): data survives a write→re-read cycle."""
+        original, re_parsed = self._round_trip("testCharArray.ser")
+        self.assertIsInstance(re_parsed, JavaArray)
+        self.assertEqual(re_parsed.element_type, FieldType.CHAR)
+        self.assertEqual(list(original.data), list(re_parsed.data))
+
+    def test_round_trip_byte_array(self) -> None:
+        """JavaArray (bytes): data survives a write→re-read cycle."""
+        # testBytes.ser is a raw BlockData, so use a proper Java array fixture
+        original, re_parsed = self._round_trip("objArrays.ser")
+        self.assertEqual(type(original), type(re_parsed))
+
+    def test_round_trip_enum(self) -> None:
+        """Enum constant embedded in an instance: class/value survive round-trip."""
+        # objEnums.ser contains a JavaInstance with a JavaEnum field 'color'
+        original = self.load_file("objEnums.ser")
+        serialized = javaobj.dumps(original)
+        re_parsed = javaobj.loads(serialized)
+        self.assertIsInstance(re_parsed, JavaInstance)
+        self.assertEqual(re_parsed.get_class().name, original.get_class().name)
+        orig_color = original.color
+        new_color = re_parsed.color
+        self.assertIsInstance(new_color, JavaEnum)
+        self.assertEqual(new_color.classdesc.name, orig_color.classdesc.name)
+        self.assertEqual(str(new_color.constant), str(orig_color.constant))
+
+    def test_round_trip_super_class(self) -> None:
+        """Instance with class hierarchy: all fields survive round-trip."""
+        original, re_parsed = self._round_trip("objSuper.ser")
+        self.assertIsInstance(re_parsed, JavaInstance)
+        orig_cd = original.get_class()
+        new_cd = re_parsed.get_class()
+        self.assertEqual(orig_cd.name, new_cd.name)
+        # Walk hierarchy and compare every field value
+        for o_hcd, n_hcd in zip(orig_cd.get_hierarchy(), new_cd.get_hierarchy()):
+            self.assertEqual(o_hcd.name, n_hcd.name)
+            if o_hcd not in original.field_data:
+                continue
+            for o_f, n_f in zip(o_hcd.fields, n_hcd.fields):
+                self.assertEqual(o_f.name, n_f.name)
+                self.assertEqual(
+                    original.field_data[o_hcd][o_f],
+                    re_parsed.field_data[n_hcd][n_f],
+                    msg=f"Field {o_f.name!r} in {o_hcd.name!r}",
+                )
+
+    def test_round_trip_wrclass(self) -> None:
+        """WRCLASS (writeObject) instance: class name survives round-trip."""
+        original, re_parsed = self._round_trip("test_readFields.ser")
+        self.assertIsInstance(re_parsed, JavaInstance)
+        orig_cd = original.get_class()
+        new_cd = re_parsed.get_class()
+        self.assertEqual(orig_cd.name, new_cd.name)
+
+    def test_round_trip_class_token(self) -> None:
+        """TC_CLASS token: class name survives round-trip."""
+        original, re_parsed = self._round_trip("testClass.ser")
+        self.assertIsInstance(re_parsed, JavaClass)
+        self.assertEqual(re_parsed.name, original.name)
+
+    def test_multi_object_stream(self) -> None:
+        """Multiple objects in one stream: all survive round-trip."""
+        obj_a = self.load_file("testJapan.ser")
+        obj_b = self.load_file("testBoolIntLong.ser")
+        serialized = javaobj.dumps(obj_a, obj_b)
+        result = javaobj.loads(serialized)
+        self.assertIsInstance(result, list)
+        self.assertEqual(len(result), 2)
+        self.assertIsInstance(result[0], JavaString)
+        self.assertIsInstance(result[1], JavaInstance)
 
 
 # ------------------------------------------------------------------------------

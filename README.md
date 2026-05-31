@@ -6,9 +6,9 @@
 [![Coveralls status](https://coveralls.io/repos/tcalmant/python-javaobj/badge.svg?branch=master)](https://coveralls.io/r/tcalmant/python-javaobj?branch=master)
 
 *python-javaobj* is a python library that provides functions for reading and
-writing (writing is WIP currently) Java objects serialized or will be
-deserialized by `ObjectOutputStream`. This form of object representation is a
-standard data interchange format in Java world.
+writing Java objects serialized or to be deserialized by `ObjectOutputStream`.
+This form of object representation is a standard data interchange format in
+Java world.
 
 The `javaobj` module exposes an API familiar to users of the standard library
 `marshal`, `pickle` and `json` modules.
@@ -39,16 +39,17 @@ Since version 0.4.0, three implementations of the parser are available:
   with support of the object transformer (with a new API) and of the `numpy`
   arrays loading.
 * `v3`: a **new** implementation, written from scratch to benefit from
-  Python 3.12+ features.
+  Python 3.12+ features, with full read **and** write support.
 
 You can use the `v1` parser to ensure that the behaviour of your scripts
-doesn't change and to keep the ability to write down files.
+doesn't change.  It also provides a basic marshalling capability.
 
 You can use the `v2` parser for developments in Python versions lower
 than 3.12 and *which won't require marshalling*, or as a *fallback*
 if the `v1` parser fails to parse a file.
 
-For new development, you should use the `v3` parser.
+For new development, you should use the `v3` parser, which supports both
+reading and writing Java object streams.
 
 ### Object transformers V1
 
@@ -110,7 +111,8 @@ You can find a sample usage in the *Custom Transformer* section in this file.
 * Primitive values un-marshalling
 * Automatic conversion of Java Collections to python ones
   (`HashMap` => `dict`, `ArrayList` => `list`, etc.)
-* Basic marshalling of simple Java objects (`v1` implementation only)
+* Basic marshalling of simple Java objects (`v1` implementation)
+* Full marshalling of Java object streams (`v3` implementation)
 * Automatically uncompresses GZipped files
 
 ## Requirements
@@ -544,6 +546,7 @@ value = pobj.myField
 | Correct `TYPE_CHAR` numpy dtype (`>u2`) | ✗ | ✗ | ✓ |
 | Typed exception hierarchy | ✗ | ✗ | ✓ |
 | `BlockData.__eq__(bytes)` compatibility | ✓ | ✓ | ✓ |
+| Marshalling (writing) support | partial | ✗ | ✓ |
 
 ### Security limits
 
@@ -589,6 +592,180 @@ with open("arrays.ser", "rb") as fd:
 When `use_numpy_arrays=True`, a `NumpyArrayTransformer` is appended to the
 transformer list and primitive arrays are returned as `numpy.ndarray`.
 
+### Marshalling / Writing (V3)
+
+The `javaobj.v3` package exposes two additional entry-points for serializing
+beans back to the Java Object Serialization binary format:
+
+* `dump(fd, *objects)`: Writes one or more parsed objects to a binary file
+  descriptor opened in `wb` mode.
+* `dumps(*objects) -> bytes`: Returns the serialized stream as a `bytes`
+  object.
+
+Both functions accept any combination of
+`JavaInstance`, `JavaArray`, `JavaString`, `JavaEnum`, `JavaClass`, `BlockData`,
+and `None` (written as `TC_NULL`) as positional arguments.
+
+#### Simple round-trip
+
+```python
+import javaobj.v3 as javaobj
+
+# Parse an existing file
+with open("obj5.ser", "rb") as fd:
+    pobj = javaobj.load(fd)
+
+# Serialize back to bytes
+data = javaobj.dumps(pobj)
+
+# Or write directly to a file
+with open("obj5_copy.ser", "wb") as fd:
+    javaobj.dump(fd, pobj)
+```
+
+#### Writing multiple objects
+
+```python
+import javaobj.v3 as javaobj
+from javaobj.v3.beans import JavaString
+
+with open("a.ser", "rb") as fd:
+    obj_a = javaobj.load(fd)
+
+# Write two objects into one stream
+data = javaobj.dumps(obj_a, JavaString("hello"))
+
+# Re-parse: returns a list when the stream holds more than one object
+result = javaobj.loads(data)   # -> [obj_a, JavaString("hello")]
+```
+
+#### Supported constructs
+
+| Construct | Supported |
+|---|---|
+| `TC_OBJECT` — `NOWRCLASS` (plain fields only) | ✓ |
+| `TC_OBJECT` — `WRCLASS` (fields + block-data annotations) | ✓ |
+| `TC_ARRAY` | ✓ |
+| `TC_STRING` / `TC_LONGSTRING` | ✓ |
+| `TC_ENUM` | ✓ |
+| `TC_CLASS` | ✓ |
+| `TC_NULL` | ✓ |
+| `TC_BLOCKDATA` / `TC_BLOCKDATALONG` | ✓ |
+| `TC_PROXYCLASSDESC` | ✓ |
+| Back-references (`TC_REFERENCE`) | ✓ (automatic) |
+| `EXTERNAL_CONTENTS` (Protocol v1 `Externalizable`) | ✗ |
+
+> **Note:** Back-references are tracked automatically by identity: if the same
+> object appears more than once in the graph, subsequent occurrences are
+> written as `TC_REFERENCE` — exactly as Java's `ObjectOutputStream` does.
+
+#### Building a Java object from scratch
+
+You can construct the v3 beans manually to serialize a Python object as if it
+were a Java one.  The key types are:
+
+* `JavaClassDesc` — the class descriptor (name, `serialVersionUID`, flags,
+  fields)
+* `JavaField` — one field entry (type code + name, and optionally the binary
+  class name for object/array fields)
+* `JavaInstance` — the object instance (`field_data` maps each class
+  descriptor to a `{JavaField: value}` dict)
+* `JavaString` — a Java `String` value
+
+All beans accept `handle=0` when created from scratch; the writer assigns real
+handles automatically during serialization.
+
+```python
+import javaobj.v3 as javaobj
+from javaobj.constants import ClassDescFlags
+from javaobj.v3.beans import (
+    FieldType,
+    JavaClassDesc,
+    ClassDescType,
+    JavaField,
+    JavaInstance,
+    JavaString,
+)
+
+# ── 1. Describe the Java class ────────────────────────────────────────────────
+#
+#  Java equivalent:
+#
+#    package com.example;
+#    public class Point implements java.io.Serializable {
+#        private static final long serialVersionUID = 1L;
+#        public int x;
+#        public int y;
+#    }
+
+field_x = JavaField(type=FieldType.INTEGER, name="x")
+field_y = JavaField(type=FieldType.INTEGER, name="y")
+
+point_cd = JavaClassDesc(
+    handle=0,                              # assigned by the writer
+    name="com.example.Point",
+    serial_version_uid=1,
+    desc_flags=ClassDescFlags.SC_SERIALIZABLE,
+    fields=[field_x, field_y],
+)
+
+# ── 2. Create an instance ─────────────────────────────────────────────────────
+
+point = JavaInstance(
+    handle=0,
+    classdesc=point_cd,
+    field_data={
+        point_cd: {
+            field_x: 42,
+            field_y: -7,
+        }
+    },
+)
+
+# ── 3. Serialize ──────────────────────────────────────────────────────────────
+
+data = javaobj.dumps(point)
+
+# ── 4. Round-trip check ───────────────────────────────────────────────────────
+
+restored = javaobj.loads(data)
+print(restored.get_field("x"))   # 42
+print(restored.get_field("y"))   # -7
+```
+
+For object-type fields (e.g. a `String` attribute), use `FieldType.OBJECT`,
+set `class_name` to the binary class name, and pass a `JavaString` as the
+value:
+
+```python
+field_name = JavaField(
+    type=FieldType.OBJECT,
+    name="name",
+    class_name="Ljava/lang/String;",   # binary name for java.lang.String
+)
+
+person_cd = JavaClassDesc(
+    handle=0,
+    name="com.example.Person",
+    serial_version_uid=1,
+    desc_flags=ClassDescFlags.SC_SERIALIZABLE,
+    fields=[field_name, field_x],      # reuse field_x from above
+)
+
+alice = JavaInstance(
+    handle=0,
+    classdesc=person_cd,
+    field_data={
+        person_cd: {
+            field_name: JavaString(handle=0, value="Alice"),
+            field_x: 30,
+        }
+    },
+)
+
+data = javaobj.dumps(alice)
+```
+
 ---
 
 ## Migration to V3
@@ -602,7 +779,7 @@ transformer list and primitive arrays are returned as `numpy.ndarray`.
 | `pobj.myField` (direct attribute) | `pobj.get_field("myField")` (preferred) or `pobj.myField` |
 | `pobj._data` on arrays | `pobj.data` (public) |
 | `javaobj.JavaObjectUnmarshaller` | removed — use `javaobj.v3.parser.JavaStreamParser` |
-| `javaobj.JavaObjectMarshaller` | marshalling not available in `v3` |
+| `javaobj.JavaObjectMarshaller` | `javaobj.v3.dump` / `javaobj.v3.dumps` |
 | Exceptions: bare `Exception` | Typed: `ParseError`, `UnexpectedOpcodeError`, … |
 
 Shallow conversion helper (best-effort, for gradual migration):
@@ -637,5 +814,5 @@ from javaobj.v3._compat import v2_to_v3
 v3_obj = v2_to_v3(v2_obj)
 ```
 
-> **Note:** `v3` requires **Python 3.12+** and does **not** support marshalling
-> (writing).  If you need to write Java object streams, use `v1`.
+> **Note:** `v3` requires **Python 3.12+**.
+> For writing Java object streams on older Python versions, use `v1`.
