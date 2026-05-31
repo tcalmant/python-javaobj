@@ -47,7 +47,7 @@ jobs:
         if python -c "import sys; sys.exit(0 if sys.version_info >= (3, 12) else 1)"; then
           coverage run -m pytest
         else
-          coverage run -m pytest --ignore=tests/test_v3.py
+          coverage run --omit='javaobj/v3/*,tests/test_v3.py' -m pytest --ignore=tests/test_v3.py
         fi
     - name: Coveralls
       env:
