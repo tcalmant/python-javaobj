@@ -508,6 +508,17 @@ class TestJavaobjV1(unittest.TestCase):
         for key, value in pobj.items():
             self.assertEqual(parent_map[key], value)
 
+    def test_read_custom(self):
+        """
+        Tests to verify that the super-class is properly read when a custom writer is involved.
+        """
+        ser = self.read_file("issue60_custom_reader_endblock.ser")
+        pobj = javaobj.loads(ser)
+        self.assertIsNone(pobj.superItems)
+        self.assertIsNone(pobj.items)
+        self.assertEquals(pobj.name, "test")
+        self.assertEquals(pobj.port, 443)
+
 
 # ------------------------------------------------------------------------------
 

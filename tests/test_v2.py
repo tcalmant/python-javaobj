@@ -644,7 +644,6 @@ class TestJavaobjV2(unittest.TestCase):
         self.assertEqual(expected["custom_obj"]["field_data"], child_data)
         self.assertEqual(expected["custom_obj"]["annotations"], super_data)
 
-
 # ------------------------------------------------------------------------------
 
 
