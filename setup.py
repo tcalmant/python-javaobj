@@ -72,8 +72,8 @@ setup(
     packages=["javaobj", "javaobj.v1", "javaobj.v2"],
     test_suite="tests",
     install_requires=[
-        'enum34;python_version<="3.4"',
-        'typing;python_version<="3.4"',
+        "enum34; python_version<'3.4'",
+        "typing; python_version<'3.5'"
     ],
     long_description=read("README.md"),
     long_description_content_type="text/markdown",
@@ -91,6 +91,8 @@ setup(
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
 )
