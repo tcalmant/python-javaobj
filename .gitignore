@@ -46,3 +46,7 @@ nosetests.xml
 /issue*/
 /repro*.py
 /test*.py
+
+# uv
+.venv
+uv.lock
