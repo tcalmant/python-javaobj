@@ -27,8 +27,8 @@ Definition of the beans of the v1 parser
 
 from __future__ import absolute_import
 
-from typing import List
 import struct
+from typing import List  # noqa: F401
 
 from ..utils import UNICODE_TYPE
 
@@ -62,12 +62,12 @@ class JavaClass(object):  # pylint:disable=R0205
         """
         Sets up members
         """
-        self.name = None  # type: str
-        self.serialVersionUID = None  # type: int  # pylint:disable=C0103
-        self.flags = None  # type: int
+        self.name = None  # type: str | None
+        self.serialVersionUID = None  # type: int | None  # pylint:disable=C0103
+        self.flags = None  # type: int | None
         self.fields_names = []  # type: List[str]
         self.fields_types = []  # type: List[JavaString]
-        self.superclass = None  # type: JavaClass
+        self.superclass = None  # type: JavaClass | None
 
     def __str__(self):
         """
@@ -110,7 +110,7 @@ class JavaObject(object):  # pylint:disable=R0205
         """
         Sets up members
         """
-        self.classdesc = None  # type: JavaClass
+        self.classdesc = None  # type: JavaClass | None
         self.annotations = []
 
     def get_class(self):
