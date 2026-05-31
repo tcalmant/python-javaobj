@@ -28,22 +28,27 @@ This fork intends to work both on Python 2.7 and Python 3.4+.
 | Implementations | Version  |
 |-----------------|----------|
 | `v1`, `v2`      | `0.4.0+` |
+| `v3`            | `0.5.0+` |
 
-Since version 0.4.0, two implementations of the parser are available:
+Since version 0.4.0, three implementations of the parser are available:
 
 * `v1`: the *classic* implementation of `javaobj`, with a work in progress
   implementation of a writer.
-* `v2`: the *new* implementation, which is a port of the Java project
+* `v2`: a rewritten implementation, which is a port of the Java project
   [`jdeserialize`](https://github.com/frohoff/jdeserialize/),
   with support of the object transformer (with a new API) and of the `numpy`
   arrays loading.
+* `v3`: a **new** implementation, written from scratch to benefit from
+  Python 3.12+ features.
 
 You can use the `v1` parser to ensure that the behaviour of your scripts
 doesn't change and to keep the ability to write down files.
 
-You can use the `v2` parser for new developments
-*which won't require marshalling* and as a *fallback* if the `v1`
-fails to parse a file.
+You can use the `v2` parser for developments in Python versions lower
+than 3.12 and *which won't require marshalling*, or as a *fallback*
+if the `v1` parser fails to parse a file.
+
+For new development, you should use the `v3` parser.
 
 ### Object transformers V1
 
@@ -147,8 +152,8 @@ with open("objCollections.ser", "rb") as fd:
 
 **Note:** The objects and methods provided by `javaobj` module are shortcuts
 to the `javaobj.v1` package, for Compatibility purpose.
-It is **recommended** to explicitly import methods and classes from the `v1`
-(or `v2`) package when writing new code, in order to be sure that your code
+It is **recommended** to explicitly import methods and classes from the `v1`,
+`v2`, or `v3` package when writing new code, in order to be sure that your code
 won't need import updates in the future.
 
 
@@ -404,13 +409,13 @@ class JavaRandomTransformer(BaseTransformer):
         values = []
         for f_name, f_type in zip(self.field_names, self.field_types):
             values.append(parser._read_field_value(f_type))
-            fields.append(javaobj.beans.JavaField(f_type, f_name))
+            fields.append(javaobj.v2.beans.JavaField(f_type, f_name))
 
-        class_desc = javaobj.beans.JavaClassDesc(
-            javaobj.beans.ClassDescType.NORMALCLASS
+        class_desc = javaobj.v2.beans.JavaClassDesc(
+            javaobj.v2.beans.ClassDescType.NORMALCLASS
         )
         class_desc.name = self.name
-        class_desc.desc_flags = javaobj.beans.ClassDataType.EXTERNAL_CONTENTS
+        class_desc.desc_flags = javaobj.v2.beans.ClassDataType.EXTERNAL_CONTENTS
         class_desc.fields = fields
         class_desc.field_data = values
         return class_desc
@@ -486,7 +491,8 @@ transformers = [
     RandomChildTransformer(),
     JavaRandomTransformer()
 ]
-pobj = javaobj.loads("custom_objects.ser", *transformers)
+with open("custom_objects.ser", "rb") as fd:
+    pobj = javaobj.load(fd, *transformers)
 
 # Here we show a field that isn't visible from the class description
 # The field belongs to the class but it's not serialized by default because
@@ -530,7 +536,7 @@ value = pobj.myField
 | Feature | V1 | V2 | V3 |
 |---|---|---|---|
 | Python 3.12+ (`match/case`, PEP 604) | ✗ | ✗ | ✓ |
-| Fully typed (`dataclasses`, `TypeAlias`) | ✗ | partial | ✓ |
+| Fully typed (`dataclasses`, PEP 695 `type` aliases) | ✗ | partial | ✓ |
 | `TC_RESET` handling | ✗ | ✗ | ✓ |
 | `TC_EXCEPTION` in object graph | ✗ | ✗ | ✓ |
 | `TC_PROXYCLASSDESC` | ✗ | ✓ | ✓ |
