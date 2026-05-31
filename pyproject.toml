@@ -7,7 +7,7 @@ packages = ["javaobj"]
 
 [project]
 name = "javaobj-py3"
-version = "0.4.4"
+version = "0.5.0"
 description = "Module for serializing and de-serializing Java objects."
 readme = "README.md"
 license = "Apache-2.0"
@@ -32,6 +32,8 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Libraries :: Python Modules"
 ]
 
@@ -48,6 +50,11 @@ Homepage = "https://github.com/tcalmant/python-javaobj"
 Issues = "http://github.com/tcalmant/python-javaobj/issues"
 Source = "http://github.com/tcalmant/python-javaobj/"
 
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]
+
 [tool.hatch.envs.test]
 dependencies = ["pytest"]
 
@@ -55,4 +62,10 @@ dependencies = ["pytest"]
 run = "pytest tests"
 
 [tool.black]
-line-length = 79
+line-length = 110
+
+[tool.ruff]
+line-length = 110
+
+[tool.ruff.lint]
+extend-select = ["I"]
