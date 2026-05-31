@@ -1,8 +1,9 @@
 # javaobj-py3
 
+[![GitHub repository](https://img.shields.io/badge/GitHub-Repository-black?logo=github)](https://github.com/tcalmant/python-javaobj/)
 [![Latest Version](https://img.shields.io/pypi/v/javaobj-py3.svg)](https://pypi.python.org/pypi/javaobj-py3/)
 [![License](https://img.shields.io/pypi/l/javaobj-py3.svg)](https://pypi.python.org/pypi/javaobj-py3/)
-[![CI Build](https://github.com/tcalmant/python-javaobj/actions/workflows/build.yml/badge.svg?branch=master)](https://github.com/tcalmant/python-javaobj/actions/workflows/build.yml)
+[![CI Build](https://github.com/tcalmant/python-javaobj/actions/workflows/build-24.04.yml/badge.svg?branch=v3)](https://github.com/tcalmant/python-javaobj/actions/workflows/build-24.04.yml)
 [![Coveralls status](https://coveralls.io/repos/tcalmant/python-javaobj/badge.svg?branch=master)](https://coveralls.io/r/tcalmant/python-javaobj?branch=master)
 
 *python-javaobj* is a python library that provides functions for reading and
