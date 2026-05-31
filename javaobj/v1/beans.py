@@ -173,9 +173,14 @@ class JavaString(UNICODE_TYPE):
         return UNICODE_TYPE.__hash__(self)
 
     def __eq__(self, other):
-        if not isinstance(other, UNICODE_TYPE):
+        # Accept both UNICODE_TYPE and plain str.
+        # In Python 2, UNICODE_TYPE is unicode while str literals are bytes;
+        # including str here lets assertEqual(java_string, "literal") work
+        # in Python 2 as well as Python 3 (where str == UNICODE_TYPE).
+        if not isinstance(other, (UNICODE_TYPE, str)):
             return False
-        return UNICODE_TYPE.__eq__(self, other)
+        result = UNICODE_TYPE.__eq__(self, other)
+        return False if result is NotImplemented else result
 
 
 class JavaEnum(JavaObject):
