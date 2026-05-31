@@ -199,7 +199,7 @@ class JavaArray(list, JavaObject):
         self.classdesc = classdesc
 
     def __hash__(self):
-        return list.__hash__(self)
+        return object.__hash__(self)
 
 
 class JavaByteArray(JavaObject):
