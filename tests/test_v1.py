@@ -508,8 +508,8 @@ class TestJavaobjV1(unittest.TestCase):
         pobj = javaobj.loads(ser)
         self.assertIsNone(pobj.superItems)
         self.assertIsNone(pobj.items)
-        self.assertEquals(pobj.name, "test")
-        self.assertEquals(pobj.port, 443)
+        self.assertEqual(pobj.name, "test")
+        self.assertEqual(pobj.port, 443)
 
 
 # ------------------------------------------------------------------------------
