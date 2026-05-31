@@ -38,8 +38,8 @@ classifiers = [
 ]
 
 dependencies = [
-    "enum34; python_version<='3.4'",
-    "typing; python_version<='3.4'"
+    "enum34; python_version<'3.4'",
+    "typing; python_version<'3.5'"
 ]
 
 [project.optional-dependencies]
