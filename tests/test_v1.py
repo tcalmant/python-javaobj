@@ -337,18 +337,12 @@ class TestJavaobjV1(unittest.TestCase):
         jobj = self.read_file("testCharArray.ser")
         pobj = javaobj.loads(jobj)
         _logger.debug(pobj)
-        self.assertEqual(
-            pobj,
-            [
-                "\u0000",
-                "\ud800",
-                "\u0001",
-                "\udc00",
-                "\u0002",
-                "\uffff",
-                "\u0003",
-            ],
-        )
+        # Compare by code points to avoid Python 2/3 string literal ambiguity
+        # (ruff strips u"" prefixes; \u-escapes in plain str are literal in Py2)
+        expected_codepoints = [0x0000, 0xD800, 0x0001, 0xDC00, 0x0002, 0xFFFF, 0x0003]
+        self.assertEqual(len(pobj), len(expected_codepoints))
+        for actual, cp in zip(pobj, expected_codepoints):
+            self.assertEqual(ord(actual), cp)
         self._try_marshalling(jobj, pobj)
 
     def test_2d_array(self):

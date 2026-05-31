@@ -83,7 +83,7 @@ __docformat__ = "restructuredtext en"
 # Convertion of a Java type char to its NumPy equivalent
 NUMPY_TYPE_MAP = {
     TypeCode.TYPE_BYTE: "B",
-    TypeCode.TYPE_CHAR: "b",
+    TypeCode.TYPE_CHAR: ">u2",
     TypeCode.TYPE_DOUBLE: ">d",
     TypeCode.TYPE_FLOAT: ">f",
     TypeCode.TYPE_INTEGER: ">i",
@@ -508,7 +508,8 @@ class JavaObjectUnmarshaller:
         # classdata[]
 
         if (
-            classdesc.flags & ClassDescFlags.SC_EXTERNALIZABLE
+            classdesc is not None
+            and classdesc.flags & ClassDescFlags.SC_EXTERNALIZABLE
             and not classdesc.flags & ClassDescFlags.SC_BLOCK_DATA
         ):
             # TODO:
@@ -831,8 +832,9 @@ class JavaObjectUnmarshaller:
             "(2nd line is an actual position!):"
         )
 
-        # Do not use a keyword argument
-        self.object_stream.seek(-16, os.SEEK_CUR)
+        # Do not use a keyword argument; clamp to avoid seeking before start
+        current_pos = self.object_stream.tell()
+        self.object_stream.seek(max(0, current_pos - 16))
         position = self.object_stream.tell()
         the_rest = self.object_stream.read()
 

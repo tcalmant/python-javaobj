@@ -506,7 +506,7 @@ class NumpyArrayTransformer(ObjectTransformer):
     # Convertion of a Java type char to its NumPy equivalent
     NUMPY_TYPE_MAP = {
         TypeCode.TYPE_BYTE: "B",
-        TypeCode.TYPE_CHAR: "b",
+        TypeCode.TYPE_CHAR: ">u2",
         TypeCode.TYPE_DOUBLE: ">d",
         TypeCode.TYPE_FLOAT: ">f",
         TypeCode.TYPE_INTEGER: ">i",

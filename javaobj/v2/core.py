@@ -146,7 +146,7 @@ class JavaStreamParser(api.IJavaStreamParser):
         # Read content
         contents = []  # type: List[ParsedJavaContent]
         while True:
-            self._log.info("Reading next content")
+            self._log.debug("Reading next content")
             start = self.__fd.tell()
             try:
                 type_code = self.__reader.read_byte()

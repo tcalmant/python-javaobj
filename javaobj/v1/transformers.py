@@ -136,7 +136,7 @@ class DefaultObjectTransformer(object):  # pylint:disable=R0205
             """
             # Ignore the blockdata opid
             (opid,) = unmarshaller._readStruct(">B")
-            if opid != ClassDescFlags.SC_BLOCK_DATA:
+            if opid != TerminalCode.TC_BLOCKDATA:
                 raise ValueError("Start of block data not found")
 
             # Read HashMap fields
