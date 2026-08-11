@@ -34,16 +34,24 @@ from __future__ import print_function
 # Standard library
 import logging
 import os
+import struct
 import subprocess
 import sys
 import unittest
+from io import BytesIO
+
+# Local
+import javaobj.v1 as javaobj
+from javaobj.constants import ClassDescFlags, StreamConstants, TerminalCode, TypeCode
+from javaobj.utils import hexdump, java_data_fd
 
 # Prepare Python path to import javaobj
 sys.path.insert(0, os.path.abspath(os.path.dirname(os.getcwd())))
 
-# Local
-import javaobj.v1 as javaobj
-from javaobj.utils import hexdump, java_data_fd
+try:
+    import numpy
+except ImportError:
+    numpy = None
 
 # ------------------------------------------------------------------------------
 
@@ -51,6 +59,44 @@ from javaobj.utils import hexdump, java_data_fd
 __docformat__ = "restructuredtext en"
 
 _logger = logging.getLogger("javaobj.tests")
+
+# ------------------------------------------------------------------------------
+# Hand-crafted byte-stream helpers (no Java toolchain required: the wire
+# format is fully described by javaobj.constants).
+# ------------------------------------------------------------------------------
+
+STREAM_MAGIC = struct.pack(">HH", int(StreamConstants.STREAM_MAGIC), int(StreamConstants.STREAM_VERSION))
+
+
+def _utf(s):
+    encoded = s.encode("utf-8")
+    return struct.pack(">H", len(encoded)) + encoded
+
+
+def _tc(code):
+    return struct.pack(">B", int(code))
+
+
+def _classdesc_bytes(name, flags, field_bytes=b"", nb_fields=0, class_annotation=None, superclass=None):
+    """
+    Builds a TC_CLASSDESC record body, including its own leading opcode
+    byte (the caller is expected to have already written the opcode of
+    the object/class/array/enum that references this class description).
+    """
+    if class_annotation is None:
+        class_annotation = _tc(TerminalCode.TC_ENDBLOCKDATA)
+    if superclass is None:
+        superclass = _tc(TerminalCode.TC_NULL)
+    return (
+        _tc(TerminalCode.TC_CLASSDESC)
+        + _utf(name)
+        + struct.pack(">qB", 0, flags)
+        + struct.pack(">H", nb_fields)
+        + field_bytes
+        + class_annotation
+        + superclass
+    )
+
 
 # ------------------------------------------------------------------------------
 
@@ -504,6 +550,441 @@ class TestJavaobjV1(unittest.TestCase):
         self.assertIsNone(pobj.items)
         self.assertEqual(pobj.name, "test")
         self.assertEqual(pobj.port, 443)
+
+
+# ------------------------------------------------------------------------------
+# JavaObjectMarshaller branch tests (built directly in Python: no Java
+# fixture needed, since the marshaller only serializes existing beans).
+# ------------------------------------------------------------------------------
+
+
+class TestMarshallerBranches(unittest.TestCase):
+    """Direct unit tests for javaobj.v1.marshaller branch coverage."""
+
+    @staticmethod
+    def _make_class(name, flags, fields_names=(), fields_types=(), superclass=None):
+        cls = javaobj.beans.JavaClass()
+        cls.name = name
+        cls.serialVersionUID = 0
+        cls.flags = flags
+        cls.fields_names = list(fields_names)
+        cls.fields_types = list(fields_types)
+        cls.superclass = superclass
+        return cls
+
+    def test_add_transformer_dump(self):
+        class UpperCaseTransformer(object):
+            def transform(self, obj):
+                return obj
+
+        m = javaobj.JavaObjectMarshaller()
+        m.add_transformer(UpperCaseTransformer())
+        self.assertEqual(len(m.object_transformers), 1)
+
+        cls = self._make_class("Foo", int(ClassDescFlags.SC_SERIALIZABLE))
+        obj = javaobj.beans.JavaObject()
+        obj.classdesc = cls
+        data = javaobj.dumps(obj, UpperCaseTransformer())
+        self.assertTrue(data.startswith(b"\xac\xed\x00\x05"))
+
+    def test_load_with_transformer(self):
+        class NoopTransformer(javaobj.DefaultObjectTransformer):
+            pass
+
+        jobj = self.read_file_class_helper("testBoolean.ser")
+        pobj = javaobj.loads(jobj, NoopTransformer())
+        self.assertEqual(pobj, chr(0))
+
+    @staticmethod
+    def read_file_class_helper(filename):
+        for subfolder in ("java", ""):
+            found_file = os.path.join(os.path.dirname(__file__), subfolder, filename)
+            if os.path.exists(found_file):
+                with open(found_file, "rb") as filep:
+                    return filep.read()
+        raise IOError("File not found: {0}".format(filename))
+
+    def test_write_none(self):
+        self.assertEqual(javaobj.dumps(None), b"\xac\xed\x00\x05\x70")
+
+    def test_write_unsupported_type(self):
+        with self.assertRaises(RuntimeError):
+            javaobj.dumps(12345)
+
+    def test_write_byte_array(self):
+        cls = self._make_class("[B", int(ClassDescFlags.SC_SERIALIZABLE))
+        arr = javaobj.beans.JavaByteArray(b"ABC", classdesc=cls)
+        data = javaobj.dumps(arr)
+        self.assertTrue(data.startswith(b"\xac\xed\x00\x05"))
+
+    def test_write_enum(self):
+        cls = self._make_class(
+            "MyEnum",
+            int(ClassDescFlags.SC_SERIALIZABLE) | int(ClassDescFlags.SC_ENUM),
+        )
+        enum_obj = javaobj.beans.JavaEnum(constant=javaobj.beans.JavaString("RED"))
+        enum_obj.classdesc = cls
+        data = javaobj.dumps(enum_obj)
+        self.assertTrue(data.startswith(b"\xac\xed\x00\x05"))
+
+    def test_writestring_reference_reuse(self):
+        m = javaobj.JavaObjectMarshaller()
+        m.object_stream = BytesIO()
+        m.references = []
+        m._writeString(javaobj.beans.JavaString("hi"))
+        m._writeString(javaobj.beans.JavaString("hi"))
+        self.assertEqual(len(m.references), 1)
+
+    def test_write_blockdata_large(self):
+        m = javaobj.JavaObjectMarshaller()
+        m.object_stream = BytesIO()
+        m.write_blockdata("x" * 300)
+        data = m.object_stream.getvalue()
+        # Slice (not index) so this works the same on Python 2 (str) and
+        # Python 3 (bytes): indexing a str/bytes differs across versions.
+        self.assertEqual(data[0:1], struct.pack(">B", int(TerminalCode.TC_BLOCKDATALONG)))
+
+    def test_write_object_attribute_error(self):
+        cls = self._make_class(
+            "Foo",
+            int(ClassDescFlags.SC_SERIALIZABLE),
+            fields_names=["missing"],
+            fields_types=[javaobj.beans.JavaString("I")],
+        )
+        obj = javaobj.beans.JavaObject()
+        obj.classdesc = cls
+        with self.assertRaises(AttributeError):
+            javaobj.dumps(obj)
+
+    def test_write_object_annotations(self):
+        cls = self._make_class(
+            "Foo",
+            int(ClassDescFlags.SC_SERIALIZABLE) | int(ClassDescFlags.SC_WRITE_METHOD),
+        )
+        obj = javaobj.beans.JavaObject()
+        obj.classdesc = cls
+        obj.annotations = [None, javaobj.beans.JavaString("hi")]
+        data = javaobj.dumps(obj)
+        self.assertTrue(data.startswith(b"\xac\xed\x00\x05"))
+
+    def test_write_array_nested(self):
+        cls_inner = self._make_class("[B", int(ClassDescFlags.SC_SERIALIZABLE))
+        inner_arr = javaobj.beans.JavaByteArray(b"AB", classdesc=cls_inner)
+
+        cls_outer = self._make_class("[[B", int(ClassDescFlags.SC_SERIALIZABLE))
+        outer_arr = javaobj.beans.JavaArray(classdesc=cls_outer)
+        outer_arr.append(inner_arr)
+
+        data = javaobj.dumps(outer_arr)
+        self.assertTrue(data.startswith(b"\xac\xed\x00\x05"))
+
+    def test_write_value_primitive_types(self):
+        m = javaobj.JavaObjectMarshaller()
+        m.object_stream = BytesIO()
+        m._write_value(TypeCode.TYPE_SHORT, 5)
+        m._write_value(TypeCode.TYPE_LONG, 123456789012)
+        m._write_value(TypeCode.TYPE_FLOAT, 1.5)
+        m._write_value(TypeCode.TYPE_DOUBLE, 2.5)
+        self.assertEqual(len(m.object_stream.getvalue()), 2 + 8 + 4 + 8)
+
+    def test_write_value_class_field(self):
+        m = javaobj.JavaObjectMarshaller()
+        m.object_stream = BytesIO()
+        m.references = []
+        cls = self._make_class("java.lang.Object", int(ClassDescFlags.SC_SERIALIZABLE))
+        m._write_value(TypeCode.TYPE_OBJECT, cls)
+        self.assertTrue(m.object_stream.getvalue())
+
+    def test_write_value_string_field(self):
+        m = javaobj.JavaObjectMarshaller()
+        m.object_stream = BytesIO()
+        m.references = []
+        m._write_value(TypeCode.TYPE_OBJECT, "plain string")
+        self.assertTrue(m.object_stream.getvalue())
+
+    def test_write_value_unknown_object_typecode(self):
+        m = javaobj.JavaObjectMarshaller()
+        m.object_stream = BytesIO()
+        m.references = []
+        with self.assertRaises(RuntimeError):
+            m._write_value(TypeCode.TYPE_OBJECT, 12345)
+
+    def test_write_value_unknown_typecode(self):
+        m = javaobj.JavaObjectMarshaller()
+        m.object_stream = BytesIO()
+        with self.assertRaises(RuntimeError):
+            m._write_value(999, 1)
+
+    def test_convert_type_to_char_variants(self):
+        m = javaobj.JavaObjectMarshaller()
+        self.assertEqual(m._convert_type_to_char(TypeCode.TYPE_BYTE), TypeCode.TYPE_BYTE.value)
+        self.assertEqual(m._convert_type_to_char(66), 66)
+        with self.assertRaises(RuntimeError):
+            m._convert_type_to_char(["A"])
+
+
+# ------------------------------------------------------------------------------
+# JavaObjectUnmarshaller branch tests (hand-crafted byte streams)
+# ------------------------------------------------------------------------------
+
+
+class TestUnmarshallerBranches(unittest.TestCase):
+    """Direct unit tests for javaobj.v1.unmarshaller branch coverage."""
+
+    def test_none_stream(self):
+        with self.assertRaises(IOError):
+            javaobj.JavaObjectUnmarshaller(None)
+
+    def test_bad_header(self):
+        with self.assertRaises(IOError):
+            javaobj.loads(b"\x00\x00\x00\x05")
+
+    def test_unknown_opcode(self):
+        # Also exercises readObject()'s except-branch and _oops_dump_state().
+        with self.assertRaises(RuntimeError):
+            javaobj.loads(STREAM_MAGIC + b"\x00")
+
+    def test_truncated_stream(self):
+        with self.assertRaises(RuntimeError):
+            javaobj.loads(STREAM_MAGIC)
+
+    def test_unexpected_opcode_in_expect(self):
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_CLASS) + _tc(TerminalCode.TC_STRING)
+        with self.assertRaises(IOError):
+            javaobj.loads(data)
+
+    def test_invalid_field_typecode(self):
+        cd = _classdesc_bytes(
+            "Foo",
+            int(ClassDescFlags.SC_SERIALIZABLE),
+            field_bytes=struct.pack(">B", 0xFF) + _utf("x"),
+            nb_fields=1,
+        )
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_CLASS) + cd
+        with self.assertRaises(RuntimeError):
+            javaobj.loads(data)
+
+    def test_class_annotation_not_implemented(self):
+        cd = _classdesc_bytes(
+            "Foo",
+            int(ClassDescFlags.SC_SERIALIZABLE),
+            class_annotation=_tc(TerminalCode.TC_NULL),
+        )
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_CLASS) + cd
+        with self.assertRaises(NotImplementedError):
+            javaobj.loads(data)
+
+    def test_external_contents_not_implemented(self):
+        cd = _classdesc_bytes("Foo", int(ClassDescFlags.SC_EXTERNALIZABLE))
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_OBJECT) + cd
+        with self.assertRaises(NotImplementedError):
+            javaobj.loads(data)
+
+    def test_array_field_type_assertion(self):
+        field = struct.pack(">B", ord("[")) + _utf("arr")
+        field += _tc(TerminalCode.TC_REFERENCE) + struct.pack(">L", int(StreamConstants.BASE_REFERENCE_IDX))
+        cd = _classdesc_bytes(
+            "Foo",
+            int(ClassDescFlags.SC_SERIALIZABLE),
+            field_bytes=field,
+            nb_fields=1,
+        )
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_CLASS) + cd
+        with self.assertRaises(AssertionError):
+            javaobj.loads(data)
+
+    def test_longstring(self):
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_LONGSTRING) + struct.pack(">Q", 5) + b"hello"
+        result = javaobj.loads(data)
+        self.assertEqual(result, "hello")
+
+    def test_blockdata_long(self):
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_BLOCKDATALONG) + struct.pack(">I", 5) + b"hello"
+        result = javaobj.loads(data)
+        self.assertEqual(result, "hello")
+
+    @unittest.skipIf(numpy is None, "numpy is not installed")
+    def test_numpy_array(self):
+        for subfolder in ("java", ""):
+            found_file = os.path.join(os.path.dirname(__file__), subfolder, "objArrays.ser")
+            if os.path.exists(found_file):
+                break
+        else:
+            self.skipTest("objArrays.ser not found")
+
+        with open(found_file, "rb") as fd:
+            pobj = javaobj.load(fd, use_numpy_arrays=True)
+        arr = pobj.integerArr
+        self.assertIsInstance(arr, numpy.ndarray)
+
+    def test_read_value_direct(self):
+        data = (
+            STREAM_MAGIC
+            + struct.pack(">b", -5)
+            + struct.pack(">h", 300)
+            + struct.pack(">q", 123456789012)
+            + struct.pack(">d", 3.14)
+        )
+        um = javaobj.JavaObjectUnmarshaller(BytesIO(data))
+        self.assertEqual(um._read_value(TypeCode.TYPE_BYTE, 0), -5)
+        self.assertEqual(um._read_value(TypeCode.TYPE_SHORT, 0), 300)
+        self.assertEqual(um._read_value(TypeCode.TYPE_LONG, 0), 123456789012)
+        self.assertAlmostEqual(um._read_value(TypeCode.TYPE_DOUBLE, 0), 3.14)
+
+        # White-box: raw-int and raw-bytes typecode forms (never produced
+        # by the parser itself, but accepted by the method's signature).
+        um2 = javaobj.JavaObjectUnmarshaller(BytesIO(STREAM_MAGIC + struct.pack(">i", 42)))
+        self.assertEqual(um2._read_value(int(TypeCode.TYPE_INTEGER), 0), 42)
+
+        um3 = javaobj.JavaObjectUnmarshaller(BytesIO(STREAM_MAGIC + struct.pack(">i", 43)))
+        self.assertEqual(um3._read_value(b"I", 0), 43)
+
+
+# ------------------------------------------------------------------------------
+# Direct bean unit tests (dunder methods rarely hit by fixture round-trips)
+# ------------------------------------------------------------------------------
+
+
+class TestBeansDirect(unittest.TestCase):
+    """Direct unit tests for javaobj.v1.beans."""
+
+    def test_java_object_hash(self):
+        obj = javaobj.beans.JavaObject()
+        self.assertEqual(hash(obj), id(obj))
+
+    def test_java_object_eq(self):
+        cls = javaobj.beans.JavaClass()
+        cls.name = "Foo"
+        cls.fields_names = []
+
+        a = javaobj.beans.JavaObject()
+        a.classdesc = cls
+        b = javaobj.beans.JavaObject()
+        b.classdesc = cls
+        self.assertEqual(a, b)
+        self.assertNotEqual(a, "not a java object")
+
+    def test_java_object_eq_field_mismatch(self):
+        cls = javaobj.beans.JavaClass()
+        cls.name = "Foo"
+        cls.fields_names = ["x"]
+
+        a = javaobj.beans.JavaObject()
+        a.classdesc = cls
+        a.x = 1
+        b = javaobj.beans.JavaObject()
+        b.classdesc = cls
+        b.x = 2
+        self.assertNotEqual(a, b)
+
+    def test_java_array_hash(self):
+        arr = javaobj.beans.JavaArray()
+        self.assertIsInstance(hash(arr), int)
+
+    def test_java_byte_array_str_and_getitem(self):
+        arr = javaobj.beans.JavaByteArray(b"ABC")
+        self.assertEqual(str(arr), "JavaByteArray({0})".format((65, 66, 67)))
+        self.assertEqual(arr[0], 65)
+        self.assertEqual(list(arr), [65, 66, 67])
+        self.assertEqual(len(arr), 3)
+
+
+# ------------------------------------------------------------------------------
+# Direct transformer unit tests (white-box: no real serialized stream needed)
+# ------------------------------------------------------------------------------
+
+
+class TestTransformersDirect(unittest.TestCase):
+    """Direct unit tests for javaobj.v1.transformers branch coverage."""
+
+    def _make_time(self):
+        return javaobj.transformers.DefaultObjectTransformer.JavaTime(None)
+
+    def test_java_time_unhandled_type(self):
+        jt = self._make_time()
+        jt.annotations = [chr(99)]
+        jt.__extra_loading__(None)  # logs an error, does not raise
+
+    def test_java_time_local_time_branches(self):
+        jt = self._make_time()
+        jt.do_local_time(None, struct.pack(">b", -5))
+        self.assertEqual(jt.hour, 4)  # ~(-5) == 4
+
+        jt = self._make_time()
+        jt.do_local_time(None, struct.pack(">bb", 5, -3))
+        self.assertEqual(jt.minute, 2)  # ~(-3) == 2
+
+        jt = self._make_time()
+        jt.do_local_time(None, struct.pack(">bbb", 5, 3, -2))
+        self.assertEqual(jt.second, 1)  # ~(-2) == 1
+
+        jt = self._make_time()
+        jt.do_local_time(None, struct.pack(">bbbi", 5, 3, 2, 12345))
+        self.assertEqual(jt.nano, 12345)
+
+    def test_java_time_zone_offset_large(self):
+        jt = self._make_time()
+        jt.do_zone_offset(None, struct.pack(">bi", 127, 999999))
+        self.assertEqual(jt.offset, 999999)
+
+    def test_dunder_methods(self):
+        transformer_cls = javaobj.transformers.DefaultObjectTransformer
+
+        jl = transformer_cls.JavaList(None)
+        self.assertIsInstance(hash(jl), int)
+
+        jm = transformer_cls.JavaMap(None)
+        self.assertIsInstance(hash(jm), int)
+
+        js = transformer_cls.JavaSet(None)
+        self.assertIsInstance(hash(js), int)
+
+        jbool = transformer_cls.JavaBool(None)
+        jbool.value = True
+        self.assertTrue(bool(jbool))
+
+        jint = transformer_cls.JavaInt(None)
+        jint.value = 42
+        self.assertEqual(int(jint), 42)
+
+        jprim = transformer_cls.JavaInt(None)
+        jprim.value = 1
+        self.assertLess(jprim, 2)
+
+    def test_linked_hash_map_positive(self):
+        data = (
+            STREAM_MAGIC
+            + _tc(TerminalCode.TC_BLOCKDATA)
+            + struct.pack(">ii", 16, 1)
+            + _tc(TerminalCode.TC_NULL)
+            + _tc(TerminalCode.TC_NULL)
+            + _tc(TerminalCode.TC_ENDBLOCKDATA)
+            + b"\x00"
+        )
+        um = javaobj.JavaObjectUnmarshaller(BytesIO(data))
+        lhm = javaobj.transformers.DefaultObjectTransformer.JavaLinkedHashMap(um)
+        lhm.__extra_loading__(um)
+        self.assertEqual(dict(lhm), {None: None})
+
+    def test_linked_hash_map_missing_blockdata(self):
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_NULL)
+        um = javaobj.JavaObjectUnmarshaller(BytesIO(data))
+        lhm = javaobj.transformers.DefaultObjectTransformer.JavaLinkedHashMap(um)
+        with self.assertRaises(ValueError):
+            lhm.__extra_loading__(um)
+
+    def test_linked_hash_map_bad_trailing_byte(self):
+        data = (
+            STREAM_MAGIC
+            + _tc(TerminalCode.TC_BLOCKDATA)
+            + struct.pack(">ii", 16, 0)
+            + _tc(TerminalCode.TC_ENDBLOCKDATA)
+            + b"\x01"
+        )
+        um = javaobj.JavaObjectUnmarshaller(BytesIO(data))
+        lhm = javaobj.transformers.DefaultObjectTransformer.JavaLinkedHashMap(um)
+        with self.assertRaises(ValueError):
+            lhm.__extra_loading__(um)
 
 
 # ------------------------------------------------------------------------------
