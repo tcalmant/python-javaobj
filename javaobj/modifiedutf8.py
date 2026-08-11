@@ -15,8 +15,6 @@ https://github.com/swstephe/py2jdbc/
 :status: Alpha
 """
 
-from __future__ import unicode_literals
-
 import sys
 
 # Module version
@@ -25,6 +23,11 @@ __version__ = ".".join(str(x) for x in __version_info__)
 
 # Documentation strings format
 __docformat__ = "restructuredtext en"
+
+# Note: this module deliberately does NOT `from __future__ import
+# unicode_literals`. UnicodeDecodeError requires its encoding-name,
+# object and reason arguments to be the *native* str type; on Python 2
+# that means plain bytes-string literals, not unicode ones.
 
 # Encoding name: not cesu-8, which uses a different zero-byte
 NAME = "mutf8"
@@ -170,14 +173,19 @@ def decoder(data):
 
     def next_byte(_it, start, count):
         try:
-            return next(_it)[1]
+            return byte_to_int(next(_it)[1])
         except StopIteration:
             raise UnicodeDecodeError(
                 NAME, data, start, start + count, "incomplete byte sequence"
             )
 
     it = iter(enumerate(data))
-    for i, d in it:
+    for i, raw_d in it:
+        # Iterating a Python 3 bytes object yields ints, but iterating a
+        # Python 2 str yields single-character strings: normalize here so
+        # the bitwise logic below works the same on both, while `data`
+        # itself stays a real bytes-like object for UnicodeDecodeError.
+        d = byte_to_int(raw_d)
         if d == 0x00:  # 00000000
             raise UnicodeDecodeError(
                 NAME, data, i, i + 1, "embedded zero-byte not allowed"
@@ -196,6 +204,11 @@ def decoder(data):
                         for i1, dm in enumerate(DECODE_MAP[6]):
                             d1 = next_byte(it, i, i1 + 1)
                             value = dm.apply(d1, value, data, i, i1 + 1)
+                        # The 6 bytes reconstruct the supplementary
+                        # character's 20-bit offset from the surrogate
+                        # pair; add back the base to get the real
+                        # code point (U+10000..U+10FFFF).
+                        value += 0x10000
                     else:  # 1110xxxx
                         value = d & 0x0F
                         for i1, dm in enumerate(DECODE_MAP[3]):
@@ -228,7 +241,11 @@ def decode_modified_utf8(data, errors="strict"):
     :raises UnicodeDecodeError: sequence is invalid.
     """
     value, length = "", 0
-    it = iter(decoder(byte_to_int(d) for d in data))
+    # decoder() normalizes each item internally (via byte_to_int) as it
+    # iterates, so the original bytes-like `data` can be passed directly;
+    # it also needs to stay a real bytes-like object here, since
+    # UnicodeDecodeError requires one for the errors decoder() raises.
+    it = iter(decoder(data))
     while True:
         try:
             value += next(it)
@@ -242,7 +259,10 @@ def decode_modified_utf8(data, errors="strict"):
             if errors == "ignore":
                 pass
             elif errors == "replace":
-                value += "\uFFFD"
+                # Explicit u-prefix: without `unicode_literals` active in
+                # this module, a plain literal would not interpret \u as
+                # an escape sequence on Python 2.
+                value += u"\uFFFD"
                 length += 1
     return value, length
 
