@@ -46,7 +46,13 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(os.getcwd())))
 import javaobj.v2 as javaobj
 
 # Local
-from javaobj.utils import bytes_char, java_data_fd
+from javaobj.constants import ClassDescFlags, StreamConstants, TerminalCode, TypeCode
+from javaobj.utils import BYTES_TYPE, UNICODE_TYPE, bytes_char, java_data_fd
+
+try:
+    import numpy
+except ImportError:
+    numpy = None
 
 # ------------------------------------------------------------------------------
 
@@ -161,6 +167,41 @@ class JavaRandomTransformer(BaseTransformer):
         class_desc.fields = fields
         class_desc.field_data = values
         return class_desc
+
+
+# ------------------------------------------------------------------------------
+# Hand-crafted byte-stream helpers (no Java toolchain required: the wire
+# format is fully described by javaobj.constants).
+# ------------------------------------------------------------------------------
+
+STREAM_MAGIC = struct.pack(">HH", int(StreamConstants.STREAM_MAGIC), int(StreamConstants.STREAM_VERSION))
+
+
+def _utf(s):
+    encoded = s.encode("utf-8")
+    return struct.pack(">H", len(encoded)) + encoded
+
+
+def _tc(code):
+    return struct.pack(">B", int(code))
+
+
+def _classdesc_bytes(name, flags, field_bytes=b"", nb_fields=0, superclass=None):
+    if superclass is None:
+        superclass = _tc(TerminalCode.TC_NULL)
+    return (
+        _tc(TerminalCode.TC_CLASSDESC)
+        + _utf(name)
+        + struct.pack(">q", 0)  # serialVersionUID
+        + struct.pack(">Bh", flags, nb_fields)
+        + field_bytes
+        + _tc(TerminalCode.TC_ENDBLOCKDATA)
+        + superclass
+    )
+
+
+def _object_field(name, class_name_bytes):
+    return struct.pack(">B", ord("L")) + _utf(name) + class_name_bytes
 
 
 # ------------------------------------------------------------------------------
@@ -616,6 +657,443 @@ class TestJavaobjV2(unittest.TestCase):
         self.assertEqual(expected["int_not_in_fields"], parent_data["int_not_in_fields"])
         self.assertEqual(expected["custom_obj"]["field_data"], child_data)
         self.assertEqual(expected["custom_obj"]["annotations"], super_data)
+
+    def test_instance_dump(self):
+        """
+        Smoke test for JavaInstance.dump() (debug string representation)
+        """
+        jobj = self.read_file("objSuper.ser")
+        pobj = javaobj.loads(jobj)
+        text = pobj.dump()
+        self.assertIsInstance(text, (BYTES_TYPE, UNICODE_TYPE))
+        self.assertIn(pobj.get_class().name, text)
+
+    def test_array_dump(self):
+        """
+        Smoke test for JavaArray.dump() (debug string representation)
+        """
+        jobj = self.read_file("test2DArray.ser")
+        pobj = javaobj.loads(jobj)
+        text = pobj.dump()
+        self.assertIsInstance(text, (BYTES_TYPE, UNICODE_TYPE))
+        self.assertIn("array", text)
+
+    def test_parser_dump(self):
+        """
+        Smoke test for JavaStreamParser.dump()
+        """
+        parser = javaobj.core.JavaStreamParser(
+            self.read_file("objSuper.ser", stream=True),
+            [javaobj.transformers.DefaultObjectTransformer()],
+        )
+        content = parser.run()
+        text = parser.dump(content)
+        self.assertIsInstance(text, (BYTES_TYPE, UNICODE_TYPE))
+        self.assertIn("BEGIN stream content output", text)
+
+
+# ------------------------------------------------------------------------------
+# Malformed-stream / defensive-branch tests
+# ------------------------------------------------------------------------------
+
+
+class TestMalformedStreams(unittest.TestCase):
+    """
+    Feeds hand-crafted, syntactically-invalid streams to the v2 parser to
+    exercise its defensive ``ValueError`` guard clauses. No Java toolchain
+    is needed: the wire format only requires following javaobj.constants
+    byte-for-byte.
+    """
+
+    def test_bad_magic(self):
+        with self.assertRaises(ValueError):
+            javaobj.loads(b"\x00\x00\x00\x05")
+
+    def test_bad_version(self):
+        with self.assertRaises(ValueError):
+            javaobj.loads(struct.pack(">HH", int(StreamConstants.STREAM_MAGIC), 0x99))
+
+    def test_unknown_top_level_opcode(self):
+        data = STREAM_MAGIC + b"\x01"
+        with self.assertRaises(ValueError):
+            javaobj.loads(data)
+
+    def test_unexpected_blockdata_in_exception(self):
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_EXCEPTION) + _tc(TerminalCode.TC_BLOCKDATA)
+        with self.assertRaises(ValueError):
+            javaobj.loads(data)
+
+    def test_invalid_field_count(self):
+        cd = _classdesc_bytes("Foo", int(ClassDescFlags.SC_SERIALIZABLE), nb_fields=-1)
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_CLASS) + cd
+        with self.assertRaises(ValueError):
+            javaobj.loads(data)
+
+    def test_invalid_field_type_char(self):
+        bad_field = struct.pack(">B", 0xFF) + _utf("x")
+        cd = _classdesc_bytes("Foo", int(ClassDescFlags.SC_SERIALIZABLE), field_bytes=bad_field, nb_fields=1)
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_CLASS) + cd
+        with self.assertRaises(ValueError):
+            javaobj.loads(data)
+
+    def test_classdesc_reference_not_classdesc(self):
+        data = (
+            STREAM_MAGIC
+            + _tc(TerminalCode.TC_STRING)
+            + _utf("hi")
+            + _tc(TerminalCode.TC_ARRAY)
+            + _tc(TerminalCode.TC_REFERENCE)
+            + struct.pack(">i", int(StreamConstants.BASE_REFERENCE_IDX))
+        )
+        with self.assertRaises(ValueError):
+            javaobj.loads(data)
+
+    def test_string_reference_not_string(self):
+        cd1 = _classdesc_bytes("A", int(ClassDescFlags.SC_SERIALIZABLE))
+        field = _object_field(
+            "x",
+            _tc(TerminalCode.TC_REFERENCE) + struct.pack(">i", int(StreamConstants.BASE_REFERENCE_IDX)),
+        )
+        cd2 = _classdesc_bytes("B", int(ClassDescFlags.SC_SERIALIZABLE), field_bytes=field, nb_fields=1)
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_CLASS) + cd1 + _tc(TerminalCode.TC_CLASS) + cd2
+        with self.assertRaises(ValueError):
+            javaobj.loads(data)
+
+    def test_classdesc_invalid_starter(self):
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_CLASS) + b"\x00"
+        with self.assertRaises(ValueError):
+            javaobj.loads(data)
+
+    def test_custom_readobject_not_processed(self):
+        flags = int(ClassDescFlags.SC_SERIALIZABLE) | int(ClassDescFlags.SC_WRITE_METHOD)
+        cd = _classdesc_bytes("XYZ", flags)
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_OBJECT) + cd + b"\x00"
+        with self.assertRaises(ValueError):
+            javaobj.loads(data)
+
+    def test_object_annotation_no_transformer(self):
+        # v2 derives OBJECT_ANNOTATION from SC_EXTERNALIZABLE + SC_WRITE_METHOD
+        flags = int(ClassDescFlags.SC_EXTERNALIZABLE) | int(ClassDescFlags.SC_WRITE_METHOD)
+        cd = _classdesc_bytes("Foo", flags)
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_OBJECT) + cd
+        with self.assertRaises(ValueError):
+            javaobj.loads(data)
+
+    def test_array_field_invalid_subtype(self):
+        field = _object_field("arr", _tc(TerminalCode.TC_STRING) + _utf("[I"))
+        # Field descriptor byte must be TYPE_ARRAY ('['), not TYPE_OBJECT:
+        field = struct.pack(">B", ord("[")) + field[1:]
+        cd = _classdesc_bytes("Foo", int(ClassDescFlags.SC_SERIALIZABLE), field_bytes=field, nb_fields=1)
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_OBJECT) + cd + b"\x00"
+        with self.assertRaises(ValueError):
+            javaobj.loads(data)
+
+    def test_enum_description_null(self):
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_ENUM) + _tc(TerminalCode.TC_NULL)
+        with self.assertRaises(ValueError):
+            javaobj.loads(data)
+
+    def test_array_invalid_name(self):
+        cd = _classdesc_bytes("X", int(ClassDescFlags.SC_SERIALIZABLE))
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_ARRAY) + cd
+        with self.assertRaises(ValueError):
+            javaobj.loads(data)
+
+    def test_array_invalid_size(self):
+        cd = _classdesc_bytes("[B", int(ClassDescFlags.SC_SERIALIZABLE))
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_ARRAY) + cd + struct.pack(">i", -1)
+        with self.assertRaises(ValueError):
+            javaobj.loads(data)
+
+    def test_invalid_handle_reference(self):
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_REFERENCE) + struct.pack(">i", 0x7E1234)
+        with self.assertRaises(ValueError):
+            javaobj.loads(data)
+
+    def test_reset_during_exception(self):
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_EXCEPTION) + _tc(TerminalCode.TC_RESET)
+        with self.assertRaises(ValueError):
+            javaobj.loads(data)
+
+    def test_null_exception_object(self):
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_EXCEPTION) + _tc(TerminalCode.TC_NULL)
+        with self.assertRaises(ValueError):
+            javaobj.loads(data)
+
+    def test_exception_object_not_instance(self):
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_EXCEPTION) + _tc(TerminalCode.TC_STRING) + _utf("hello")
+        with self.assertRaises(ValueError):
+            javaobj.loads(data)
+
+    def test_invalid_blockdatalong_size(self):
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_BLOCKDATALONG) + struct.pack(">i", -1)
+        with self.assertRaises(ValueError):
+            javaobj.loads(data)
+
+    def test_duplicate_handle(self):
+        # White-box: handles are always freshly allocated by the parser
+        # itself, so duplication can only be triggered via the internal API.
+        parser = javaobj.core.JavaStreamParser(BytesIO(b""), [javaobj.transformers.DefaultObjectTransformer()])
+        handle = parser._new_handle()
+        parser._set_handle(handle, None)
+        with self.assertRaises(ValueError):
+            parser._set_handle(handle, None)
+
+
+# ------------------------------------------------------------------------------
+# JavaClassDesc.validate() / field-access tests
+# ------------------------------------------------------------------------------
+
+
+class TestBeansValidation(unittest.TestCase):
+    """Direct unit tests for JavaClassDesc.validate() and field access."""
+
+    @staticmethod
+    def _cd(flags, fields=None, interfaces=None, enum_constants=None):
+        cd = javaobj.beans.JavaClassDesc(javaobj.beans.ClassDescType.NORMALCLASS)
+        cd.desc_flags = flags
+        cd.fields = fields or []
+        cd.interfaces = interfaces or []
+        cd.enum_constants = set(enum_constants or [])
+        return cd
+
+    def test_valid_serializable(self):
+        cd = self._cd(int(ClassDescFlags.SC_SERIALIZABLE))
+        cd.validate()  # must not raise
+
+    def test_non_serializable_with_fields(self):
+        field = javaobj.beans.JavaField(javaobj.beans.FieldType.INTEGER, "x")
+        cd = self._cd(0, fields=[field])
+        with self.assertRaises(ValueError):
+            cd.validate()
+
+    def test_serializable_and_externalizable(self):
+        flags = int(ClassDescFlags.SC_SERIALIZABLE) | int(ClassDescFlags.SC_EXTERNALIZABLE)
+        cd = self._cd(flags)
+        with self.assertRaises(ValueError):
+            cd.validate()
+
+    def test_enum_with_fields(self):
+        flags = int(ClassDescFlags.SC_SERIALIZABLE) | int(ClassDescFlags.SC_ENUM)
+        field = javaobj.beans.JavaField(javaobj.beans.FieldType.INTEGER, "x")
+        cd = self._cd(flags, fields=[field])
+        with self.assertRaises(ValueError):
+            cd.validate()
+
+    def test_enum_with_interfaces(self):
+        flags = int(ClassDescFlags.SC_SERIALIZABLE) | int(ClassDescFlags.SC_ENUM)
+        cd = self._cd(flags, interfaces=["java.lang.Runnable"])
+        with self.assertRaises(ValueError):
+            cd.validate()
+
+    def test_non_enum_with_enum_constants(self):
+        cd = self._cd(int(ClassDescFlags.SC_SERIALIZABLE), enum_constants=["RED"])
+        with self.assertRaises(ValueError):
+            cd.validate()
+
+    def test_data_type_invalid_flags_raises(self):
+        cd = self._cd(0)
+        with self.assertRaises(ValueError):
+            _ = cd.data_type
+
+    def test_getattr_unknown_raises(self):
+        instance = javaobj.beans.JavaInstance()
+        with self.assertRaises(AttributeError):
+            _ = instance.unknown_attribute
+
+    def test_object_field_invalid_class_name(self):
+        with self.assertRaises(ValueError):
+            javaobj.beans.JavaField(javaobj.beans.FieldType.OBJECT, "x", class_name=type("S", (), {"value": ""})())
+
+
+# ------------------------------------------------------------------------------
+# NumpyArrayTransformer
+# ------------------------------------------------------------------------------
+
+
+@unittest.skipIf(numpy is None, "numpy is not installed")
+class TestNumpyArrayTransformerV2(unittest.TestCase):
+    """Tests for the optional numpy-backed array transformer (v2)."""
+
+    @staticmethod
+    def _fixture_path(filename):
+        for subfolder in ("java", ""):
+            found_file = os.path.join(os.path.dirname(__file__), subfolder, filename)
+            if os.path.exists(found_file):
+                return found_file
+        raise IOError("File not found: {0}".format(filename))
+
+    def test_use_numpy_arrays(self):
+        with open(self._fixture_path("objArrays.ser"), "rb") as f:
+            pobj = javaobj.load(f, use_numpy_arrays=True)
+
+        self.assertIsInstance(pobj, javaobj.beans.JavaInstance)
+        arr = pobj.integerArr
+        self.assertIsInstance(arr, javaobj.beans.JavaArray)
+        self.assertIsInstance(arr.data, numpy.ndarray)
+        self.assertEqual(arr.data.dtype, numpy.dtype(">i"))
+
+    def test_unhandled_type_returns_none(self):
+        from javaobj.v2.stream import DataStreamReader
+        from javaobj.v2.transformers import NumpyArrayTransformer
+
+        transformer = NumpyArrayTransformer()
+        reader = DataStreamReader(BytesIO(b""))
+        result = transformer.load_array(reader, TypeCode.TYPE_OBJECT, 0)
+        self.assertIsNone(result)
+
+
+# ------------------------------------------------------------------------------
+# Direct transformer unit tests (white-box: pure-Python logic, no stream
+# parsing needed for most branches).
+# ------------------------------------------------------------------------------
+
+
+class TestTransformersDirect(unittest.TestCase):
+    """Direct unit tests for javaobj.v2.transformers branch coverage."""
+
+    @staticmethod
+    def _cd(name):
+        cd = javaobj.beans.JavaClassDesc(javaobj.beans.ClassDescType.NORMALCLASS)
+        cd.name = name
+        return cd
+
+    def test_java_list_not_found(self):
+        jl = javaobj.transformers.JavaList()
+        jl.annotations = {self._cd("other"): []}
+        self.assertFalse(jl.load_from_instance())
+
+    def test_java_map_not_found(self):
+        jm = javaobj.transformers.JavaMap()
+        jm.annotations = {self._cd("other"): []}
+        self.assertFalse(jm.load_from_instance())
+
+    def test_java_set_not_found(self):
+        js = javaobj.transformers.JavaSet()
+        js.annotations = {self._cd("other"): []}
+        self.assertFalse(js.load_from_instance())
+
+    def test_java_tree_set_not_found(self):
+        jts = javaobj.transformers.JavaTreeSet()
+        jts.annotations = {self._cd("other"): []}
+        self.assertFalse(jts.load_from_instance())
+
+    def test_java_primitive_class_not_found(self):
+        jb = javaobj.transformers.JavaBool()
+        jb.field_data = {}
+        self.assertFalse(jb.load_from_instance())
+
+    def test_java_primitive_class_dunder(self):
+        ji = javaobj.transformers.JavaInt()
+        ji.value = 5
+        self.assertEqual(int(ji), 5)
+        self.assertEqual(hash(ji), hash(5))
+        self.assertLess(ji, 6)
+        self.assertEqual(ji, 5)
+
+        jb = javaobj.transformers.JavaBool()
+        jb.value = True
+        self.assertTrue(bool(jb))
+
+    def test_linked_hash_map_positive(self):
+        from javaobj.v2.stream import DataStreamReader
+
+        data = (
+            struct.pack(">ii", 16, 1)
+            + _tc(TerminalCode.TC_NULL)
+            + _tc(TerminalCode.TC_NULL)
+            + _tc(TerminalCode.TC_ENDBLOCKDATA)
+            + b"\x00"
+        )
+        fd = BytesIO(data)
+        reader = DataStreamReader(fd)
+        parser = javaobj.core.JavaStreamParser(fd, [javaobj.transformers.DefaultObjectTransformer()])
+        lhm = javaobj.transformers.JavaLinkedHashMap()
+        self.assertTrue(lhm.load_from_blockdata(parser, reader))
+        self.assertEqual(dict(lhm), {None: None})
+
+    def test_linked_hash_map_bad_endblock(self):
+        from javaobj.v2.stream import DataStreamReader
+
+        data = struct.pack(">ii", 16, 0) + b"\x00"
+        reader = DataStreamReader(BytesIO(data))
+        with self.assertRaises(ValueError):
+            javaobj.transformers.JavaLinkedHashMap().load_from_blockdata(None, reader)
+
+    def test_linked_hash_map_bad_trailing_byte(self):
+        from javaobj.v2.stream import DataStreamReader
+
+        data = struct.pack(">ii", 16, 0) + _tc(TerminalCode.TC_ENDBLOCKDATA) + b"\x01"
+        reader = DataStreamReader(BytesIO(data))
+        with self.assertRaises(ValueError):
+            javaobj.transformers.JavaLinkedHashMap().load_from_blockdata(None, reader)
+
+    def test_java_time_not_found(self):
+        jt = javaobj.transformers.JavaTime()
+        jt.annotations = {self._cd("other"): []}
+        self.assertFalse(jt.load_from_instance())
+
+    def test_java_time_requires_blockdata(self):
+        jt = javaobj.transformers.JavaTime()
+        jt.annotations = {self._cd("java.time.Ser"): ["not blockdata"]}
+        with self.assertRaises(ValueError):
+            jt.load_from_instance()
+
+    def test_java_time_unhandled_type(self):
+        jt = javaobj.transformers.JavaTime()
+        jt.annotations = {self._cd("java.time.Ser"): [javaobj.beans.BlockData(struct.pack(">B", 99))]}
+        self.assertTrue(jt.load_from_instance())  # logs an error, does not raise
+
+    def test_java_time_local_time_branches(self):
+        jt = javaobj.transformers.JavaTime()
+        jt.do_local_time(struct.pack(">b", -5))
+        self.assertEqual(jt.hour, 4)
+
+        jt = javaobj.transformers.JavaTime()
+        jt.do_local_time(struct.pack(">bb", 5, -3))
+        self.assertEqual(jt.minute, 2)
+
+        jt = javaobj.transformers.JavaTime()
+        jt.do_local_time(struct.pack(">bbb", 5, 3, -2))
+        self.assertEqual(jt.second, 1)
+
+        jt = javaobj.transformers.JavaTime()
+        jt.do_local_time(struct.pack(">bbbi", 5, 3, 2, 12345))
+        self.assertEqual(jt.nano, 12345)
+
+    def test_java_time_zone_offset_large(self):
+        jt = javaobj.transformers.JavaTime()
+        jt.do_zone_offset(struct.pack(">bi", 127, 999999))
+        self.assertEqual(jt.offset, 999999)
+
+    def test_java_time_load_from_blockdata(self):
+        jt = javaobj.transformers.JavaTime()
+        self.assertTrue(jt.load_from_blockdata(None, None))
+
+    def test_java_time_remaining_do_methods(self):
+        jt = javaobj.transformers.JavaTime()
+        jt.do_offset_time(struct.pack(">b", -5) + struct.pack(">bi", 127, 111))
+        self.assertEqual(jt.offset, 111)
+
+        jt = javaobj.transformers.JavaTime()
+        jt.do_offset_date_time(struct.pack(">ibb", 2024, 6, 1) + struct.pack(">b", -5) + struct.pack(">b", 4))
+        self.assertEqual(jt.year, 2024)
+
+        jt = javaobj.transformers.JavaTime()
+        jt.do_year(struct.pack(">i", 2024))
+        self.assertEqual(jt.year, 2024)
+
+        jt = javaobj.transformers.JavaTime()
+        jt.do_year_month(struct.pack(">ib", 2024, 6))
+        self.assertEqual((jt.year, jt.month), (2024, 6))
+
+        jt = javaobj.transformers.JavaTime()
+        jt.do_month_day(struct.pack(">bb", 6, 15))
+        self.assertEqual((jt.month, jt.day), (6, 15))
+
+        jt = javaobj.transformers.JavaTime()
+        jt.do_period(struct.pack(">iii", 1, 2, 3))
+        self.assertEqual((jt.year, jt.month, jt.day), (1, 2, 3))
 
 
 # ------------------------------------------------------------------------------

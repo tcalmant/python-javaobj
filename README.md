@@ -3,7 +3,7 @@
 [![GitHub repository](https://img.shields.io/badge/GitHub-Repository-black?logo=github)](https://github.com/tcalmant/python-javaobj/)
 [![Latest Version](https://img.shields.io/pypi/v/javaobj-py3.svg)](https://pypi.python.org/pypi/javaobj-py3/)
 [![License](https://img.shields.io/pypi/l/javaobj-py3.svg)](https://pypi.python.org/pypi/javaobj-py3/)
-[![CI Build](https://github.com/tcalmant/python-javaobj/actions/workflows/build-24.04.yml/badge.svg?branch=v3)](https://github.com/tcalmant/python-javaobj/actions/workflows/build-24.04.yml)
+[![CI Build](https://github.com/tcalmant/python-javaobj/actions/workflows/ci-build.yml/badge.svg?branch=master)](https://github.com/tcalmant/python-javaobj/actions/workflows/ci-build.yml)
 [![Coveralls status](https://coveralls.io/repos/tcalmant/python-javaobj/badge.svg?branch=master)](https://coveralls.io/r/tcalmant/python-javaobj?branch=master)
 
 *python-javaobj* is a python library that provides functions for reading and
@@ -122,7 +122,9 @@ You can find a sample usage in the *Custom Transformer* section in this file.
 * Python >= 3.12 for `v3`
 * `enum34` and `typing` when using Python <= 3.4 (installable with `pip`)
 * Maven 2+ (for building test data of serialized objects.
-  You can skip it if you do not plan to run `tests.py`)
+  The fixtures are already committed under `tests/`, so you only need Maven
+  to regenerate them; skip it otherwise, or set `JAVAOBJ_NO_MAVEN=1` to
+  disable the regeneration when running the test suite)
 
 ## Usage (V1 implementation)
 

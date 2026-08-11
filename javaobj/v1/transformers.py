@@ -61,7 +61,7 @@ class DefaultObjectTransformer(object):  # pylint:disable=R0205
             JavaObject.__init__(self)
 
         def __hash__(self):
-            return list.__hash__(self)
+            return object.__hash__(self)
 
         def __extra_loading__(self, unmarshaller, ident=0):
             # type: (JavaObjectUnmarshaller, int) -> None
@@ -115,7 +115,7 @@ class DefaultObjectTransformer(object):  # pylint:disable=R0205
             JavaObject.__init__(self)
 
         def __hash__(self):
-            return dict.__hash__(self)
+            return object.__hash__(self)
 
         def __extra_loading__(self, unmarshaller, ident=0):
             # type: (JavaObjectUnmarshaller, int) -> None
@@ -171,7 +171,7 @@ class DefaultObjectTransformer(object):  # pylint:disable=R0205
             JavaObject.__init__(self)
 
         def __hash__(self):
-            return set.__hash__(self)
+            return object.__hash__(self)
 
         def __extra_loading__(self, unmarshaller, ident=0):
             # type: (JavaObjectUnmarshaller, int) -> None

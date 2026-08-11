@@ -3,3 +3,13 @@ source = javaobj/
 
 [report]
 include = javaobj/*
+
+[paths]
+# The test suite is run in a container for each supported Python version (see
+# run_tests_containers.sh), where the tree is unpacked in /work. The data
+# files are then combined outside of the containers: this maps the
+# in-container paths back to the local checkout, so a single report covers
+# every version.
+source =
+    javaobj/
+    /work/javaobj/

@@ -50,3 +50,6 @@ nosetests.xml
 # uv
 .venv
 uv.lock
+
+# Local container test runs (see run_tests_containers.sh)
+work/

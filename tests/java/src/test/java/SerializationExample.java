@@ -18,14 +18,14 @@ class SuperClass implements Serializable {
     }
 }
 
-class CustomClass extends SuperClass {
+class Issue60CustomClass extends SuperClass {
     private static final long serialVersionUID = 1L;
 
     private String name;
     private List<String> items = null;
     private int port = 443;
 
-    public CustomClass(String name) {
+    public Issue60CustomClass(String name) {
         this.name = name;
     }
 
@@ -43,7 +43,7 @@ class CustomClass extends SuperClass {
 
     @Override
     public String toString() {
-        return "CustomClass{name='" + name + "', items=" + items + "', port=" + port + "}";
+        return "Issue60CustomClass{name='" + name + "', items=" + items + "', port=" + port + "}";
     }
 }
 
@@ -51,7 +51,7 @@ public class SerializationExample {
     public static void main(String[] args) {
         try {
             // Create and serialize
-            CustomClass obj = new CustomClass("test");
+            Issue60CustomClass obj = new Issue60CustomClass("test");
             System.out.println("Original: " + obj);
 
             // Serialize to file
@@ -61,7 +61,7 @@ public class SerializationExample {
 
             // Deserialize from file
             try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream("issue60_custom_reader_endblock.ser"))) {
-                CustomClass deserialized = (CustomClass) ois.readObject();
+                Issue60CustomClass deserialized = (Issue60CustomClass) ois.readObject();
                 System.out.println("Deserialized: " + deserialized);
             }
 

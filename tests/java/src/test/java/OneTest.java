@@ -28,6 +28,7 @@ import java.util.zip.GZIPOutputStream;
 import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
 
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -402,6 +403,10 @@ public class OneTest {
 
 	@Test
 	public void testSwingObject() throws Exception {
+		// The fixture this test writes is already committed under tests/:
+		// skip it where there is no real display to back the JFrame (CI,
+		// containers) rather than fail the build.
+		Assume.assumeFalse(java.awt.GraphicsEnvironment.isHeadless());
 
 		// Start the frame in the UI thread
 		SwingUtilities.invokeAndWait(new Runnable() {
