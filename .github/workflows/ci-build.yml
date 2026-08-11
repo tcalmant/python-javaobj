@@ -1,0 +1,134 @@
+# Lints the code, runs the tests on every supported Python version, and
+# reports coverage.
+#
+# The tests run inside the matching official ``python:<version>`` container
+# via ./run_tests_containers.sh. This is what lets CI cover Python 2.7 and
+# 3.4-3.7 too -- actions/setup-python cannot provide those on a current
+# runner. javaobj.v3 requires Python 3.12+ and is skipped below that by
+# run_tests.sh.
+
+name: CI Build
+
+on:
+  push:
+    branches: ["main", "master"]
+    tags: "**"
+  pull_request:
+    branches: ["main", "master"]
+
+jobs:
+  lint:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install flake8
+      - name: Lint with flake8
+        run: |
+          # stop the build if there are Python syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+  test:
+    needs: lint
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Every version declared as supported (pyproject.toml classifiers).
+        # Each runs in its matching python:<version> container, which is the
+        # only way to cover 2.7 and 3.4-3.7 on a modern runner.
+        python-version:
+          [
+            "2.7",
+            "3.4",
+            "3.5",
+            "3.6",
+            "3.7",
+            "3.8",
+            "3.9",
+            "3.10",
+            "3.11",
+            "3.12",
+            "3.13",
+            "3.14",
+          ]
+
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Build the Java test fixtures
+        # tests/java/pom.xml targets -source/-target 7, which javac has
+        # refused since JDK 20: Temurin 17 keeps this working. The generated
+        # .ser fixtures are then streamed into every container below, so none
+        # of them need a JDK themselves.
+        working-directory: tests/java
+        run: mvn -B test
+      - name: Run the suite in a Python ${{ matrix.python-version }} container
+        # run_tests_containers.sh streams a clean copy of the tree into the
+        # container and runs run_tests.sh there. The engine is pinned to
+        # Docker (the runner ships both Docker and Podman, and the script
+        # prefers Podman otherwise). JAVAOBJ_NO_MAVEN skips the redundant
+        # in-container Maven call, since the fixtures were just built above.
+        # COVERAGE_OUTPUT_DIR makes it copy the coverage data of this version
+        # out of the container, so the coverage job below can combine them.
+        env:
+          CONTAINER_ENGINE: docker
+          COVERAGE_OUTPUT_DIR: coverage-data
+          ENGINE_RUN_ARGS: "-e JAVAOBJ_NO_MAVEN=1"
+        run: ./run_tests_containers.sh ${{ matrix.python-version }}
+      - name: Keep the coverage data of Python ${{ matrix.python-version }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-data-${{ matrix.python-version }}
+          path: coverage-data/*.dat
+          if-no-files-found: error
+          retention-days: 1
+
+  coverage:
+    # Every version of the matrix contributes: the report describes the whole
+    # supported range, not just the one version a runner can install natively.
+    needs: test
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: Get the coverage data of every version
+        uses: actions/download-artifact@v8
+        with:
+          pattern: coverage-data-*
+          merge-multiple: true
+          path: coverage-data
+      - name: Combine the coverage data
+        # The data files come from containers, where the tree lives in /work:
+        # .coveragerc maps that path back to this checkout.
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install coverage
+          coverage combine coverage-data/*.dat
+          coverage report
+      - name: Coveralls
+        env:
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+        run: |
+          pip install coveralls
+          coveralls
