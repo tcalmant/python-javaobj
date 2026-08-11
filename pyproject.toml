@@ -7,7 +7,7 @@ packages = ["javaobj"]
 
 [project]
 name = "javaobj-py3"
-version = "0.5.0"
+version = "0.6.0"
 description = "Module for serializing and de-serializing Java objects."
 readme = "README.md"
 license = "Apache-2.0"

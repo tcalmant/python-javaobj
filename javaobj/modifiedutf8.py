@@ -11,14 +11,14 @@ https://github.com/swstephe/py2jdbc/
 
 :authors: Scott Stephens (@swstephe), @guywithface
 :license: Apache License 2.0
-:version: 0.5.0
+:version: 0.6.0
 :status: Alpha
 """
 
 import sys
 
 # Module version
-__version_info__ = (0, 4, 4)
+__version_info__ = (0, 6, 0)
 __version__ = ".".join(str(x) for x in __version_info__)
 
 # Documentation strings format
