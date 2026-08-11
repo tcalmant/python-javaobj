@@ -113,7 +113,8 @@ You can find a sample usage in the *Custom Transformer* section in this file.
 * Automatic conversion of Java Collections to python ones
   (`HashMap` => `dict`, `ArrayList` => `list`, etc.)
 * Basic marshalling of simple Java objects (`v1` implementation)
-* Full marshalling of Java object streams (`v3` implementation)
+* Full un-marshalling **and** marshalling of Java object streams, with typed
+  errors and configurable safety limits (`v3` implementation)
 * Automatically uncompresses GZipped files
 
 ## Requirements
@@ -536,6 +537,24 @@ value = pobj.get_field("myField")
 value = pobj.myField
 ```
 
+### Automatic type conversion (V3)
+
+`javaobj.v3`'s default transformer converts the most common Java standard
+library classes into their natural Python equivalent:
+
+| Java class | Python type |
+|---|---|
+| `java.lang.Boolean` | `bool` |
+| `java.lang.Integer`, `java.lang.Long` | `int` |
+| `java.util.ArrayList`, `java.util.LinkedList` | `list` |
+| `java.util.HashMap`, `java.util.TreeMap`, `java.util.LinkedHashMap` | `dict` |
+| `java.util.HashSet`, `java.util.LinkedHashSet`, `java.util.TreeSet` | `set` |
+| `java.time.*` (via `java.time.Ser`) | the matching `datetime`/`date`/`time` type |
+
+Any other class falls back to a generic `JavaInstance`, accessed through
+`get_field()` as shown above. Provide your own `ObjectTransformer` (see
+"Object Transformer V3" below) to handle additional classes.
+
 ### New features in V3
 
 | Feature | V1 | V2 | V3 |
@@ -566,6 +585,41 @@ with open("untrusted.ser", "rb") as fd:
         max_depth=100,                      # max object-graph depth
     )
 ```
+
+### Error handling (V3)
+
+`javaobj.v3.exceptions` defines a typed hierarchy so callers can catch
+exactly what they expect instead of a bare `Exception`:
+
+```python
+import javaobj.v3 as javaobj
+from javaobj.v3.exceptions import JavaObjError, ParseError, SecurityError
+
+with open("obj5.ser", "rb") as fd:
+    try:
+        pobj = javaobj.load(fd)
+    except SecurityError:
+        # A max_depth or max_array_size limit was exceeded
+        ...
+    except ParseError as e:
+        # The stream does not follow the protocol; e.offset is the byte
+        # offset in the stream where the error occurred, or -1 if unknown
+        print(e, "at offset", e.offset)
+    except JavaObjError:
+        # Catch-all base class for everything else javaobj.v3 raises
+        ...
+```
+
+* `JavaObjError` -- base class for every exception `javaobj.v3` raises.
+* `ParseError` -- the stream cannot be decoded according to the protocol;
+  carries an `.offset` attribute.
+  * `UnexpectedOpcodeError` -- a `ParseError` subclass raised when an opcode
+    byte is not among the values expected at that point; carries `.expected`
+    (a tuple of acceptable values) and `.got`.
+* `UnsupportedFeatureError` -- the stream uses a protocol feature `v3` does
+  not implement yet (for example `Externalizable` objects on read).
+* `SecurityError` -- a configured `max_depth`/`max_array_size` limit was
+  exceeded (see "Security limits" above).
 
 ### Object Transformer V3
 
@@ -767,6 +821,17 @@ alice = JavaInstance(
 )
 
 data = javaobj.dumps(alice)
+```
+
+### Logging (V3)
+
+The parser and the writer log through the standard `logging` module, under
+`javaobj.v3.parser` and `javaobj.v3.writer` respectively:
+
+```python
+import logging
+
+logging.getLogger("javaobj.v3").setLevel(logging.DEBUG)
 ```
 
 ---
