@@ -946,6 +946,47 @@ class TestTransformersDirect(unittest.TestCase):
         jt.do_zone_offset(None, struct.pack(">bi", 127, 999999))
         self.assertEqual(jt.offset, 999999)
 
+    def test_java_time_year_month_day(self):
+        jt = self._make_time()
+        jt.do_year(None, struct.pack(">i", 2026))
+        self.assertEqual(jt.year, 2026)
+
+        jt = self._make_time()
+        jt.do_year_month(None, struct.pack(">ib", 2026, 8))
+        self.assertEqual((jt.year, jt.month), (2026, 8))
+
+        jt = self._make_time()
+        jt.do_month_day(None, struct.pack(">bb", 8, 12))
+        self.assertEqual((jt.month, jt.day), (8, 12))
+
+    def test_java_time_period(self):
+        jt = self._make_time()
+        jt.do_period(None, struct.pack(">iii", 1, 2, 3))
+        self.assertEqual((jt.year, jt.month, jt.day), (1, 2, 3))
+
+    def test_java_time_offset_time(self):
+        """An offset time is a local time followed by a zone offset."""
+        jt = self._make_time()
+        jt.do_offset_time(
+            None, struct.pack(">bbbi", 5, 3, 2, 12345) + struct.pack(">b", 4)
+        )
+        self.assertEqual((jt.hour, jt.minute, jt.second), (5, 3, 2))
+        self.assertEqual(jt.nano, 12345)
+        self.assertEqual(jt.offset, 4 * 900)
+
+    def test_java_time_offset_date_time(self):
+        """An offset date time is a local date time and a zone offset."""
+        jt = self._make_time()
+        jt.do_offset_date_time(
+            None,
+            struct.pack(">ibb", 2026, 8, 12)
+            + struct.pack(">bbbi", 5, 3, 2, 12345)
+            + struct.pack(">b", 4),
+        )
+        self.assertEqual((jt.year, jt.month, jt.day), (2026, 8, 12))
+        self.assertEqual((jt.hour, jt.minute, jt.second), (5, 3, 2))
+        self.assertEqual(jt.offset, 4 * 900)
+
     def test_dunder_methods(self):
         transformer_cls = javaobj.transformers.DefaultObjectTransformer
 
