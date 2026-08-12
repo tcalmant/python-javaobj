@@ -723,6 +723,22 @@ class TestMalformedStreams(unittest.TestCase):
         with self.assertRaises(ValueError):
             javaobj.loads(data)
 
+    def test_null_class_description(self):
+        """
+        An object, a class and an array all require a class description:
+        a null one must be reported, and not crash on a missing attribute
+        """
+        for type_code in (
+            TerminalCode.TC_OBJECT,
+            TerminalCode.TC_CLASS,
+            TerminalCode.TC_ARRAY,
+        ):
+            data = STREAM_MAGIC + _tc(type_code) + _tc(TerminalCode.TC_NULL)
+            with self.assertRaises(ValueError) as context:
+                javaobj.loads(data)
+
+            self.assertIn("class description", str(context.exception))
+
     def test_invalid_field_count(self):
         cd = _classdesc_bytes("Foo", int(ClassDescFlags.SC_SERIALIZABLE), nb_fields=-1)
         data = STREAM_MAGIC + _tc(TerminalCode.TC_CLASS) + cd
@@ -843,6 +859,25 @@ class TestMalformedStreams(unittest.TestCase):
 # ------------------------------------------------------------------------------
 # JavaClassDesc.validate() / field-access tests
 # ------------------------------------------------------------------------------
+
+
+class TestParserInterface(unittest.TestCase):
+    """
+    Tests the IJavaStreamParser interface, which a transformer may be given
+    """
+
+    def test_methods_are_abstract(self):
+        """
+        Every method of the interface must be implemented by the parser:
+        none of them must silently return None
+        """
+        parser = javaobj.api.IJavaStreamParser()
+
+        self.assertRaises(NotImplementedError, parser.run)
+        self.assertRaises(NotImplementedError, parser.dump, [])
+        self.assertRaises(
+            NotImplementedError, parser._read_content, 0, False, None
+        )
 
 
 class TestBeansValidation(unittest.TestCase):
