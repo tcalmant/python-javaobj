@@ -869,6 +869,38 @@ class TestBeansValidation(unittest.TestCase):
 # ------------------------------------------------------------------------------
 
 
+class TestTransformersArgument(unittest.TestCase):
+    """Tests the check of the transformers given to load()/loads() (#54)."""
+
+    DATA = STREAM_MAGIC + _tc(TerminalCode.TC_NULL)
+
+    def test_transformer_class_rejected(self) -> None:
+        """A class instead of an instance must be reported clearly."""
+        import io
+
+        class MyTransformer(javaobj.transformers.ObjectTransformer):
+            pass
+
+        for call in (
+            lambda: javaobj.loads(self.DATA, MyTransformer),
+            lambda: javaobj.load(io.BytesIO(self.DATA), MyTransformer),
+        ):
+            with self.assertRaises(TypeError) as context:
+                call()
+
+            message = str(context.exception)
+            self.assertIn("instances", message)
+            self.assertIn("MyTransformer", message)
+
+    def test_transformer_instance_accepted(self) -> None:
+        """An instance stays valid."""
+
+        class MyTransformer(javaobj.transformers.ObjectTransformer):
+            pass
+
+        self.assertIsNone(javaobj.loads(self.DATA, MyTransformer()))
+
+
 class TestExceptions(unittest.TestCase):
     """Direct unit tests for javaobj.v3.exceptions."""
 
