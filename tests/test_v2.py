@@ -601,6 +601,29 @@ class TestJavaobjV2(unittest.TestCase):
         self.assertEqual(dict(pobj.settings), {"first": "1", "second": "2"})
         self.assertEqual(pobj.port, 443)
 
+    def test_shared_array(self):
+        """
+        Tests the reference to an array stored in two fields (issue #62)
+
+        The array is written once and referenced the second time: the
+        reference must be resolved to the array, and not read as a class
+        description.
+        """
+        pobj = javaobj.loads(self.read_file("testSharedArray.ser"))
+
+        self.assertEqual(list(pobj.first), [1, 2, 3])
+        self.assertEqual(list(pobj.second), [1, 2, 3])
+        self.assertEqual(list(pobj.strings), ["a", "b"])
+        self.assertEqual(list(pobj.sameStrings), ["a", "b"])
+
+        # Both fields must give the very same array
+        self.assertIs(pobj.first, pobj.second)
+        self.assertIs(pobj.strings, pobj.sameStrings)
+
+        # Field written after the shared arrays: a wrong value here means
+        # the stream has been desynchronized
+        self.assertEqual(pobj.marker, 443)
+
     def test_jceks_issue_5(self):
         """
         Tests the handling of JCEKS issue #5
@@ -710,6 +733,45 @@ class TestJavaobjV2(unittest.TestCase):
 # ------------------------------------------------------------------------------
 # Malformed-stream / defensive-branch tests
 # ------------------------------------------------------------------------------
+
+
+class TestTransformersArgument(unittest.TestCase):
+    """
+    Tests the check of the transformers given to load() and loads()
+    (issue #54)
+    """
+
+    def test_transformer_class_rejected(self):
+        """
+        Giving a transformer class instead of an instance must be reported
+        clearly, and not fail later in the parser
+        """
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_NULL)
+
+        for method, argument in (
+            (javaobj.loads, data),
+            (javaobj.load, BytesIO(data)),
+        ):
+            with self.assertRaises(TypeError) as context:
+                method(argument, RandomChildTransformer)
+
+            message = str(context.exception)
+            self.assertIn("instances", message)
+            self.assertIn("RandomChildTransformer", message)
+
+    def test_transformer_instance_accepted(self):
+        """
+        An instance is valid, whether it inherits from ObjectTransformer or
+        not: those transformers are duck-typed
+        """
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_NULL)
+
+        class DuckTransformer(object):
+            def create_instance(self, classdesc):
+                return None
+
+        self.assertIsNone(javaobj.loads(data, RandomChildTransformer()))
+        self.assertIsNone(javaobj.loads(data, DuckTransformer()))
 
 
 class TestMalformedStreams(unittest.TestCase):

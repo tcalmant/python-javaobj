@@ -404,14 +404,18 @@ class JavaStreamParser(api.IJavaStreamParser):
             class_desc.handle = handle
             class_desc.desc_flags = desc_flags
             class_desc.fields = fields
+
+            # Store the reference to the parsed bean before reading the
+            # annotations and the super class: their content can refer to
+            # this class description
+            self._set_handle(handle, class_desc)
+
             class_desc.annotations = self._read_class_annotations(class_desc)
             class_desc.super_class = self._read_classdesc()
 
             if class_desc.super_class:
                 class_desc.super_class.is_super_class = True
 
-            # Store the reference to the parsed bean
-            self._set_handle(handle, class_desc)
             return class_desc
         elif type_code == TerminalCode.TC_NULL:
             # Null reference
@@ -628,7 +632,9 @@ class JavaStreamParser(api.IJavaStreamParser):
                     # Seems required, according to issue #46
                     return None
                 if sub_type_code == TerminalCode.TC_REFERENCE:
-                    return self._do_classdesc(sub_type_code)
+                    # Reference to an array which has already been read,
+                    # not to a class description
+                    return self._do_reference(sub_type_code)
                 if sub_type_code != TerminalCode.TC_ARRAY:
                     raise ValueError(
                         "Array type listed, but type code != TC_ARRAY"
@@ -716,7 +722,11 @@ class JavaStreamParser(api.IJavaStreamParser):
         else:
             content = [self._read_field_value(field_type) for _ in range(size)]
 
-        return JavaArray(handle, cd, field_type, content)
+        array = JavaArray(handle, cd, field_type, content)
+
+        # Store the array, so that it can be found back by a reference
+        self._set_handle(handle, array)
+        return array
 
     def _do_exception(self, type_code):
         # type: (int) -> ParsedJavaContent

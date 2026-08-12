@@ -463,6 +463,21 @@ class TestCollections(TestJavaobjV3Base):
         self.assertEqual(dict(pobj.settings), {"first": "1", "second": "2"})
         self.assertEqual(pobj.port, 443)
 
+    def test_shared_array(self) -> None:
+        """testSharedArray.ser - an array referenced by two fields (#62)."""
+        pobj = self.load_bytes("testSharedArray.ser")
+
+        self.assertEqual(list(pobj.first), [1, 2, 3])
+        self.assertEqual(list(pobj.second), [1, 2, 3])
+        self.assertEqual(list(pobj.strings), ["a", "b"])
+
+        # Both fields must give the very same array
+        self.assertIs(pobj.first, pobj.second)
+        self.assertIs(pobj.strings, pobj.sameStrings)
+
+        # Detects a desynchronized stream
+        self.assertEqual(pobj.marker, 443)
+
     def test_bool_int_long(self) -> None:
         """testBoolIntLong.ser – HashMap with Boolean / Integer / Long values."""
         pobj = self.load_bytes("testBoolIntLong.ser")
@@ -883,6 +898,38 @@ class TestBeansValidation(unittest.TestCase):
 # ------------------------------------------------------------------------------
 # Exception hierarchy tests
 # ------------------------------------------------------------------------------
+
+
+class TestTransformersArgument(unittest.TestCase):
+    """Tests the check of the transformers given to load()/loads() (#54)."""
+
+    DATA = STREAM_MAGIC + _tc(TerminalCode.TC_NULL)
+
+    def test_transformer_class_rejected(self) -> None:
+        """A class instead of an instance must be reported clearly."""
+        import io
+
+        class MyTransformer(javaobj.transformers.ObjectTransformer):
+            pass
+
+        for call in (
+            lambda: javaobj.loads(self.DATA, MyTransformer),
+            lambda: javaobj.load(io.BytesIO(self.DATA), MyTransformer),
+        ):
+            with self.assertRaises(TypeError) as context:
+                call()
+
+            message = str(context.exception)
+            self.assertIn("instances", message)
+            self.assertIn("MyTransformer", message)
+
+    def test_transformer_instance_accepted(self) -> None:
+        """An instance stays valid."""
+
+        class MyTransformer(javaobj.transformers.ObjectTransformer):
+            pass
+
+        self.assertIsNone(javaobj.loads(self.DATA, MyTransformer()))
 
 
 class TestExceptions(unittest.TestCase):
