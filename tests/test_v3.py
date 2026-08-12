@@ -4,7 +4,7 @@ Tests for javaobj v3.
 
 :authors: Thomas Calmant
 :license: Apache License 2.0
-:version: 0.6.0
+:version: 0.6.1
 :status: Alpha
 
 ..

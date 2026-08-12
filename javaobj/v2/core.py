@@ -5,7 +5,7 @@ See: https://github.com/frohoff/jdeserialize
 
 :authors: Thomas Calmant
 :license: Apache License 2.0
-:version: 0.6.0
+:version: 0.6.1
 :status: Alpha
 
 ..
@@ -70,7 +70,7 @@ from .transformers import DefaultObjectTransformer
 # ------------------------------------------------------------------------------
 
 # Module version
-__version_info__ = (0, 6, 0)
+__version_info__ = (0, 6, 1)
 __version__ = ".".join(str(x) for x in __version_info__)
 
 # Documentation strings format

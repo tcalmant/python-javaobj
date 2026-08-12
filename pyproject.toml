@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "javaobj-py3"
-version = "0.6.0"
+version = "0.6.1"
 description = "Module for serializing and de-serializing Java objects."
 readme = "README.md"
 # Python 2.7, then 3.4+ (the 3.0-3.3 exclusions keep pip from selecting a
