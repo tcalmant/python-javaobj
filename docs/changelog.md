@@ -2,7 +2,7 @@
 
 ## 0.6.0
 
-:Release Date: Unreleased
+:Release Date: 2026-08-12
 
 - Fixed the version number, which was declared inconsistently across the
   tree (`pyproject.toml` said `0.5.0` while most modules still said
