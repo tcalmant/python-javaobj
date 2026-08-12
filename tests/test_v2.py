@@ -697,6 +697,45 @@ class TestJavaobjV2(unittest.TestCase):
 # ------------------------------------------------------------------------------
 
 
+class TestTransformersArgument(unittest.TestCase):
+    """
+    Tests the check of the transformers given to load() and loads()
+    (issue #54)
+    """
+
+    def test_transformer_class_rejected(self):
+        """
+        Giving a transformer class instead of an instance must be reported
+        clearly, and not fail later in the parser
+        """
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_NULL)
+
+        for method, argument in (
+            (javaobj.loads, data),
+            (javaobj.load, BytesIO(data)),
+        ):
+            with self.assertRaises(TypeError) as context:
+                method(argument, RandomChildTransformer)
+
+            message = str(context.exception)
+            self.assertIn("instances", message)
+            self.assertIn("RandomChildTransformer", message)
+
+    def test_transformer_instance_accepted(self):
+        """
+        An instance is valid, whether it inherits from ObjectTransformer or
+        not: those transformers are duck-typed
+        """
+        data = STREAM_MAGIC + _tc(TerminalCode.TC_NULL)
+
+        class DuckTransformer(object):
+            def create_instance(self, classdesc):
+                return None
+
+        self.assertIsNone(javaobj.loads(data, RandomChildTransformer()))
+        self.assertIsNone(javaobj.loads(data, DuckTransformer()))
+
+
 class TestMalformedStreams(unittest.TestCase):
     """
     Feeds hand-crafted, syntactically-invalid streams to the v2 parser to
