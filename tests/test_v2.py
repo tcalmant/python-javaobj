@@ -586,6 +586,29 @@ class TestJavaobjV2(unittest.TestCase):
 
         # FIXME: referencing problems with the collection class
 
+    def test_shared_array(self):
+        """
+        Tests the reference to an array stored in two fields (issue #62)
+
+        The array is written once and referenced the second time: the
+        reference must be resolved to the array, and not read as a class
+        description.
+        """
+        pobj = javaobj.loads(self.read_file("testSharedArray.ser"))
+
+        self.assertEqual(list(pobj.first), [1, 2, 3])
+        self.assertEqual(list(pobj.second), [1, 2, 3])
+        self.assertEqual(list(pobj.strings), ["a", "b"])
+        self.assertEqual(list(pobj.sameStrings), ["a", "b"])
+
+        # Both fields must give the very same array
+        self.assertIs(pobj.first, pobj.second)
+        self.assertIs(pobj.strings, pobj.sameStrings)
+
+        # Field written after the shared arrays: a wrong value here means
+        # the stream has been desynchronized
+        self.assertEqual(pobj.marker, 443)
+
     def test_jceks_issue_5(self):
         """
         Tests the handling of JCEKS issue #5

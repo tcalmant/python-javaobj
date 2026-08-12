@@ -447,6 +447,21 @@ class TestCollections(TestJavaobjV3Base):
         self.assertIsInstance(pobj.hashMap, dict)
         self.assertIsInstance(pobj.linkedList, list)
 
+    def test_shared_array(self) -> None:
+        """testSharedArray.ser - an array referenced by two fields (#62)."""
+        pobj = self.load_bytes("testSharedArray.ser")
+
+        self.assertEqual(list(pobj.first), [1, 2, 3])
+        self.assertEqual(list(pobj.second), [1, 2, 3])
+        self.assertEqual(list(pobj.strings), ["a", "b"])
+
+        # Both fields must give the very same array
+        self.assertIs(pobj.first, pobj.second)
+        self.assertIs(pobj.strings, pobj.sameStrings)
+
+        # Detects a desynchronized stream
+        self.assertEqual(pobj.marker, 443)
+
     def test_bool_int_long(self) -> None:
         """testBoolIntLong.ser – HashMap with Boolean / Integer / Long values."""
         pobj = self.load_bytes("testBoolIntLong.ser")
