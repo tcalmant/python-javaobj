@@ -586,6 +586,21 @@ class TestJavaobjV2(unittest.TestCase):
 
         # FIXME: referencing problems with the collection class
 
+    def test_linked_hash_map(self):
+        """
+        Tests the handling of LinkedHashMap (issue #30)
+
+        The entries of a LinkedHashMap are written in the block data of the
+        HashMap it extends, hence found in the annotations of that parent.
+        """
+        pobj = javaobj.loads(self.read_file("testBareLinkedHashMap.ser"))
+        self.assertEqual(dict(pobj), {"a": "1", "b": "2"})
+
+        pobj = javaobj.loads(self.read_file("testLinkedHashMap.ser"))
+        self.assertEqual(pobj.name, "holder")
+        self.assertEqual(dict(pobj.settings), {"first": "1", "second": "2"})
+        self.assertEqual(pobj.port, 443)
+
     def test_shared_array(self):
         """
         Tests the reference to an array stored in two fields (issue #62)

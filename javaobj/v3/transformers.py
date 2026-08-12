@@ -206,13 +206,23 @@ class JavaMap(dict, JavaInstance):
         "java.util.TreeMap",
     )
 
+    #: Classes writing the entries of the map in their block data. A subclass
+    #: stores its content in the block data of the parent that implements
+    #: writeObject: a LinkedHashMap is written by java.util.HashMap. This is
+    #: therefore not the same list as HANDLED_CLASSES, which tells which Java
+    #: classes this transformer is used for.
+    CONTENT_CLASSES: tuple[str, ...] = (
+        "java.util.HashMap",
+        "java.util.TreeMap",
+    )
+
     def __init__(self) -> None:
         dict.__init__(self)
         JavaInstance.__init__(self)
 
     def load_from_instance(self) -> bool:
         for cd, ann_list in self.annotations.items():
-            if cd.name in self.HANDLED_CLASSES:
+            if cd.name in self.CONTENT_CLASSES:
                 # Annotation[0] is load-factor/capacity; skip it.
                 it = iter(ann_list[1:])
                 for key, value in zip(it, it):

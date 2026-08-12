@@ -505,6 +505,25 @@ class TestJavaobjV1(unittest.TestCase):
         # FIXME: referencing problems with the collection class
         # self._try_marshalling(jobj, pobj)
 
+    def test_linked_hash_map(self):
+        """
+        Tests the handling of LinkedHashMap (issue #30)
+
+        The entries of a LinkedHashMap are written in the block data of the
+        HashMap it extends. Reading that block data twice used to consume
+        the fields written after the map, and to fail on the way.
+        """
+        # A LinkedHashMap written on its own
+        pobj = javaobj.loads(self.read_file("testBareLinkedHashMap.ser"))
+        self.assertEqual(dict(pobj), {"a": "1", "b": "2"})
+
+        # A LinkedHashMap nested in an object
+        pobj = javaobj.loads(self.read_file("testLinkedHashMap.ser"))
+        self.assertEqual(pobj.name, "holder")
+        self.assertEqual(dict(pobj.settings), {"first": "1", "second": "2"})
+        # The field written after the map: it was misread before the fix
+        self.assertEqual(pobj.port, 443)
+
     def test_jceks_issue_5(self):
         """
         Tests the handling of JCEKS issue #5
@@ -927,6 +946,47 @@ class TestTransformersDirect(unittest.TestCase):
         jt.do_zone_offset(None, struct.pack(">bi", 127, 999999))
         self.assertEqual(jt.offset, 999999)
 
+    def test_java_time_year_month_day(self):
+        jt = self._make_time()
+        jt.do_year(None, struct.pack(">i", 2026))
+        self.assertEqual(jt.year, 2026)
+
+        jt = self._make_time()
+        jt.do_year_month(None, struct.pack(">ib", 2026, 8))
+        self.assertEqual((jt.year, jt.month), (2026, 8))
+
+        jt = self._make_time()
+        jt.do_month_day(None, struct.pack(">bb", 8, 12))
+        self.assertEqual((jt.month, jt.day), (8, 12))
+
+    def test_java_time_period(self):
+        jt = self._make_time()
+        jt.do_period(None, struct.pack(">iii", 1, 2, 3))
+        self.assertEqual((jt.year, jt.month, jt.day), (1, 2, 3))
+
+    def test_java_time_offset_time(self):
+        """An offset time is a local time followed by a zone offset."""
+        jt = self._make_time()
+        jt.do_offset_time(
+            None, struct.pack(">bbbi", 5, 3, 2, 12345) + struct.pack(">b", 4)
+        )
+        self.assertEqual((jt.hour, jt.minute, jt.second), (5, 3, 2))
+        self.assertEqual(jt.nano, 12345)
+        self.assertEqual(jt.offset, 4 * 900)
+
+    def test_java_time_offset_date_time(self):
+        """An offset date time is a local date time and a zone offset."""
+        jt = self._make_time()
+        jt.do_offset_date_time(
+            None,
+            struct.pack(">ibb", 2026, 8, 12)
+            + struct.pack(">bbbi", 5, 3, 2, 12345)
+            + struct.pack(">b", 4),
+        )
+        self.assertEqual((jt.year, jt.month, jt.day), (2026, 8, 12))
+        self.assertEqual((jt.hour, jt.minute, jt.second), (5, 3, 2))
+        self.assertEqual(jt.offset, 4 * 900)
+
     def test_dunder_methods(self):
         transformer_cls = javaobj.transformers.DefaultObjectTransformer
 
@@ -951,40 +1011,31 @@ class TestTransformersDirect(unittest.TestCase):
         jprim.value = 1
         self.assertLess(jprim, 2)
 
-    def test_linked_hash_map_positive(self):
-        data = (
-            STREAM_MAGIC
-            + _tc(TerminalCode.TC_BLOCKDATA)
-            + struct.pack(">ii", 16, 1)
-            + _tc(TerminalCode.TC_NULL)
-            + _tc(TerminalCode.TC_NULL)
-            + _tc(TerminalCode.TC_ENDBLOCKDATA)
-            + b"\x00"
-        )
-        um = javaobj.JavaObjectUnmarshaller(BytesIO(data))
-        lhm = javaobj.transformers.DefaultObjectTransformer.JavaLinkedHashMap(um)
-        lhm.__extra_loading__(um)
-        self.assertEqual(dict(lhm), {None: None})
+    def test_linked_hash_map_loads_from_annotations(self):
+        """
+        A LinkedHashMap takes its content from the annotations of its
+        HashMap parent, like a HashMap does: the first annotation is the
+        block data holding the number of buckets and the size, the next
+        ones are the keys and values, one after the other.
+        """
+        transformer_cls = javaobj.transformers.DefaultObjectTransformer
+        lhm = transformer_cls.JavaLinkedHashMap(None)
+        lhm.annotations = [
+            struct.pack(">ii", 16, 2),
+            "first",
+            "1",
+            "second",
+            "2",
+        ]
+        lhm.__extra_loading__(None)
+        self.assertEqual(dict(lhm), {"first": "1", "second": "2"})
 
-    def test_linked_hash_map_missing_blockdata(self):
-        data = STREAM_MAGIC + _tc(TerminalCode.TC_NULL)
-        um = javaobj.JavaObjectUnmarshaller(BytesIO(data))
-        lhm = javaobj.transformers.DefaultObjectTransformer.JavaLinkedHashMap(um)
-        with self.assertRaises(ValueError):
-            lhm.__extra_loading__(um)
-
-    def test_linked_hash_map_bad_trailing_byte(self):
-        data = (
-            STREAM_MAGIC
-            + _tc(TerminalCode.TC_BLOCKDATA)
-            + struct.pack(">ii", 16, 0)
-            + _tc(TerminalCode.TC_ENDBLOCKDATA)
-            + b"\x01"
-        )
-        um = javaobj.JavaObjectUnmarshaller(BytesIO(data))
-        lhm = javaobj.transformers.DefaultObjectTransformer.JavaLinkedHashMap(um)
-        with self.assertRaises(ValueError):
-            lhm.__extra_loading__(um)
+    def test_linked_hash_map_empty(self):
+        transformer_cls = javaobj.transformers.DefaultObjectTransformer
+        lhm = transformer_cls.JavaLinkedHashMap(None)
+        lhm.annotations = [struct.pack(">ii", 16, 0)]
+        lhm.__extra_loading__(None)
+        self.assertEqual(dict(lhm), {})
 
 
 # ------------------------------------------------------------------------------

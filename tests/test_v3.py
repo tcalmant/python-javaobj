@@ -447,6 +447,22 @@ class TestCollections(TestJavaobjV3Base):
         self.assertIsInstance(pobj.hashMap, dict)
         self.assertIsInstance(pobj.linkedList, list)
 
+    def test_linked_hash_map(self) -> None:
+        """testLinkedHashMap.ser - LinkedHashMap entries (issue #30).
+
+        A LinkedHashMap writes its entries in the block data of the HashMap
+        it extends, so they are found in the annotations of that parent and
+        not in those of the LinkedHashMap itself.
+        """
+        pobj = self.load_bytes("testBareLinkedHashMap.ser")
+        self.assertIsInstance(pobj, dict)
+        self.assertEqual(dict(pobj), {"a": "1", "b": "2"})
+
+        pobj = self.load_bytes("testLinkedHashMap.ser")
+        self.assertEqual(pobj.name, "holder")
+        self.assertEqual(dict(pobj.settings), {"first": "1", "second": "2"})
+        self.assertEqual(pobj.port, 443)
+
     def test_shared_array(self) -> None:
         """testSharedArray.ser - an array referenced by two fields (#62)."""
         pobj = self.load_bytes("testSharedArray.ser")
