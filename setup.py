@@ -1,98 +1,57 @@
+#!/usr/bin/env python
+# -- Content-Encoding: UTF-8 --
 """
-javaobj module exposes an API familiar to users of the standard library marshal,
-pickle and json modules.
+Installation script.
 
-See:
-http://download.oracle.com/javase/6/docs/platform/serialization/spec/protocol.html
+All project metadata lives in ``pyproject.toml`` (the ``[project]`` table),
+which is read by setuptools 61+ and by every PEP 517 build front-end. On
+Python 3 this file therefore only calls ``setup()`` with no argument.
+
+Python 2.7 ships a setuptools too old to understand that table, so when this
+file is executed directly on Python 2 (``python setup.py install``) it
+supplies the metadata explicitly. The version is read from
+``javaobj/__init__.py`` so that it is never declared a second time.
 
 :authors: Volodymyr Buell, Thomas Calmant
 :license: Apache License 2.0
-:version: 0.6.0
-:status: Alpha
-
-..
-
-    Copyright 2026 Thomas Calmant
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-        http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
 """
 
-import os
+import io
+import re
+import sys
 
-try:
-    from setuptools import setup
-except ImportError:
-    from distutils.core import setup
+from setuptools import setup
 
-# ------------------------------------------------------------------------------
+if sys.version_info[0] < 3:
+    # Python 2.7: old setuptools cannot read [project] from pyproject.toml,
+    # so the metadata is given here. The version is parsed from the package
+    # to avoid a second source of truth.
+    with io.open("javaobj/__init__.py", encoding="utf-8") as fh:
+        _match = re.search(r"__version_info__\s*=\s*\(([^)]*)\)", fh.read())
+    _version = ".".join(part.strip() for part in _match.group(1).split(","))
 
-# Module version
-__version_info__ = (0, 6, 0)
-__version__ = ".".join(str(x) for x in __version_info__)
+    with io.open("README.md", encoding="utf-8") as fh:
+        _long_description = fh.read()
 
-# Documentation strings format
-__docformat__ = "restructuredtext en"
-
-# ------------------------------------------------------------------------------
-
-
-def read(fname):
-    """
-    Utility method to read the content of a whole file
-    """
-    with open(os.path.join(os.path.dirname(__file__), fname)) as fd:
-        return fd.read()
-
-
-# ------------------------------------------------------------------------------
-
-
-setup(
-    name="javaobj-py3",
-    version=__version__,
-    author="Volodymyr Buell",
-    author_email="vbuell@gmail.com",
-    maintainer="Thomas Calmant",
-    maintainer_email="thomas.calmant@gmail.com",
-    url="https://github.com/tcalmant/python-javaobj",
-    description="Module for serializing and de-serializing Java objects.",
-    license="Apache License 2.0",
-    license_file="LICENSE",
-    keywords="python java marshalling serialization",
-    packages=["javaobj", "javaobj.v1", "javaobj.v2"],
-    test_suite="tests",
-    install_requires=[
-        "enum34; python_version<'3.4'",
-        "typing; python_version<'3.5'"
-    ],
-    long_description=read("README.md"),
-    long_description_content_type="text/markdown",
-    classifiers=[
-        "Development Status :: 3 - Alpha",
-        "License :: OSI Approved :: Apache Software License",
-        "Operating System :: OS Independent",
-        "Programming Language :: Python :: 2.7",
-        "Programming Language :: Python :: 3.4",
-        "Programming Language :: Python :: 3.5",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.11",
-        "Programming Language :: Python :: 3.12",
-        "Programming Language :: Python :: 3.13",
-        "Programming Language :: Python :: 3.14",
-        "Topic :: Software Development :: Libraries :: Python Modules",
-    ],
-)
+    setup(
+        name="javaobj-py3",
+        version=_version,
+        author="Volodymyr Buell",
+        author_email="vbuell@gmail.com",
+        maintainer="Thomas Calmant",
+        maintainer_email="thomas.calmant@gmail.com",
+        url="https://github.com/tcalmant/python-javaobj",
+        description="Module for serializing and de-serializing Java objects.",
+        long_description=_long_description,
+        long_description_content_type="text/markdown",
+        license="Apache License 2.0",
+        keywords="python java marshalling serialization",
+        packages=["javaobj", "javaobj.v1", "javaobj.v2", "javaobj.v3"],
+        install_requires=[
+            "enum34; python_version<'3.4'",
+            "typing; python_version<'3.5'",
+        ],
+    )
+else:
+    # Python 3: setuptools reads everything from pyproject.toml
+    setup()
