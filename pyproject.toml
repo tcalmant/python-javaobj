@@ -55,13 +55,14 @@ Issues = "http://github.com/tcalmant/python-javaobj/issues"
 Source = "http://github.com/tcalmant/python-javaobj/"
 
 [dependency-groups]
-# The python_version marker keeps this resolvable on 2.7: pytest 9.x does not
-# support it, so uv sync/uv lock would otherwise fail to find a solution
-# across the whole requires-python range (2.7 itself is still exercised, just
-# through run_tests_containers.sh, which installs whatever old pytest release
-# PyPI still serves that interpreter).
+# The python_version marker keeps this resolvable on older interpreters:
+# pytest>=9.0.3 requires Python>=3.10, so uv sync/uv lock would otherwise fail
+# to find a solution across the whole requires-python range (older
+# interpreters, including 2.7, are still exercised, just through
+# run_tests_containers.sh, which installs whatever old pytest release PyPI
+# still serves for that interpreter).
 dev = [
-    "pytest>=9.0.3; python_version >= '3.9'",
+    "pytest>=9.0.3; python_version >= '3.10'",
 ]
 
 [tool.setuptools]
