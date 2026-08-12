@@ -35,7 +35,7 @@ import logging
 import os
 import struct
 import sys
-from typing import IO, Tuple  # noqa: F401
+from typing import IO, Any, Tuple  # noqa: F401
 
 # Modified UTF-8 parser
 from .modifiedutf8 import byte_to_int, decode_modified_utf8
@@ -56,6 +56,7 @@ _log = logging.getLogger("javaobj")
 
 
 def log_debug(message, ident=0):
+    # type: (Any, int) -> None
     """
     Logs a message at debug level
 
@@ -66,6 +67,7 @@ def log_debug(message, ident=0):
 
 
 def log_error(message, ident=0):
+    # type: (Any, int) -> None
     """
     Logs a message at error level
 
@@ -176,6 +178,7 @@ if sys.version_info[0] >= 3:
     unicode_char = chr  # pylint:disable=C0103
 
     def bytes_char(c):
+        # type: (int) -> bytes
         """
         Converts the given character to a bytes string
         """
@@ -183,6 +186,7 @@ if sys.version_info[0] >= 3:
 
     # Python 3 interpreter : bytes & str
     def to_bytes(data, encoding="UTF-8"):
+        # type: (Any, str) -> bytes
         """
         Converts the given string to an array of bytes.
         Returns the first parameter if it is already an array of bytes.
@@ -197,6 +201,7 @@ if sys.version_info[0] >= 3:
         return data.encode(encoding)
 
     def to_str(data, encoding="UTF-8"):
+        # type: (Any, str) -> str
         """
         Converts the given parameter to a string.
         Returns the first parameter if it is already an instance of ``str``.
@@ -217,6 +222,7 @@ if sys.version_info[0] >= 3:
     to_unicode = to_str  # pylint:disable=C0103
 
     def read_to_str(data):
+        # type: (bytes) -> str
         """
         Concats all bytes into a string
         """
@@ -235,6 +241,7 @@ else:
 
     # Python 2 interpreter : str & unicode
     def to_str(data, encoding="UTF-8"):
+        # type: (Any, str) -> str
         """
         Converts the given parameter to a string.
         Returns the first parameter if it is already an instance of ``str``.
@@ -253,6 +260,7 @@ else:
 
     # Python 2 interpreter : str & unicode
     def to_unicode(data, encoding="UTF-8"):
+        # type: (Any, str) -> Any
         """
         Converts the given parameter to a string.
         Returns the first parameter if it is already an instance of ``str``.
@@ -270,6 +278,7 @@ else:
             return decode_modified_utf8(data)[0]
 
     def read_to_str(data):
+        # type: (str) -> str
         """
         Nothing to do in Python 2
         """

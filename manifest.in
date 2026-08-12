@@ -6,3 +6,6 @@ include AUTHORS
 
 # Include the license file
 include LICENSE
+
+# Include the PEP 561 marker, which declares the package as typed
+include javaobj/py.typed

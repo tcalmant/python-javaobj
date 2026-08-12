@@ -68,6 +68,11 @@ dev = [
 [tool.setuptools]
 packages = ["javaobj", "javaobj.v1", "javaobj.v2", "javaobj.v3"]
 
+# Ship the PEP 561 marker: without it, type checkers ignore the type hints of
+# the installed package
+[tool.setuptools.package-data]
+javaobj = ["py.typed"]
+
 # Produce a universal ``py2.py3-none-any`` wheel: the code base is pure Python
 # and v1/v2 support both Python 2.7 and 3 (v3 requires 3.12+ but is harmless
 # dead weight on older interpreters that never import it), so a single wheel
@@ -84,3 +89,15 @@ line-length = 110
 
 [tool.ruff.lint]
 extend-select = ["I"]
+
+[tool.mypy]
+files = ["javaobj"]
+# The dependencies declared for old interpreters (enum34, typing) are not
+# installed on the version running the check
+ignore_missing_imports = true
+# v1 and v2 must stay importable on Python 2.7, so they describe their types
+# in comments rather than in annotations. Most of their functions are not
+# described yet (see issue #39): checking the bodies of those would report
+# the types it cannot infer, not actual problems.
+check_untyped_defs = false
+disallow_untyped_defs = false

@@ -376,6 +376,9 @@ class DefaultObjectTransformer(object):  # pylint:disable=R0205
         :return: The Python form of the object, or the original JavaObject
         """
         try:
+            if classdesc.name is None:
+                raise KeyError(classdesc.name)
+
             mapped_type = self.TYPE_MAPPER[classdesc.name]
         except KeyError:
             # Return a JavaObject by default
