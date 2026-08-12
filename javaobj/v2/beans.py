@@ -258,7 +258,7 @@ class JavaClassDesc(ParsedJavaContent):
         self.inner_classes = []  # type: List[JavaClassDesc]
 
         # List of annotations objects
-        self.annotations = []  # type: List[ParsedJavaContent]
+        self.annotations = []  # type: List[Optional[ParsedJavaContent]]
 
         # The super class of this one, if any
         self.super_class = None  # type: Optional[JavaClassDesc]
@@ -409,7 +409,7 @@ class JavaInstance(ParsedJavaContent):
         self.field_data = {}  # type: Dict[JavaClassDesc, Dict[JavaField, Any]]
         self.annotations = (
             {}
-        )  # type: Dict[JavaClassDesc, List[ParsedJavaContent]]
+        )  # type: Dict[JavaClassDesc, List[Optional[ParsedJavaContent]]]
         self.is_external_instance = False
 
     def __str__(self):

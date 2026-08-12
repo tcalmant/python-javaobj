@@ -54,7 +54,7 @@ class IJavaStreamParser:
     """
 
     def run(self):
-        # type: () -> List[ParsedJavaContent]
+        # type: () -> List[Optional[ParsedJavaContent]]
         """
         Parses the input stream
         """
@@ -68,10 +68,13 @@ class IJavaStreamParser:
         raise NotImplementedError
 
     def _read_content(self, type_code, block_data, class_desc=None):
-        # type: (int, bool, Optional[JavaClassDesc]) -> ParsedJavaContent
+        # type: (int, bool, Optional[JavaClassDesc]) -> Optional[ParsedJavaContent]
         """
         Parses the next content. Use with care (use only in a transformer)
+
+        :return: The parsed content, None if the stream holds TC_NULL
         """
+        raise NotImplementedError
 
 
 class ObjectTransformer(object):  # pylint:disable=R0205
